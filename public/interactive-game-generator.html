@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 대화형 AI 게임 생성기 - Sensor Game Hub v6.0</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #8b5cf6;
+            --accent: #06d6a0;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --dark: #0f172a;
+            --gray-900: #0f172a;
+            --gray-800: #1e293b;
+            --gray-700: #334155;
+            --gray-600: #475569;
+            --gray-500: #64748b;
+            --gray-400: #94a3af;
+            --gray-300: #d1d5db;
+            --gray-200: #e5e7eb;
+            --white: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--gray-900), var(--gray-800));
+            color: var(--white);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            text-align: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--gray-600);
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: var(--gray-400);
+            margin-bottom: 1rem;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            padding: 0.5rem 1rem;
+            background: var(--gray-700);
+            color: var(--white);
+            text-decoration: none;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .nav-btn:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 1rem;
+            min-height: 0;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto;
+            }
+            
+            .sidebar {
+                order: 2;
+            }
+        }
+
+        .chat-area {
+            background: var(--gray-800);
+            border-radius: 1rem;
+            border: 1px solid var(--gray-600);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .chat-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--gray-600);
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .progress-bar {
+            flex: 1;
+            margin: 0 1rem;
+        }
+
+        .progress-track {
+            background: var(--gray-600);
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .progress-text {
+            font-size: 0.9rem;
+            color: var(--gray-400);
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            min-height: 300px;
+        }
+
+        .message {
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .message.user .message-avatar {
+            background: var(--gray-600);
+        }
+
+        .message-content {
+            flex: 1;
+            background: var(--gray-700);
+            padding: 1rem;
+            border-radius: 1rem;
+            max-width: 80%;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message.user .message-content {
+            background: var(--primary);
+            margin-left: auto;
+        }
+
+        .chat-input {
+            padding: 1rem;
+            border-top: 1px solid var(--gray-600);
+            flex-shrink: 0;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 0.75rem;
+            background: var(--gray-700);
+            border: 1px solid var(--gray-600);
+            border-radius: 0.5rem;
+            color: var(--white);
+            font-size: 1rem;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .send-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: var(--white);
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            min-width: 80px;
+        }
+
+        .send-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .send-btn:disabled {
+            background: var(--gray-600);
+            cursor: not-allowed;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--success), var(--accent));
+            color: var(--white);
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .generate-btn:disabled {
+            background: var(--gray-600);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .sidebar {
+            background: var(--gray-800);
+            border-radius: 1rem;
+            border: 1px solid var(--gray-600);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: fit-content;
+        }
+
+        .sidebar-section {
+            background: var(--gray-700);
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+
+        .sidebar-section h3 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .requirements-list {
+            list-style: none;
+            font-size: 0.9rem;
+        }
+
+        .requirements-list li {
+            padding: 0.25rem 0;
+            color: var(--gray-300);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .requirements-list .check {
+            color: var(--success);
+        }
+
+        .requirements-list .pending {
+            color: var(--gray-500);
+        }
+
+        .loading-indicator {
+            display: none;
+            text-align: center;
+            padding: 1rem;
+            color: var(--gray-400);
+        }
+
+        .loading-dots {
+            display: inline-block;
+            width: 40px;
+            height: 10px;
+            position: relative;
+        }
+
+        .loading-dots::before,
+        .loading-dots::after,
+        .loading-dots {
+            border-radius: 50%;
+            width: 8px;
+            height: 8px;
+            animation: loading-animation 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots::before,
+        .loading-dots::after {
+            content: '';
+            position: absolute;
+            top: 0;
+        }
+
+        .loading-dots::before {
+            left: -12px;
+            animation-delay: -0.32s;
+        }
+
+        .loading-dots {
+            background: var(--primary);
+            animation-delay: -0.16s;
+        }
+
+        .loading-dots::after {
+            left: 12px;
+        }
+
+        @keyframes loading-animation {
+            0%, 80%, 100% {
+                box-shadow: 0 2.5em 0 -1.3em;
+            }
+            40% {
+                box-shadow: 0 2.5em 0 0;
+            }
+        }
+
+        .result-section {
+            display: none;
+            background: var(--gray-800);
+            border-radius: 1rem;
+            border: 1px solid var(--gray-600);
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--white);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .example-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .suggestion-chip {
+            background: var(--gray-600);
+            color: var(--gray-200);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .suggestion-chip:hover {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: var(--gray-400);
+            padding: 2rem;
+            border: 2px dashed var(--gray-600);
+            border-radius: 1rem;
+            margin: 2rem 0;
+        }
+
+        .welcome-message h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 대화형 AI 게임 생성기</h1>
+            <p>AI와 대화하며 완벽한 센서 게임을 만들어보세요</p>
+            <div class="nav-buttons">
+                <a href="/" class="nav-btn">🏠 홈으로</a>
+                <a href="/ai-assistant" class="nav-btn">🤖 AI 채팅</a>
+                <a href="/ai-game-generator" class="nav-btn" style="opacity: 0.7;">⚡ 기존 생성기</a>
+                <a href="/developer-guide" class="nav-btn">📚 개발 가이드</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="chat-area">
+                <div class="chat-header">
+                    <div>
+                        <strong id="sessionStatus">세션 준비 중...</strong>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-track">
+                            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">대화 시작</div>
+                    </div>
+                    <div>
+                        <button id="resetBtn" class="nav-btn" style="padding: 0.5rem; font-size: 0.8rem;">🔄 새로 시작</button>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="welcome-message">
+                        <h3>🚀 AI 게임 개발자가 준비 중입니다...</h3>
+                        <p>잠시만 기다려주세요. 곧 함께 멋진 게임을 만들어보겠습니다!</p>
+                    </div>
+                </div>
+
+                <div class="loading-indicator" id="loadingIndicator">
+                    <div class="loading-dots"></div>
+                    <p>AI가 생각하고 있습니다...</p>
+                </div>
+
+                <div class="chat-input">
+                    <div class="input-group">
+                        <textarea 
+                            id="messageInput" 
+                            class="message-input" 
+                            placeholder="게임 아이디어를 자유롭게 말씀해주세요..."
+                            disabled
+                        ></textarea>
+                        <button id="sendBtn" class="send-btn" disabled>전송</button>
+                    </div>
+                    <button id="generateBtn" class="generate-btn" disabled>🎮 게임 생성하기</button>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3>📋 게임 요구사항</h3>
+                    <ul class="requirements-list" id="requirementsList">
+                        <li><span class="pending">⏳</span> 게임 아이디어</li>
+                        <li><span class="pending">⏳</span> 게임 타입</li>
+                        <li><span class="pending">⏳</span> 센서 활용</li>
+                        <li><span class="pending">⏳</span> 게임 메커니즘</li>
+                        <li><span class="pending">⏳</span> 최종 확인</li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>💡 예시 아이디어</h3>
+                    <div class="example-suggestions">
+                        <div class="suggestion-chip" onclick="useSuggestion('스마트폰을 기울여서 공을 굴리는 미로 게임')">미로 게임</div>
+                        <div class="suggestion-chip" onclick="useSuggestion('친구와 함께 흔들어서 요리하는 협력 게임')">협력 요리</div>
+                        <div class="suggestion-chip" onclick="useSuggestion('여러 명이 경쟁하는 반응속도 테스트')">반응속도 경쟁</div>
+                        <div class="suggestion-chip" onclick="useSuggestion('기기를 회전시켜 우주선을 조종하는 게임')">우주선 조종</div>
+                        <div class="suggestion-chip" onclick="useSuggestion('핸드폰을 흔들어서 주사위를 굴리는 보드게임')">주사위 게임</div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>🎯 현재 진행상황</h3>
+                    <div id="currentStageInfo">
+                        <p style="color: var(--gray-400); font-size: 0.9rem;">
+                            세션이 시작되면 진행상황이 표시됩니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <h3>🎉 게임이 생성되었습니다!</h3>
+            <div class="result-actions">
+                <button class="btn btn-success" id="downloadBtn">📥 게임 다운로드</button>
+                <button class="btn btn-primary" id="previewBtn">👀 미리보기</button>
+                <button class="btn btn-outline" id="regenerateBtn">🔄 다시 생성</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSession = null;
+        let currentGameData = null;
+        let isConnected = false;
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeGenerator();
+            setupEventListeners();
+        });
+
+        // 대화형 생성기 초기화
+        async function initializeGenerator() {
+            try {
+                showLoading(false);
+                updateSessionStatus('세션 시작 중...');
+                
+                const response = await fetch('/api/ai/interactive/start-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentSession = result;
+                    isConnected = true;
+                    
+                    // 환영 메시지 표시
+                    addMessageToChat(result.message, 'ai');
+                    updateProgress(result.stage, result.progress);
+                    updateSessionStatus('대화 준비 완료');
+                    enableInput();
+                    
+                    console.log('✅ 대화형 세션 시작:', result.sessionId);
+                } else {
+                    throw new Error(result.error || '세션 시작에 실패했습니다.');
+                }
+
+            } catch (error) {
+                console.error('❌ 초기화 실패:', error);
+                showError('시스템 초기화에 실패했습니다. 페이지를 새로고침해주세요.');
+            }
+        }
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            const messageInput = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const generateBtn = document.getElementById('generateBtn');
+            const resetBtn = document.getElementById('resetBtn');
+
+            // 메시지 전송
+            sendBtn.addEventListener('click', sendMessage);
+            
+            // 엔터키로 전송 (Shift+Enter는 줄바꿈)
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // 자동 크기 조절
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+
+            // 게임 생성
+            generateBtn.addEventListener('click', generateGame);
+
+            // 세션 리셋
+            resetBtn.addEventListener('click', resetSession);
+        }
+
+        // 메시지 전송
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message || !isConnected) return;
+
+            // 사용자 메시지 표시
+            addMessageToChat(message, 'user');
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            
+            showLoading(true);
+            disableInput();
+
+            try {
+                const response = await fetch('/api/ai/interactive/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: currentSession.sessionId,
+                        message: message
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    // AI 응답 표시
+                    addMessageToChat(result.message, 'ai');
+                    updateProgress(result.stage, result.progress);
+                    updateRequirements(result.requirements);
+                    
+                    // 생성 준비 확인
+                    if (result.canGenerate) {
+                        enableGenerateButton();
+                    }
+                    
+                    currentSession = result;
+                } else {
+                    showError(result.error || '메시지 처리에 실패했습니다.');
+                }
+
+            } catch (error) {
+                console.error('❌ 메시지 전송 실패:', error);
+                showError('네트워크 오류가 발생했습니다.');
+            } finally {
+                showLoading(false);
+                enableInput();
+            }
+        }
+
+        // 게임 생성
+        async function generateGame() {
+            if (!currentSession || !currentSession.canGenerate) return;
+
+            showLoading(true, '게임을 생성하고 있습니다. 잠시만 기다려주세요...');
+            disableInput();
+            updateSessionStatus('게임 생성 중...');
+
+            try {
+                const response = await fetch('/api/ai/interactive/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: currentSession.sessionId
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentGameData = result;
+                    
+                    // 성공 메시지
+                    addMessageToChat(`🎉 게임 "${result.metadata.title}"이 성공적으로 생성되었습니다! 아래 버튼으로 다운로드하거나 미리보기를 할 수 있습니다.`, 'ai');
+                    
+                    showResultSection();
+                    updateSessionStatus('게임 생성 완료');
+                    
+                    console.log('✅ 게임 생성 완료:', result.metadata.title);
+                } else {
+                    showError(result.error || '게임 생성에 실패했습니다.');
+                }
+
+            } catch (error) {
+                console.error('❌ 게임 생성 실패:', error);
+                showError('게임 생성 중 오류가 발생했습니다.');
+            } finally {
+                showLoading(false);
+                enableInput();
+            }
+        }
+
+        // 세션 리셋
+        async function resetSession() {
+            if (confirm('현재 대화를 모두 삭제하고 새로 시작하시겠습니까?')) {
+                // 기존 세션 정리
+                if (currentSession) {
+                    try {
+                        await fetch(`/api/ai/interactive/session/${currentSession.sessionId}`, {
+                            method: 'DELETE'
+                        });
+                    } catch (error) {
+                        console.log('세션 정리 실패:', error);
+                    }
+                }
+
+                // UI 초기화
+                document.getElementById('chatMessages').innerHTML = '';
+                hideResultSection();
+                resetProgress();
+                resetRequirements();
+                
+                // 새 세션 시작
+                currentSession = null;
+                currentGameData = null;
+                isConnected = false;
+                
+                await initializeGenerator();
+            }
+        }
+
+        // 채팅에 메시지 추가
+        function addMessageToChat(message, type) {
+            const messagesContainer = document.getElementById('chatMessages');
+            
+            // 환영 메시지 제거
+            const welcomeMsg = messagesContainer.querySelector('.welcome-message');
+            if (welcomeMsg) {
+                welcomeMsg.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const avatar = type === 'user' ? '👤' : '🤖';
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">${formatMessage(message)}</div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 메시지 포맷팅
+        function formatMessage(content) {
+            // 코드 블록 처리
+            content = content.replace(/```([\\s\\S]*?)```/g, '<pre style="background: var(--gray-900); padding: 1rem; border-radius: 0.5rem; overflow-x: auto;"><code>$1</code></pre>');
+            
+            // 인라인 코드 처리
+            content = content.replace(/`(.+?)`/g, '<code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 0.25rem;">$1</code>');
+            
+            // 줄바꿈 처리
+            content = content.replace(/\\n/g, '<br>');
+            
+            // 볼드 처리
+            content = content.replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>');
+            
+            return content;
+        }
+
+        // 진행상황 업데이트
+        function updateProgress(stage, progress) {
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const currentStageInfo = document.getElementById('currentStageInfo');
+            
+            if (progress) {
+                const percentage = (progress.step / progress.total) * 100;
+                progressFill.style.width = percentage + '%';
+                progressText.textContent = `${progress.step}/${progress.total} - ${progress.name}`;
+                
+                currentStageInfo.innerHTML = `
+                    <p style="color: var(--primary); font-weight: 600;">${progress.name}</p>
+                    <p style="color: var(--gray-400); font-size: 0.8rem;">
+                        ${progress.step}단계 / 총 ${progress.total}단계
+                    </p>
+                `;
+            }
+        }
+
+        // 요구사항 업데이트
+        function updateRequirements(requirements) {
+            const requirementsList = document.getElementById('requirementsList');
+            
+            const items = [
+                { key: 'title', label: '게임 아이디어' },
+                { key: 'gameType', label: '게임 타입' },
+                { key: 'sensorMechanics', label: '센서 활용' },
+                { key: 'gameplayElements', label: '게임 메커니즘' },
+                { key: 'confirmed', label: '최종 확인' }
+            ];
+
+            let html = '';
+            items.forEach(item => {
+                const isCompleted = requirements && requirements[item.key] && 
+                    (Array.isArray(requirements[item.key]) ? requirements[item.key].length > 0 : true);
+                const icon = isCompleted ? '<span class="check">✅</span>' : '<span class="pending">⏳</span>';
+                html += `<li>${icon} ${item.label}</li>`;
+            });
+
+            requirementsList.innerHTML = html;
+        }
+
+        // UI 상태 관리
+        function showLoading(show, message = 'AI가 생각하고 있습니다...') {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            if (show) {
+                loadingIndicator.style.display = 'block';
+                loadingIndicator.querySelector('p').textContent = message;
+            } else {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        function enableInput() {
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+        }
+
+        function disableInput() {
+            document.getElementById('messageInput').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+        }
+
+        function enableGenerateButton() {
+            const generateBtn = document.getElementById('generateBtn');
+            generateBtn.disabled = false;
+            generateBtn.style.display = 'block';
+        }
+
+        function updateSessionStatus(status) {
+            document.getElementById('sessionStatus').textContent = status;
+        }
+
+        function showError(message) {
+            addMessageToChat(`❌ 오류: ${message}`, 'ai');
+        }
+
+        function showResultSection() {
+            const resultSection = document.getElementById('resultSection');
+            resultSection.style.display = 'block';
+            
+            // 결과 액션 이벤트 리스너
+            document.getElementById('downloadBtn').onclick = downloadGame;
+            document.getElementById('previewBtn').onclick = previewGame;
+            document.getElementById('regenerateBtn').onclick = resetSession;
+        }
+
+        function hideResultSection() {
+            document.getElementById('resultSection').style.display = 'none';
+        }
+
+        function resetProgress() {
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('progressText').textContent = '대화 시작';
+            document.getElementById('currentStageInfo').innerHTML = `
+                <p style="color: var(--gray-400); font-size: 0.9rem;">
+                    세션이 시작되면 진행상황이 표시됩니다.
+                </p>
+            `;
+        }
+
+        function resetRequirements() {
+            const requirementsList = document.getElementById('requirementsList');
+            requirementsList.innerHTML = `
+                <li><span class="pending">⏳</span> 게임 아이디어</li>
+                <li><span class="pending">⏳</span> 게임 타입</li>
+                <li><span class="pending">⏳</span> 센서 활용</li>
+                <li><span class="pending">⏳</span> 게임 메커니즘</li>
+                <li><span class="pending">⏳</span> 최종 확인</li>
+            `;
+        }
+
+        // 결과 액션들
+        async function downloadGame() {
+            if (!currentGameData) return;
+
+            try {
+                const gameTitle = currentGameData.metadata.title || 'sensor-game';
+                const gameCode = currentGameData.gameCode;
+                
+                const blob = new Blob([gameCode], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${gameTitle.replace(/[^a-zA-Z0-9]/g, '-')}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                URL.revokeObjectURL(url);
+                
+                addMessageToChat('✅ 게임 파일이 다운로드되었습니다!', 'ai');
+            } catch (error) {
+                console.error('다운로드 실패:', error);
+                showError('다운로드에 실패했습니다.');
+            }
+        }
+
+        function previewGame() {
+            if (!currentGameData) return;
+
+            const gameCode = currentGameData.gameCode;
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(gameCode);
+            newWindow.document.close();
+        }
+
+        // 제안 사용
+        function useSuggestion(suggestion) {
+            if (!isConnected) return;
+            
+            const messageInput = document.getElementById('messageInput');
+            messageInput.value = suggestion;
+            messageInput.focus();
+            
+            // 입력창 크기 조절
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+        }
+    </script>
+</body>
+</html>
