@@ -561,6 +561,8 @@
         </div>
     </div>
 
+    <!-- JSZip 라이브러리 추가 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         let currentSession = null;
         let currentGameData = null;
@@ -717,15 +719,38 @@
                 if (result.success) {
                     currentGameData = result;
                     
+                    // 게임 데이터 검증
+                    if (!result.gameCode || result.gameCode.trim().length === 0) {
+                        throw new Error('생성된 게임 코드가 비어있습니다.');
+                    }
+                    
+                    if (!result.metadata || !result.metadata.title) {
+                        console.warn('게임 메타데이터가 불완전함:', result.metadata);
+                        // 기본 메타데이터 설정
+                        result.metadata = result.metadata || {};
+                        result.metadata.title = result.metadata.title || 'Generated Game';
+                    }
+                    
                     // 성공 메시지
-                    addMessageToChat(`🎉 게임 "${result.metadata.title}"이 성공적으로 생성되었습니다! 아래 버튼으로 다운로드하거나 미리보기를 할 수 있습니다.`, 'ai');
+                    const gameTitle = result.metadata.title;
+                    const gameType = result.metadata.gameType || 'solo';
+                    const description = result.metadata.description || '대화형 AI로 생성된 센서 게임';
+                    
+                    addMessageToChat(`🎉 **게임 생성 완료!**\n\n**"${gameTitle}"** (${gameType})\n${description}\n\n✅ HTML 코드: ${Math.round(result.gameCode.length / 1024)}KB\n🎮 게임 타입: ${gameType}\n📱 센서 지원: ${(result.metadata.sensors || ['orientation']).join(', ')}\n\n아래 버튼으로 다운로드하거나 미리보기를 할 수 있습니다!`, 'ai');
                     
                     showResultSection();
                     updateSessionStatus('게임 생성 완료');
                     
-                    console.log('✅ 게임 생성 완료:', result.metadata.title);
+                    console.log('✅ 게임 생성 완료:', {
+                        title: gameTitle,
+                        type: gameType,
+                        codeSize: result.gameCode.length,
+                        metadata: result.metadata
+                    });
                 } else {
-                    showError(result.error || '게임 생성에 실패했습니다.');
+                    const errorMsg = result.error || '게임 생성에 실패했습니다.';
+                    console.error('❌ 게임 생성 실패:', result);
+                    showError(errorMsg);
                 }
 
             } catch (error) {
@@ -950,38 +975,182 @@
 
         // 결과 액션들
         async function downloadGame() {
-            if (!currentGameData) return;
+            if (!currentGameData) {
+                showError('다운로드할 게임 데이터가 없습니다.');
+                return;
+            }
 
             try {
                 const gameTitle = currentGameData.metadata.title || 'sensor-game';
+                const gameId = gameTitle.replace(/[^a-zA-Z0-9가-힣]/g, '-').toLowerCase();
                 const gameCode = currentGameData.gameCode;
                 
-                const blob = new Blob([gameCode], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
+                console.log('📦 게임 압축 패키지 생성 중...', { title: gameTitle, id: gameId });
+                
+                // JSZip 사용 가능 여부 확인
+                if (typeof JSZip === 'undefined') {
+                    console.warn('JSZip 라이브러리를 찾을 수 없음, HTML 파일만 다운로드');
+                    
+                    // JSZip 없이 단순 HTML 다운로드
+                    const blob = new Blob([gameCode], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${gameId}.html`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    URL.revokeObjectURL(url);
+                    addMessageToChat('✅ 게임 HTML 파일이 다운로드되었습니다!', 'ai');
+                    return;
+                }
+                
+                // JSZip으로 압축 패키지 생성
+                const zip = new JSZip();
+                
+                // 1. 메인 HTML 파일 추가
+                zip.file('index.html', gameCode);
+                
+                // 2. game.json 메타데이터 생성
+                const gameMetadata = {
+                    id: gameId,
+                    title: currentGameData.metadata.title,
+                    description: currentGameData.metadata.description || '대화형 AI로 생성된 센서 게임',
+                    gameType: currentGameData.metadata.gameType || 'solo',
+                    difficulty: currentGameData.metadata.difficulty || 'medium',
+                    version: '1.0.0',
+                    author: 'AI Game Generator',
+                    createdAt: new Date().toISOString(),
+                    sensors: currentGameData.metadata.sensors || ['orientation'],
+                    controls: currentGameData.metadata.controls || 'sensor',
+                    category: currentGameData.metadata.genre || 'action',
+                    minPlayers: currentGameData.metadata.gameType === 'multi' ? 2 : 1,
+                    maxPlayers: currentGameData.metadata.gameType === 'multi' ? 10 : (currentGameData.metadata.gameType === 'dual' ? 2 : 1),
+                    features: [
+                        'mobile-sensors',
+                        'real-time-gameplay',
+                        'responsive-design'
+                    ],
+                    requirements: {
+                        mobile: true,
+                        gyroscope: true,
+                        accelerometer: true,
+                        orientation: true
+                    },
+                    integration: {
+                        sessionSDK: true,
+                        autoSession: true,
+                        qrCode: true
+                    }
+                };
+                
+                zip.file('game.json', JSON.stringify(gameMetadata, null, 2));
+                
+                // 3. README.md 추가
+                const readmeContent = `# ${currentGameData.metadata.title}
+
+${currentGameData.metadata.description || '대화형 AI로 생성된 센서 게임입니다.'}
+
+## 설치 방법
+
+1. 이 폴더를 \`/public/games/\` 디렉토리에 복사하세요
+2. 폴더명을 \`${gameId}\`로 변경하세요
+3. 서버를 재시작하거나 게임 재스캔을 실행하세요
+
+## 접속 방법
+
+- 게임 URL: \`http://localhost:3000/games/${gameId}\`
+- 센서 클라이언트: \`http://localhost:3000/sensor.html\`
+
+## 게임 정보
+
+- **타입**: ${currentGameData.metadata.gameType || 'solo'}
+- **난이도**: ${currentGameData.metadata.difficulty || 'medium'}
+- **플레이어**: ${gameMetadata.minPlayers}${gameMetadata.maxPlayers > gameMetadata.minPlayers ? ('-' + gameMetadata.maxPlayers) : ''}명
+- **센서**: ${(currentGameData.metadata.sensors || ['orientation']).join(', ')}
+
+## 개발 정보
+
+- 생성일: ${new Date().toLocaleString('ko-KR')}
+- 생성 도구: Sensor Game Hub v6.0 AI Generator
+- SDK 버전: SessionSDK v6.0
+
+---
+
+*이 게임은 Sensor Game Hub v6.0의 대화형 AI 게임 생성기로 제작되었습니다.*
+`;
+                
+                zip.file('README.md', readmeContent);
+                
+                // 4. ZIP 파일 생성 및 다운로드
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(zipBlob);
                 
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${gameTitle.replace(/[^a-zA-Z0-9]/g, '-')}.html`;
+                a.download = `${gameId}-sensor-game.zip`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 
                 URL.revokeObjectURL(url);
                 
-                addMessageToChat('✅ 게임 파일이 다운로드되었습니다!', 'ai');
+                addMessageToChat(`🎁 게임 압축 패키지가 다운로드되었습니다!\n\n📦 **${gameId}-sensor-game.zip**\n\n포함 파일:\n- \`index.html\` (메인 게임 파일)\n- \`game.json\` (메타데이터)\n- \`README.md\` (설치 가이드)\n\n**설치 방법**: 압축을 풀고 \`/public/games/${gameId}/\` 폴더에 복사하세요.`, 'ai');
+                
+                console.log('✅ 게임 압축 패키지 다운로드 완료');
+                
             } catch (error) {
-                console.error('다운로드 실패:', error);
-                showError('다운로드에 실패했습니다.');
+                console.error('❌ 다운로드 실패:', error);
+                showError(`다운로드에 실패했습니다: ${error.message}`);
             }
         }
 
         function previewGame() {
-            if (!currentGameData) return;
+            if (!currentGameData) {
+                showError('미리보기할 게임 데이터가 없습니다.');
+                return;
+            }
 
-            const gameCode = currentGameData.gameCode;
-            const newWindow = window.open('', '_blank');
-            newWindow.document.write(gameCode);
-            newWindow.document.close();
+            try {
+                const gameCode = currentGameData.gameCode;
+                const gameTitle = currentGameData.metadata.title || 'Generated Game';
+                
+                console.log('👀 게임 미리보기 시작:', gameTitle);
+                
+                // 게임 코드가 유효한지 확인
+                if (!gameCode || gameCode.trim().length === 0) {
+                    throw new Error('게임 코드가 비어있습니다.');
+                }
+                
+                // HTML 구조 확인
+                if (!gameCode.includes('<!DOCTYPE html>') && !gameCode.includes('<html')) {
+                    throw new Error('유효한 HTML 게임 코드가 아닙니다.');
+                }
+                
+                // 새 창에서 게임 실행
+                const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                
+                if (!newWindow) {
+                    throw new Error('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.');
+                }
+                
+                // 게임 코드 작성
+                newWindow.document.write(gameCode);
+                newWindow.document.close();
+                
+                // 창 제목 설정
+                newWindow.document.title = `미리보기: ${gameTitle}`;
+                
+                addMessageToChat(`🚀 게임 미리보기가 새 창에서 열렸습니다!\n\n**${gameTitle}**\n\n💡 **참고**: 센서 기능을 테스트하려면 모바일 기기에서 센서 클라이언트를 연결하세요.`, 'ai');
+                
+                console.log('✅ 게임 미리보기 완료');
+                
+            } catch (error) {
+                console.error('❌ 미리보기 실패:', error);
+                showError(`미리보기에 실패했습니다: ${error.message}`);
+            }
         }
 
         // 제안 사용

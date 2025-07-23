@@ -495,13 +495,29 @@ ${context}
     async generateFinalGame(sessionId) {
         try {
             const session = this.activeSessions.get(sessionId);
-            if (!session || session.stage !== 'generating') {
-                throw new Error('게임 생성 준비가 되지 않았습니다.');
+            if (!session) {
+                throw new Error('세션을 찾을 수 없습니다.');
+            }
+            if (session.stage !== 'generating') {
+                throw new Error(`잘못된 세션 단계: ${session.stage}. 'generating' 단계에서만 게임을 생성할 수 있습니다.`);
             }
 
             console.log(`🎮 최종 게임 생성 시작: ${session.gameRequirements.title}`);
+            console.log(`🔍 게임 사양:`, {
+                title: session.gameRequirements.title,
+                gameType: session.gameRequirements.gameType,
+                genre: session.gameRequirements.genre,
+                sensorMechanics: session.gameRequirements.sensorMechanics,
+                difficulty: session.gameRequirements.difficulty
+            });
+
+            // Claude API 사용 가능 여부 확인
+            if (!this.llm) {
+                throw new Error('Claude API가 초기화되지 않았습니다. 환경변수를 확인해주세요.');
+            }
 
             // 관련 컨텍스트 수집
+            console.log('📚 컨텍스트 수집 중...');
             const context = await this.getGameDevelopmentContext(session.gameRequirements);
 
             // 게임 생성 프롬프트
@@ -576,15 +592,44 @@ ${context}
 
 반드시 완전하고 실행 가능한 HTML 파일을 생성하세요. 게임이 즉시 플레이 가능해야 합니다.`;
 
+            console.log('🤖 Claude API 호출 시작...');
             const response = await this.llm.invoke([{ role: 'user', content: gameGenerationPrompt }]);
+            console.log('✅ Claude API 응답 수신 완료');
+            console.log(`📝 응답 길이: ${response.content.length} 문자`);
 
             // HTML 추출
+            console.log('🔍 HTML 코드 추출 시도...');
+            let gameCode = null;
             const htmlMatch = response.content.match(/<!DOCTYPE html>[\s\S]*<\/html>/i);
-            if (!htmlMatch) {
-                throw new Error('유효한 HTML 게임 코드가 생성되지 않았습니다.');
+            
+            if (htmlMatch) {
+                gameCode = htmlMatch[0];
+                console.log(`✅ HTML 추출 성공: ${gameCode.length} 문자`);
+            } else {
+                console.error('❌ HTML 추출 실패. 응답 내용:');
+                console.error(response.content.substring(0, 500) + '...');
+                
+                // 대체 HTML 패턴 시도
+                const altPatterns = [
+                    /```html\s*([\s\S]*?)\s*```/i,
+                    /<html[\s\S]*<\/html>/i,
+                    /<!doctype[\s\S]*<\/html>/i
+                ];
+                
+                for (const pattern of altPatterns) {
+                    const match = response.content.match(pattern);
+                    if (match) {
+                        gameCode = match[1] || match[0];
+                        console.log(`✅ 대체 패턴으로 HTML 발견: ${pattern}`);
+                        console.log(`✅ 대체 HTML 추출 성공: ${gameCode.length} 문자`);
+                        break;
+                    }
+                }
+                
+                if (!gameCode) {
+                    throw new Error('유효한 HTML 게임 코드가 생성되지 않았습니다. Claude 응답에서 HTML을 찾을 수 없습니다.');
+                }
             }
-
-            const gameCode = htmlMatch[0];
 
             // 게임 검증
             const validation = this.validateGameCode(gameCode);
@@ -618,9 +663,20 @@ ${context}
 
         } catch (error) {
             console.error('❌ 게임 생성 실패:', error);
+            console.error('❌ 오류 세부 정보:', {
+                message: error.message,
+                stack: error.stack,
+                sessionId: sessionId
+            });
+            
             return {
                 success: false,
-                error: error.message
+                error: error.message,
+                details: {
+                    sessionId: sessionId,
+                    timestamp: new Date().toISOString(),
+                    errorType: error.constructor.name
+                }
             };
         }
     }

@@ -33,3 +33,4 @@
 ✅ 게임 스캔 완료
 📝 GET /api/ai/interactive/health - ::1
 📝 POST /api/ai/interactive/start-session - ::1
+📝 GET /api/ai/interactive/health - ::1
