@@ -1346,6 +1346,7 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                     document.addEventListener('DOMContentLoaded', function() {
                         checkAIStatus();
                         loadChatHistory();
+                        checkURLParams();
                     });
                     
                     // AI 상태 확인
@@ -1385,6 +1386,27 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                         });
                         
                         scrollToBottom();
+                    }
+                    
+                    // URL 파라미터 확인 및 자동 메시지 전송
+                    function checkURLParams() {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const question = urlParams.get('q');
+                        
+                        if (question) {
+                            // URL에서 질문 파라미터 제거 (뒤로가기 시 중복 전송 방지)
+                            const newUrl = window.location.pathname;
+                            window.history.replaceState({}, document.title, newUrl);
+                            
+                            // 입력창에 질문 설정하고 자동 전송
+                            const input = document.getElementById('messageInput');
+                            input.value = decodeURIComponent(question);
+                            
+                            // 잠시 후 자동 전송 (UI가 완전히 로드된 후)
+                            setTimeout(() => {
+                                sendMessage();
+                            }, 500);
+                        }
                     }
                     
                     // 채팅 기록 저장
@@ -1697,9 +1719,9 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                             <h3>🚀 빠른 시작</h3>
                             <p>Sensor Game Hub에서 첫 게임을 만들어보세요.</p>
                             <div class="guide-links">
-                                <a href="#" class="guide-link" onclick="openAIChat('게임 템플릿을 사용해서 새 게임을 만들고 싶어요')">📋 게임 템플릿 사용법</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('SessionSDK 기본 사용법을 알려주세요')">🔧 SessionSDK 기본 사용법</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('센서 데이터 처리 방법을 알려주세요')">📱 센서 데이터 처리법</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('📋 게임 템플릿 사용법에 대해서 알려주세요. GAME_TEMPLATE.html을 사용해서 새 게임을 만드는 과정을 단계별로 설명해주세요.')">📋 게임 템플릿 사용법</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🔧 SessionSDK 기본 사용법을 알려주세요. 세션 생성, 센서 연결, 이벤트 처리 방법을 예제 코드와 함께 설명해주세요.')">🔧 SessionSDK 기본 사용법</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('📱 센서 데이터 처리법을 알려주세요. orientation, acceleration, rotationRate 데이터를 게임에서 어떻게 활용하는지 실제 예제로 보여주세요.')">📱 센서 데이터 처리법</a>
                             </div>
                         </div>
                         
@@ -1707,9 +1729,9 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                             <h3>🎮 게임 타입</h3>
                             <p>다양한 게임 타입과 특징을 알아보세요.</p>
                             <div class="guide-links">
-                                <a href="#" class="guide-link" onclick="openAIChat('솔로 게임 개발 방법을 알려주세요')">🎯 솔로 게임 (1명)</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('듀얼 게임 개발 방법을 알려주세요')">🤝 듀얼 게임 (2명 협력)</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('멀티플레이어 게임 개발 방법을 알려주세요')">👥 멀티 게임 (3-8명 경쟁)</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🎯 솔로 게임 (1명) 개발 방법을 알려주세요. gameType: solo로 설정하고, 1개 센서로 플레이하는 게임의 특징과 구현 방법을 예제와 함께 설명해주세요.')">🎯 솔로 게임 (1명)</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🤝 듀얼 게임 (2명 협력) 개발 방법을 알려주세요. gameType: dual로 설정하고, 2개 센서가 협력하는 게임 로직과 센서 식별 방법을 구체적으로 알려주세요.')">🤝 듀얼 게임 (2명 협력)</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('👥 멀티 게임 (3-8명 경쟁) 개발 방법을 알려주세요. gameType: multi로 설정하고, 여러 플레이어 간 경쟁 시스템과 실시간 순위 업데이트 방법을 예제로 보여주세요.')">👥 멀티 게임 (3-8명 경쟁)</a>
                             </div>
                         </div>
                         
@@ -1717,9 +1739,9 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                             <h3>📱 센서 활용</h3>
                             <p>모바일 센서를 게임에 효과적으로 활용하는 방법입니다.</p>
                             <div class="guide-links">
-                                <a href="#" class="guide-link" onclick="openAIChat('기기 기울기 센서 사용법을 알려주세요')">📐 기울기 센서 (orientation)</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('가속도 센서 사용법을 알려주세요')">🏃 가속도 센서 (acceleration)</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('회전 속도 센서 사용법을 알려주세요')">🔄 회전 속도 (rotationRate)</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('📐 기울기 센서 (orientation) 사용법을 알려주세요. alpha, beta, gamma 값의 의미와 범위, 게임에서 기울기를 이용한 캐릭터 이동과 조작 방법을 실제 코드로 보여주세요.')">📐 기울기 센서 (orientation)</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🏃 가속도 센서 (acceleration) 사용법을 알려주세요. x, y, z 축 가속도 데이터를 이용한 흔들기, 터치, 점프 동작 감지 방법과 실제 구현 예제를 보여주세요.')">🏃 가속도 센서 (acceleration)</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🔄 회전 속도 (rotationRate) 사용법을 알려주세요. alpha, beta, gamma 회전 속도를 이용한 스핀, 회전 동작 감지와 게임에서의 활용 방법을 예제로 설명해주세요.')">🔄 회전 속도 (rotationRate)</a>
                             </div>
                         </div>
                         
@@ -1727,9 +1749,9 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                             <h3>🐛 문제 해결</h3>
                             <p>일반적인 개발 이슈와 해결 방법입니다.</p>
                             <div class="guide-links">
-                                <a href="#" class="guide-link" onclick="openAIChat('서버에 연결되지 않았습니다 오류를 해결해주세요')">🔌 연결 오류 해결</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('세션 코드가 undefined로 나와요')">❓ undefined 오류</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('센서 데이터가 오지 않아요')">📡 센서 데이터 문제</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🔌 연결 오류 해결 방법을 알려주세요. \"서버에 연결되지 않았습니다\" 오류가 발생했을 때 체크해야 할 사항들과 해결 방법을 단계별로 설명해주세요.')">🔌 연결 오류 해결</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('❓ undefined 오류 해결 방법을 알려주세요. 세션 코드나 센서 데이터가 undefined로 나오는 문제의 원인과 해결책을 CustomEvent 처리 패턴과 함께 설명해주세요.')">❓ undefined 오류</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('📡 센서 데이터 문제 해결 방법을 알려주세요. 센서 데이터가 오지 않거나 부정확할 때의 원인 진단과 해결 방법, 센서 권한 설정을 알려주세요.')">📡 센서 데이터 문제</a>
                             </div>
                         </div>
                         
@@ -1737,9 +1759,9 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                             <h3>🎨 UI/UX 디자인</h3>
                             <p>게임 인터페이스를 멋지게 꾸미는 방법입니다.</p>
                             <div class="guide-links">
-                                <a href="#" class="guide-link" onclick="openAIChat('게임 UI 디자인 방법을 알려주세요')">🎨 UI 디자인 가이드</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('CSS 테마 변수 사용법을 알려주세요')">🌈 테마 변수 활용</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('반응형 게임 UI 만드는 법을 알려주세요')">📱 반응형 디자인</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🎨 UI 디자인 가이드를 알려주세요. 게임 인터페이스 설계 원칙, 사용자 친화적인 버튼과 아이콘 배치, 시각적 피드백 구현 방법을 실제 예제로 보여주세요.')">🎨 UI 디자인 가이드</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🌈 테마 변수 활용 방법을 알려주세요. --primary, --secondary, --success 등 CSS 커스텀 속성을 활용한 일관된 디자인 시스템 구축과 다크/라이트 테마 구현을 설명해주세요.')">🌈 테마 변수 활용</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('📱 반응형 디자인 구현 방법을 알려주세요. 다양한 모바일 화면 크기에 대응하는 게임 UI 설계와 미디어 쿼리, Flexbox/Grid 활용법을 예제로 보여주세요.')">📱 반응형 디자인</a>
                             </div>
                         </div>
                         
@@ -1747,9 +1769,9 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                             <h3>⚡ 성능 최적화</h3>
                             <p>게임 성능을 향상시키는 팁과 기법입니다.</p>
                             <div class="guide-links">
-                                <a href="#" class="guide-link" onclick="openAIChat('센서 데이터 throttling 방법을 알려주세요')">🚀 센서 데이터 최적화</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('Canvas 렌더링 최적화 방법을 알려주세요')">🖼️ 렌더링 최적화</a>
-                                <a href="#" class="guide-link" onclick="openAIChat('메모리 누수 방지 방법을 알려주세요')">🧠 메모리 관리</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🚀 센서 데이터 최적화 방법을 알려주세요. throttling과 debouncing을 활용한 센서 데이터 전송 빈도 제어, 배터리 효율성 개선 방법을 코드 예제로 설명해주세요.')">🚀 센서 데이터 최적화</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🖼️ 렌더링 최적화 방법을 알려주세요. Canvas 성능 향상을 위한 더블 버퍼링, requestAnimationFrame 활용, 불필요한 렌더링 방지 기법을 실제 구현으로 보여주세요.')">🖼️ 렌더링 최적화</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('🧠 메모리 관리 방법을 알려주세요. 게임에서 발생할 수 있는 메모리 누수 패턴과 예방법, 이벤트 리스너 정리, 타이머 해제 등을 구체적으로 설명해주세요.')">🧠 메모리 관리</a>
                             </div>
                         </div>
                     </div>

@@ -1,0 +1,29 @@
+
+> sensor-game-hub-v6@6.0.0 start
+> node server/index.js
+
+🔐 SessionManager v6.0 초기화 완료
+🔍 GameScanner v1.0 초기화
+📂 게임 디렉토리 스캔 중: /Users/minhyuk/Desktop/센서게임/langchain 시도/sensor-game-hub-v6/public/games
+🤖 AI Assistant 초기화 중...
+⚠️ AI 관련 환경변수가 설정되지 않아 AI Assistant를 건너뜁니다.
+🚀 GameServer v6.0 초기화 완료
+🚀 Sensor Game Hub v6.0 서버 시작
+📍 포트: 3000
+🌐 URL: http://localhost:3000
+📱 센서: http://localhost:3000/sensor.html
+🎮 게임: http://localhost:3000/games/[solo|dual|multi]
+✅ 게임 등록됨: 🎂 아슬아슬 케이크 배달단 (cake-delivery)
+✅ 게임 등록됨: Dual Sensor Game (dual)
+✅ 게임 등록됨: Multi Player Arena (multi)
+✅ 게임 등록됨: Quick Draw (quick-draw)
+✅ 게임 등록됨: Rhythm Blade Dual (rhythm-blade)
+✅ 게임 등록됨: Shot Target (shot-target)
+✅ 게임 등록됨: Solo Sensor Game (solo)
+✅ 게임 등록됨: Telephone (telephone)
+✅ 게임 등록됨: Tilt Maze Adventure (tilt-maze)
+🎮 총 9개 게임이 등록되었습니다.
+✅ 게임 스캔 완료
+📝 GET /developer-guide - ::1
+📝 GET /ai-assistant - ::1
+📝 GET /developer-guide - ::1
