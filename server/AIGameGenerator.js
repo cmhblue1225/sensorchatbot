@@ -67,7 +67,8 @@ class AIGameGenerator {
             
             // 3단계: 기본 템플릿 생성
             console.log('🏗️ 3단계: 기본 게임 템플릿 생성 중...');
-            const baseGameCode = await this.templateEngine.generateGame(enhancedSpec);
+            const baseGameResult = await this.templateEngine.generateGame(enhancedSpec);
+            const baseGameCode = baseGameResult.html || baseGameResult;
             
             // 4단계: AI 기반 게임 로직 개선
             console.log('⚡ 4단계: AI 기반 게임 로직 개선 중...');
@@ -86,6 +87,7 @@ class AIGameGenerator {
                 generationId: generationId,
                 gameSpec: enhancedSpec,
                 gameCode: finalGameCode,
+                gameMetadata: baseGameResult.metadata || null,
                 validation: validation,
                 metadata: {
                     originalInput: userInput,

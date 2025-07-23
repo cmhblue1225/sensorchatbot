@@ -583,8 +583,8 @@
                             <span>게임 플레이</span>
                         </button>
                         <button id="downloadBtn" class="btn btn-secondary">
-                            <span>💾</span>
-                            <span>다운로드</span>
+                            <span>📦</span>
+                            <span>게임 폴더 다운로드</span>
                         </button>
                         <button id="regenerateBtn" class="btn btn-secondary">
                             <span>🔄</span>
@@ -843,14 +843,48 @@
                 newWindow.document.close();
             };
 
-            document.getElementById('downloadBtn').onclick = () => {
-                const blob = new Blob([result.gameCode], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${result.gameSpec.suggestedGameId}.html`;
-                a.click();
-                URL.revokeObjectURL(url);
+            document.getElementById('downloadBtn').onclick = async () => {
+                try {
+                    // 압축된 게임 폴더 다운로드
+                    const response = await fetch('/api/ai/download-game', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            generationId: result.generationId
+                        })
+                    });
+
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${result.gameSpec.suggestedGameId}.zip`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    } else {
+                        // 실패 시 HTML 파일만 다운로드
+                        const blob = new Blob([result.gameCode], { type: 'text/html' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${result.gameSpec.suggestedGameId}.html`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }
+                } catch (error) {
+                    console.error('다운로드 실패:', error);
+                    // 오류 시 HTML 파일만 다운로드
+                    const blob = new Blob([result.gameCode], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${result.gameSpec.suggestedGameId}.html`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
             };
 
             document.getElementById('regenerateBtn').onclick = async () => {

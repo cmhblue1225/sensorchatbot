@@ -637,6 +637,91 @@ class GameServer {
             }
         });
 
+        // 게임 폴더 다운로드 API
+        this.app.post('/api/ai/download-game', async (req, res) => {
+            try {
+                const { generationId } = req.body;
+                
+                if (!generationId) {
+                    return res.status(400).json({
+                        success: false,
+                        error: '생성 ID가 제공되지 않았습니다.'
+                    });
+                }
+
+                if (!this.aiGameGenerator) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'AI 게임 생성기가 초기화되지 않았습니다.'
+                    });
+                }
+
+                // 생성 이력에서 게임 데이터 찾기
+                const history = this.aiGameGenerator.getGenerationHistory(100);
+                const gameData = history.history.find(h => h.id === generationId);
+                
+                if (!gameData || !gameData.result.success) {
+                    return res.status(404).json({
+                        success: false,
+                        error: '게임 데이터를 찾을 수 없습니다.'
+                    });
+                }
+
+                const archiver = require('archiver');
+                const archive = archiver('zip', { zlib: { level: 9 } });
+                
+                res.attachment(`${gameData.result.gameSpec.suggestedGameId}.zip`);
+                archive.pipe(res);
+
+                // 게임 메인 파일
+                archive.append(gameData.result.gameCode, { name: 'index.html' });
+
+                // 게임 메타데이터 파일
+                if (gameData.result.gameMetadata) {
+                    archive.append(JSON.stringify(gameData.result.gameMetadata, null, 2), { name: 'game.json' });
+                }
+
+                // README 파일
+                const readmeContent = `# ${gameData.result.gameSpec.suggestedTitle}
+
+${gameData.result.gameSpec.objective}
+
+## 게임 정보
+- **ID**: ${gameData.result.gameSpec.suggestedGameId}  
+- **타입**: ${gameData.result.gameSpec.gameType}
+- **장르**: ${gameData.result.gameSpec.genre}
+- **센서**: ${gameData.result.gameSpec.sensorMechanics.join(', ')}
+- **난이도**: ${gameData.result.gameSpec.difficulty}
+
+## 게임 규칙
+${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
+
+## 실행 방법
+1. index.html 파일을 웹 서버에서 실행
+2. 모바일에서 Sensor Game Hub 센서 클라이언트 접속
+3. 게임에서 생성된 4자리 세션 코드 입력
+4. 게임 시작!
+
+## 원본 요청
+"${gameData.result.metadata.originalInput}"
+
+---
+🤖 AI로 생성된 게임입니다.
+생성 시간: ${new Date(gameData.result.metadata.timestamp).toLocaleString()}
+`;
+                archive.append(readmeContent, { name: 'README.md' });
+
+                archive.finalize();
+
+            } catch (error) {
+                console.error('❌ 게임 다운로드 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
         this.app.get('/api/ai/knowledge-status', async (req, res) => {
             try {
                 if (!this.aiAssistant) {
