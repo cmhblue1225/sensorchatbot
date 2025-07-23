@@ -964,114 +964,199 @@ class GameTemplateEngine {
     getArcadeTemplate() {
         return {
             gameLogic: `
-                // 플레이어 공
-                this.ball = {
-                    x: 400,
-                    y: 300,
-                    radius: 20,
-                    velocityX: 0,
-                    velocityY: 0,
-                    color: '#10b981'
+                // 패들 (플레이어 조작)
+                this.paddle = {
+                    x: this.canvas.width / 2 - 60,
+                    y: this.canvas.height - 30,
+                    width: 120,
+                    height: 15,
+                    color: '#3b82f6'
                 };
                 
-                // 수집 아이템들
-                this.collectibles = [];
-                this.spawnCollectible();
+                // 공
+                this.ball = {
+                    x: this.canvas.width / 2,
+                    y: this.canvas.height - 50,
+                    radius: 12,
+                    velocityX: 4,
+                    velocityY: -4,
+                    color: '#f59e0b',
+                    maxSpeed: 8
+                };
                 
-                // 장애물들
-                this.obstacles = [
-                    { x: 200, y: 150, width: 100, height: 20 },
-                    { x: 500, y: 350, width: 20, height: 100 }
-                ];
+                // 벽돌들
+                this.bricks = [];
+                this.createBricks();
+                
+                this.lives = 3;
+                this.gameStarted = false;
             `,
             updateLogic: `
-                // 물리 업데이트
+                if (!this.gameStarted) return;
+                
+                // 공 이동
                 this.ball.x += this.ball.velocityX;
                 this.ball.y += this.ball.velocityY;
                 
-                // 마찰력
-                this.ball.velocityX *= 0.98;
-                this.ball.velocityY *= 0.98;
-                
-                // 벽 충돌
+                // 좌우 벽 충돌
                 if (this.ball.x - this.ball.radius < 0 || 
                     this.ball.x + this.ball.radius > this.canvas.width) {
-                    this.ball.velocityX = -this.ball.velocityX * 0.8;
+                    this.ball.velocityX = -this.ball.velocityX;
                     this.ball.x = Math.max(this.ball.radius, 
                                           Math.min(this.canvas.width - this.ball.radius, this.ball.x));
                 }
                 
-                if (this.ball.y - this.ball.radius < 0 || 
-                    this.ball.y + this.ball.radius > this.canvas.height) {
-                    this.ball.velocityY = -this.ball.velocityY * 0.8;
-                    this.ball.y = Math.max(this.ball.radius, 
-                                          Math.min(this.canvas.height - this.ball.radius, this.ball.y));
+                // 상단 벽 충돌
+                if (this.ball.y - this.ball.radius < 0) {
+                    this.ball.velocityY = -this.ball.velocityY;
+                    this.ball.y = this.ball.radius;
                 }
                 
-                // 수집 아이템 체크
-                this.collectibles = this.collectibles.filter(item => {
-                    const distance = Math.sqrt(
-                        Math.pow(this.ball.x - item.x, 2) + 
-                        Math.pow(this.ball.y - item.y, 2)
-                    );
-                    
-                    if (distance < this.ball.radius + item.radius) {
-                        this.score += 10;
-                        this.spawnCollectible();
-                        return false;
+                // 하단 벽 충돌 (생명 감소)
+                if (this.ball.y + this.ball.radius > this.canvas.height) {
+                    this.lives--;
+                    if (this.lives <= 0) {
+                        this.showMessage('게임 오버!');
+                        this.resetGame();
+                    } else {
+                        this.resetBall();
                     }
-                    return true;
-                });
+                }
+                
+                // 패들과 공 충돌
+                if (this.ball.y + this.ball.radius > this.paddle.y &&
+                    this.ball.x > this.paddle.x && 
+                    this.ball.x < this.paddle.x + this.paddle.width) {
+                    
+                    this.ball.velocityY = -Math.abs(this.ball.velocityY);
+                    
+                    // 패들 위치에 따른 반사 각도 조정
+                    let relativeIntersectX = (this.ball.x - (this.paddle.x + this.paddle.width/2));
+                    let normalizedIntersectX = relativeIntersectX / (this.paddle.width/2);
+                    this.ball.velocityX = normalizedIntersectX * this.ball.maxSpeed;
+                }
+                
+                // 벽돌과 공 충돌
+                for (let i = this.bricks.length - 1; i >= 0; i--) {
+                    let brick = this.bricks[i];
+                    if (this.ball.x > brick.x && this.ball.x < brick.x + brick.width &&
+                        this.ball.y > brick.y && this.ball.y < brick.y + brick.height) {
+                        
+                        this.ball.velocityY = -this.ball.velocityY;
+                        this.bricks.splice(i, 1);
+                        this.score += 10;
+                        
+                        // 모든 벽돌 제거 시 승리
+                        if (this.bricks.length === 0) {
+                            this.showMessage('승리! 모든 벽돌을 깨뜨렸습니다!');
+                            this.resetGame();
+                        }
+                        break;
+                    }
+                }
             `,
             renderLogic: `
-                // 장애물 그리기
-                this.ctx.fillStyle = '#475569';
-                this.obstacles.forEach(obstacle => {
-                    this.ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                // 패들 그리기
+                this.ctx.fillStyle = this.paddle.color;
+                this.ctx.fillRect(this.paddle.x, this.paddle.y, this.paddle.width, this.paddle.height);
+                
+                // 벽돌들 그리기
+                this.bricks.forEach(brick => {
+                    this.ctx.fillStyle = brick.color;
+                    this.ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+                    
+                    // 벽돌 테두리
+                    this.ctx.strokeStyle = '#1e293b';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(brick.x, brick.y, brick.width, brick.height);
                 });
                 
-                // 수집 아이템 그리기
-                this.ctx.fillStyle = '#f59e0b';
-                this.collectibles.forEach(item => {
-                    this.ctx.beginPath();
-                    this.ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
-                    this.ctx.fill();
-                });
-                
-                // 플레이어 공 그리기
+                // 공 그리기
                 this.ctx.fillStyle = this.ball.color;
                 this.ctx.beginPath();
                 this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
                 this.ctx.fill();
+                
+                // 생명 표시
+                this.ctx.fillStyle = '#ef4444';
+                this.ctx.font = '20px Arial';
+                this.ctx.fillText('생명: ' + this.lives, 20, 30);
+                
+                // 게임 시작 안내
+                if (!this.gameStarted) {
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = '24px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('기기를 기울여서 패들을 조작하세요', 
+                                    this.canvas.width/2, this.canvas.height/2 - 20);
+                    this.ctx.fillText('클릭하여 시작!', 
+                                    this.canvas.width/2, this.canvas.height/2 + 20);
+                    this.ctx.textAlign = 'left';
+                }
             `,
             sensorLogic: `
                 const { orientation } = sensorData.data;
-                if (orientation) {
-                    // 기울기로 공 조작
-                    this.ball.velocityX += orientation.gamma * 0.1;
-                    this.ball.velocityY += orientation.beta * 0.1;
+                if (orientation && this.gameStarted) {
+                    // 기울기로 패들 조작 (좌우만)
+                    const tiltSensitivity = 4;
+                    this.paddle.x += orientation.gamma * tiltSensitivity;
                     
-                    // 최대 속도 제한
-                    const maxVelocity = 8;
-                    this.ball.velocityX = Math.max(-maxVelocity, Math.min(maxVelocity, this.ball.velocityX));
-                    this.ball.velocityY = Math.max(-maxVelocity, Math.min(maxVelocity, this.ball.velocityY));
+                    // 패들이 화면 밖으로 나가지 않도록 제한
+                    this.paddle.x = Math.max(0, Math.min(this.canvas.width - this.paddle.width, this.paddle.x));
                 }
             `,
             resetLogic: `
-                this.ball.x = 400;
-                this.ball.y = 300;
-                this.ball.velocityX = 0;
-                this.ball.velocityY = 0;
-                
-                this.collectibles = [];
-                this.spawnCollectible();
+                // 게임 초기화
+                this.paddle.x = this.canvas.width / 2 - 60;
+                this.resetBall();
+                this.createBricks();
+                this.lives = 3;
+                this.score = 0;
+                this.gameStarted = false;
             `,
             helperMethods: `
-                spawnCollectible() {
-                    this.collectibles.push({
-                        x: Math.random() * (this.canvas.width - 40) + 20,
-                        y: Math.random() * (this.canvas.height - 40) + 20,
-                        radius: 10
+                createBricks() {
+                    this.bricks = [];
+                    const rows = 5;
+                    const cols = 8;
+                    const brickWidth = this.canvas.width / cols - 10;
+                    const brickHeight = 25;
+                    const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6'];
+                    
+                    for (let row = 0; row < rows; row++) {
+                        for (let col = 0; col < cols; col++) {
+                            this.bricks.push({
+                                x: col * (brickWidth + 5) + 5,
+                                y: row * (brickHeight + 5) + 50,
+                                width: brickWidth,
+                                height: brickHeight,
+                                color: colors[row]
+                            });
+                        }
+                    }
+                }
+                
+                resetBall() {
+                    this.ball.x = this.canvas.width / 2;
+                    this.ball.y = this.canvas.height - 50;
+                    this.ball.velocityX = 4;
+                    this.ball.velocityY = -4;
+                }
+                
+                // 게임 시작 처리
+                startGame() {
+                    this.gameStarted = true;
+                }
+                
+                // 캔버스 클릭 이벤트 추가
+                init() {
+                    this.canvas.addEventListener('click', () => {
+                        if (!this.gameStarted) {
+                            this.startGame();
+                        }
                     });
                 }
             `
