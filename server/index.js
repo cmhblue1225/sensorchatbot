@@ -20,6 +20,7 @@ const GameScanner = require('./GameScanner');
 const AIAssistant = require('./AIAssistant');
 const DocumentEmbedder = require('./DocumentEmbedder');
 const AIGameGenerator = require('./AIGameGenerator');
+const InteractiveGameGenerator = require('./InteractiveGameGenerator');
 
 class GameServer {
     constructor() {
@@ -38,6 +39,7 @@ class GameServer {
         this.aiAssistant = null; // 지연 초기화
         this.documentEmbedder = null; // 지연 초기화
         this.aiGameGenerator = null; // 지연 초기화
+        this.interactiveGameGenerator = null; // 지연 초기화
         this.port = process.env.PORT || 3000;
         
         this.setupMiddleware();
@@ -91,9 +93,14 @@ class GameServer {
             res.send(this.generateAIAssistantPage());
         });
         
-        // AI 게임 생성기 페이지
+        // AI 게임 생성기 페이지 (기존)
         this.app.get('/ai-game-generator', (req, res) => {
             res.sendFile(path.join(__dirname, '../public/ai-game-generator.html'));
+        });
+        
+        // 대화형 게임 생성기 페이지 (새로운 기본)
+        this.app.get('/interactive-game-generator', (req, res) => {
+            res.sendFile(path.join(__dirname, '../public/interactive-game-generator.html'));
         });
         
         // 개발자 가이드 페이지
@@ -742,6 +749,180 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                 });
             }
         });
+
+        // 대화형 게임 생성기 API 라우트
+        this.app.post('/api/ai/interactive/start-session', async (req, res) => {
+            try {
+                if (!this.interactiveGameGenerator) {
+                    return res.status(503).json({
+                        success: false,
+                        error: '대화형 게임 생성기가 초기화되지 않았습니다. 환경변수를 확인해주세요.'
+                    });
+                }
+
+                const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                const result = await this.interactiveGameGenerator.startNewSession(sessionId);
+                
+                res.json(result);
+
+            } catch (error) {
+                console.error('대화형 세션 시작 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.post('/api/ai/interactive/message', async (req, res) => {
+            try {
+                if (!this.interactiveGameGenerator) {
+                    return res.status(503).json({
+                        success: false,
+                        error: '대화형 게임 생성기가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { sessionId, message } = req.body;
+                
+                if (!sessionId || !message) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'sessionId와 message가 필요합니다.'
+                    });
+                }
+
+                const result = await this.interactiveGameGenerator.processUserMessage(sessionId, message);
+                res.json(result);
+
+            } catch (error) {
+                console.error('대화형 메시지 처리 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.post('/api/ai/interactive/generate', async (req, res) => {
+            try {
+                if (!this.interactiveGameGenerator) {
+                    return res.status(503).json({
+                        success: false,
+                        error: '대화형 게임 생성기가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { sessionId } = req.body;
+                
+                if (!sessionId) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'sessionId가 필요합니다.'
+                    });
+                }
+
+                const result = await this.interactiveGameGenerator.generateFinalGame(sessionId);
+                res.json(result);
+
+            } catch (error) {
+                console.error('대화형 게임 생성 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.get('/api/ai/interactive/session/:sessionId', async (req, res) => {
+            try {
+                if (!this.interactiveGameGenerator) {
+                    return res.status(503).json({
+                        success: false,
+                        error: '대화형 게임 생성기가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { sessionId } = req.params;
+                const session = this.interactiveGameGenerator.getSession(sessionId);
+                
+                if (!session) {
+                    return res.status(404).json({
+                        success: false,
+                        error: '세션을 찾을 수 없습니다.'
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    session: {
+                        id: session.id,
+                        stage: session.stage,
+                        progress: this.interactiveGameGenerator.getStageProgress(session.stage),
+                        requirements: session.gameRequirements,
+                        conversationHistory: session.conversationHistory,
+                        createdAt: session.createdAt,
+                        lastUpdated: session.lastUpdated
+                    }
+                });
+
+            } catch (error) {
+                console.error('세션 조회 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.delete('/api/ai/interactive/session/:sessionId', async (req, res) => {
+            try {
+                if (!this.interactiveGameGenerator) {
+                    return res.status(503).json({
+                        success: false,
+                        error: '대화형 게임 생성기가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { sessionId } = req.params;
+                const deleted = this.interactiveGameGenerator.cleanupSession(sessionId);
+                
+                res.json({
+                    success: true,
+                    deleted: deleted,
+                    message: deleted ? '세션이 삭제되었습니다.' : '세션을 찾을 수 없습니다.'
+                });
+
+            } catch (error) {
+                console.error('세션 삭제 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.get('/api/ai/interactive/health', async (req, res) => {
+            try {
+                if (!this.interactiveGameGenerator) {
+                    return res.json({
+                        success: false,
+                        status: 'not_initialized',
+                        error: '대화형 게임 생성기가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const result = await this.interactiveGameGenerator.healthCheck();
+                res.json(result);
+
+            } catch (error) {
+                console.error('대화형 게임 생성기 상태 확인 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
         
         // 404 핸들러
         this.app.use((req, res) => {
@@ -789,6 +970,10 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             this.aiGameGenerator = new AIGameGenerator();
             await this.aiGameGenerator.initialize();
             
+            // Interactive Game Generator 초기화
+            this.interactiveGameGenerator = new InteractiveGameGenerator();
+            await this.interactiveGameGenerator.initialize();
+            
             console.log('✅ AI Assistant 및 게임 생성기 초기화 완료');
             
         } catch (error) {
@@ -796,6 +981,7 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             this.aiAssistant = null;
             this.documentEmbedder = null;
             this.aiGameGenerator = null;
+            this.interactiveGameGenerator = null;
         }
     }
     
@@ -1028,7 +1214,7 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                         <div class="developer-actions">
                             <h5 style="color: #6366f1; margin-bottom: 1rem;">🤖 AI 개발 도우미</h5>
                             <p style="margin-bottom: 1rem;">게임 개발 질문, 코드 생성, 디버깅 도움을 받아보세요!</p>
-                            <a href="/ai-game-generator" class="ai-chat-btn" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎮 AI 게임 생성기</a>
+                            <a href="/interactive-game-generator" class="ai-chat-btn" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎯 대화형 게임 생성기</a>
                             <a href="/ai-assistant" class="ai-chat-btn">💬 AI 채팅 상담하기</a>
                             <a href="/developer-guide" class="ai-chat-btn" style="background: linear-gradient(135deg, #059669, #10b981);">📚 개발자 가이드</a>
                         </div>
@@ -1709,9 +1895,12 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                 
                 <div class="container">
                     <div class="ai-promote">
-                        <h2>🤖 AI 개발 도우미와 함께하세요!</h2>
-                        <p>복잡한 문서를 읽는 대신, AI와 대화하며 빠르고 정확한 답변을 받아보세요.</p>
-                        <a href="/ai-assistant" class="ai-btn">💬 AI 채팅 시작하기</a>
+                        <h2>🎯 새로운 대화형 게임 생성기!</h2>
+                        <p>AI와 대화하며 완벽한 센서 게임을 만들어보세요. 단계별 대화를 통해 정확하고 실행 가능한 게임을 생성합니다.</p>
+                        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem;">
+                            <a href="/interactive-game-generator" class="ai-btn">🎮 대화형 게임 생성기</a>
+                            <a href="/ai-assistant" class="ai-btn" style="background: rgba(255,255,255,0.2);">💬 AI 채팅 도우미</a>
+                        </div>
                     </div>
                     
                     <div class="guide-grid">
