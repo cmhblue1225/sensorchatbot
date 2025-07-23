@@ -446,46 +446,79 @@ ${context}
     async processConfirmationStage(session, userMessage, context) {
         const requirements = session.gameRequirements;
         
-        // 게임 생성 코드 감지
-        const generateKeywords = ['생성', '만들어', '확인', '좋아', '완료', '시작', '진행'];
-        const shouldGenerate = generateKeywords.some(keyword => 
+        // 요구사항 수정 요청 감지
+        const modificationKeywords = ['수정', '변경', '바꿔', '다르게', '추가', '빼줘', '없애'];
+        const hasModificationRequest = modificationKeywords.some(keyword => 
             userMessage.toLowerCase().includes(keyword)
         );
         
-        if (shouldGenerate) {
-            // 요구사항 최종 업데이트
-            session.gameRequirements.confirmed = true;
+        if (hasModificationRequest) {
+            // 수정 요청이 있을 때는 이전 단계로 돌아감
+            const prompt = `사용자가 게임 "${requirements.title}"의 요구사항을 수정하고 싶어합니다.
+
+현재 요구사항:
+- 제목: ${requirements.title}
+- 타입: ${requirements.gameType}
+- 장르: ${requirements.genre}
+- 센서: ${requirements.sensorMechanics?.join(', ')}
+- 난이도: ${requirements.difficulty}
+- 목표: ${requirements.objectives}
+- 특별기능: ${requirements.specialRequirements?.join(', ')}
+
+사용자 수정 요청: "${userMessage}"
+
+요청에 따라 수정사항을 반영하고, 다시 확인해주세요.`;
+            
+            const response = await this.llm.invoke([{ role: 'user', content: prompt }]);
             
             return {
-                message: "✨ 완볽합니다! 모든 요구사항이 정리되었습니다. \n\n🎮 이제 고품질 HTML5 게임을 생성하겠습니다. \n잠시만 기다려주세요...",
-                newStage: 'generating'
+                message: response.content + '\n\n💡 수정이 완료되었다면 "확인" 또는 "좋아"라고 말씀해주세요!',
+                newStage: 'confirmation',
+                requirements: {} // 수정 반영을 위해 빈 객체
             };
         }
 
-        const prompt = `게임 "${requirements.title}"의 모든 요구사항을 최종 정리했습니다:
+        // 최종 확인 및 정리
+        const finalSummary = `🎯 **게임 개발 요구사항 최종 정리**
 
-📋 **게임 사양 요약:**
-- **제목**: ${requirements.title}
-- **타입**: ${requirements.gameType} (센서 ${requirements.gameType === 'solo' ? '1개' : requirements.gameType === 'dual' ? '2개' : '여러개'} 사용)
-- **장르**: ${requirements.genre}
-- **센서 활용**: ${requirements.sensorMechanics?.join(', ') || '기울기 센서'}
-- **난이도**: ${requirements.difficulty || '보통'}
-- **게임 목표**: ${requirements.objectives || '기본 게임 목표'}
-- **점수 시스템**: ${requirements.gameplayElements?.scoring || '기본 점수 시스템'}
-- **특별 기능**: ${requirements.specialRequirements?.join(', ') || '없음'}
+📋 **"${requirements.title}" 게임 사양:**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-사용자 피드백: "${userMessage}"
+🎮 **기본 정보**
+• **게임 타입**: ${requirements.gameType} ${requirements.gameType === 'solo' ? '(1인용)' : requirements.gameType === 'dual' ? '(2인 협력)' : '(다중 플레이어)'}
+• **장르**: ${requirements.genre}
+• **난이도**: ${requirements.difficulty || '보통'}
 
-최종 확인 메시지를 제공하고, 사용자가 수정을 원하는 부분이 있다면 반영해주세요. 
+📱 **센서 활용**
+• **센서 메커니즘**: ${requirements.sensorMechanics?.join(', ') || '기울기 센서'}
 
-모든 것이 만족스럽다면 "게임 생성하기" 버튼을 누르거나 "생성해주세요"라고 말씀해주세요!`;
+🎯 **게임 목표**
+• **주요 목표**: ${requirements.objectives || '기본 게임 목표 달성'}
 
-        const response = await this.llm.invoke([{ role: 'user', content: prompt }]);
+⭐ **특별 기능**
+${requirements.specialRequirements?.length > 0 ? 
+    requirements.specialRequirements.map(req => `• ${req}`).join('\n') : 
+    '• 기본 게임 기능'}
 
+🏆 **점수 시스템**
+• ${requirements.gameplayElements?.scoring || '기본 점수 획득 시스템'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ **모든 요구사항이 정리되었습니다!**
+
+🎮 이제 **"게임 생성하기"** 버튼을 눌러서 실제 게임을 제작해보세요!
+
+💡 **참고**: 수정하고 싶은 부분이 있다면 언제든 말씀해주세요.`;
+
+        // 요구사항 최종 확정
+        session.gameRequirements.confirmed = true;
+        
         return {
-            message: response.content + '\n\n🎯 **준비 완료!** 위 내용으로 게임을 생성하시려면 "게임 생성하기" 버튼을 눌러주세요!',
-            newStage: session.stage, // 확인 단계 유지
-            requirements: { confirmed: true } // 확인 완료 표시
+            message: finalSummary,
+            newStage: 'confirmation', // 확인 단계 유지 (generating으로 자동 전환하지 않음)
+            requirements: { confirmed: true },
+            canGenerate: true // 게임 생성 버튼 활성화
         };
     }
 
@@ -498,9 +531,18 @@ ${context}
             if (!session) {
                 throw new Error('세션을 찾을 수 없습니다.');
             }
-            if (session.stage !== 'generating') {
-                throw new Error(`잘못된 세션 단계: ${session.stage}. 'generating' 단계에서만 게임을 생성할 수 있습니다.`);
+            // 확인 단계 또는 generating 단계에서 게임 생성 가능
+            if (session.stage !== 'confirmation' && session.stage !== 'generating') {
+                throw new Error(`잘못된 세션 단계: ${session.stage}. 'confirmation' 또는 'generating' 단계에서만 게임을 생성할 수 있습니다.`);
             }
+            
+            // 요구사항이 확정되었는지 확인
+            if (!session.gameRequirements.confirmed) {
+                throw new Error('게임 요구사항이 아직 확정되지 않았습니다. 대화를 통해 요구사항을 완성해주세요.');
+            }
+            
+            // 세션 단계를 generating으로 변경
+            session.stage = 'generating';
 
             console.log(`🎮 최종 게임 생성 시작: ${session.gameRequirements.title}`);
             console.log(`🔍 게임 사양:`, {
