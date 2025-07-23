@@ -674,8 +674,8 @@
                     updateProgress(result.stage, result.progress);
                     updateRequirements(result.requirements);
                     
-                    // 생성 준비 확인
-                    if (result.canGenerate) {
+                    // 생성 준비 확인 - confirmation 단계에서 활성화
+                    if (result.canGenerate || result.stage === 'confirmation') {
                         enableGenerateButton();
                     }
                     
@@ -695,7 +695,7 @@
 
         // 게임 생성
         async function generateGame() {
-            if (!currentSession || !currentSession.canGenerate) return;
+            if (!currentSession || (!currentSession.canGenerate && currentSession.stage !== 'confirmation')) return;
 
             showLoading(true, '게임을 생성하고 있습니다. 잠시만 기다려주세요...');
             disableInput();
@@ -832,19 +832,47 @@
             const requirementsList = document.getElementById('requirementsList');
             
             const items = [
-                { key: 'title', label: '게임 아이디어' },
-                { key: 'gameType', label: '게임 타입' },
-                { key: 'sensorMechanics', label: '센서 활용' },
-                { key: 'gameplayElements', label: '게임 메커니즘' },
-                { key: 'confirmed', label: '최종 확인' }
+                { key: 'title', label: '게임 아이디어', checkFn: (req) => req && req.title },
+                { key: 'gameType', label: '게임 타입', checkFn: (req) => req && req.gameType },
+                { key: 'sensorMechanics', label: '센서 활용', checkFn: (req) => req && req.sensorMechanics && req.sensorMechanics.length > 0 },
+                { key: 'gameplayElements', label: '게임 메커니즘', checkFn: (req) => req && (req.gameplayElements || req.objectives) },
+                { key: 'confirmed', label: '최종 확인', checkFn: (req) => req && req.confirmed }
             ];
 
             let html = '';
             items.forEach(item => {
-                const isCompleted = requirements && requirements[item.key] && 
-                    (Array.isArray(requirements[item.key]) ? requirements[item.key].length > 0 : true);
+                const isCompleted = item.checkFn(requirements);
                 const icon = isCompleted ? '<span class="check">✅</span>' : '<span class="pending">⏳</span>';
-                html += `<li>${icon} ${item.label}</li>`;
+                
+                // 상세 정보 추가
+                let detail = '';
+                if (isCompleted && requirements) {
+                    switch(item.key) {
+                        case 'title':
+                            detail = ` (${requirements.title})`;
+                            break;
+                        case 'gameType':
+                            const typeLabel = {
+                                'solo': '솔로',
+                                'dual': '듀얼', 
+                                'multi': '멀티'
+                            };
+                            detail = ` (${typeLabel[requirements.gameType] || requirements.gameType})`;
+                            break;
+                        case 'sensorMechanics':
+                            if (requirements.sensorMechanics && requirements.sensorMechanics.length > 0) {
+                                detail = ` (${requirements.sensorMechanics.join(', ')})`;
+                            }
+                            break;
+                        case 'gameplayElements':
+                            if (requirements.objectives) {
+                                detail = ` (${requirements.objectives.substring(0, 20)}...)`;
+                            }
+                            break;
+                    }
+                }
+                
+                html += `<li>${icon} ${item.label}${detail}</li>`;
             });
 
             requirementsList.innerHTML = html;

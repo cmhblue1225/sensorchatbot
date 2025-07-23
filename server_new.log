@@ -24,13 +24,12 @@
 ✅ 게임 등록됨: Tilt Maze Adventure (tilt-maze)
 🎮 총 9개 게임이 등록되었습니다.
 ✅ 게임 스캔 완료
-📝 GET /developer-guide - ::1
-📝 GET /ai-assistant - ::1
+📝 GET /interactive-game-generator - ::1
+📝 GET /api/ai/interactive/health - ::1
+📝 GET / - ::1
 📝 GET /developer-guide - ::1
 📝 GET /interactive-game-generator - ::1
-📝 GET /interactive-game-generator - ::1
-🛑 SIGTERM 신호 수신, 서버 종료 중...
-🛑 서버가 종료되었습니다.
+📝 GET /ai-game-generator - ::1
 🛑 SIGTERM 신호 수신, 서버 종료 중...
 🛑 서버가 종료되었습니다.
 🛑 SIGTERM 신호 수신, 서버 종료 중...
