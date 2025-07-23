@@ -17,6 +17,8 @@ const compression = require('compression');
 
 const SessionManager = require('./SessionManager');
 const GameScanner = require('./GameScanner');
+const AIAssistant = require('./AIAssistant');
+const DocumentEmbedder = require('./DocumentEmbedder');
 
 class GameServer {
     constructor() {
@@ -32,6 +34,8 @@ class GameServer {
         
         this.sessionManager = new SessionManager();
         this.gameScanner = new GameScanner();
+        this.aiAssistant = null; // 지연 초기화
+        this.documentEmbedder = null; // 지연 초기화
         this.port = process.env.PORT || 3000;
         
         this.setupMiddleware();
@@ -40,6 +44,9 @@ class GameServer {
         
         // 게임 스캔 초기화
         this.initializeGames();
+        
+        // AI Assistant 초기화 (비동기)
+        this.initializeAI();
         
         console.log('🚀 GameServer v6.0 초기화 완료');
     }
@@ -75,6 +82,16 @@ class GameServer {
         this.app.get('/', (req, res) => {
             const games = this.gameScanner.getActiveGames();
             res.send(this.generateHomePage(games));
+        });
+        
+        // AI Assistant 페이지
+        this.app.get('/ai-assistant', (req, res) => {
+            res.send(this.generateAIAssistantPage());
+        });
+        
+        // 개발자 가이드 페이지
+        this.app.get('/developer-guide', (req, res) => {
+            res.send(this.generateDeveloperGuidePage());
         });
         
         // 게임 목록 API
@@ -336,6 +353,169 @@ class GameServer {
             }
         });
         
+        // AI Assistant API 라우트
+        this.app.post('/api/ai/query', async (req, res) => {
+            try {
+                if (!this.aiAssistant) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'AI Assistant가 초기화되지 않았습니다. 환경변수를 확인해주세요.'
+                    });
+                }
+
+                const { question } = req.body;
+                
+                if (!question) {
+                    return res.status(400).json({
+                        success: false,
+                        error: '질문이 제공되지 않았습니다.'
+                    });
+                }
+
+                console.log(`🤔 AI 질문 요청: "${question}"`);
+                const result = await this.aiAssistant.query(question);
+                
+                res.json(result);
+
+            } catch (error) {
+                console.error('❌ AI 질문 처리 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.post('/api/ai/generate-code', async (req, res) => {
+            try {
+                if (!this.aiAssistant) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'AI Assistant가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { request } = req.body;
+                
+                if (!request) {
+                    return res.status(400).json({
+                        success: false,
+                        error: '코드 생성 요청이 제공되지 않았습니다.'
+                    });
+                }
+
+                console.log(`💻 코드 생성 요청: "${request}"`);
+                const result = await this.aiAssistant.generateCode(request);
+                
+                res.json(result);
+
+            } catch (error) {
+                console.error('❌ 코드 생성 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.post('/api/ai/debug-help', async (req, res) => {
+            try {
+                if (!this.aiAssistant) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'AI Assistant가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { errorDescription, codeSnippet } = req.body;
+                
+                if (!errorDescription) {
+                    return res.status(400).json({
+                        success: false,
+                        error: '오류 설명이 제공되지 않았습니다.'
+                    });
+                }
+
+                console.log(`🐛 디버깅 도움 요청: "${errorDescription}"`);
+                const result = await this.aiAssistant.debugHelp(errorDescription, codeSnippet);
+                
+                res.json(result);
+
+            } catch (error) {
+                console.error('❌ 디버깅 도움 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.get('/api/ai/health', async (req, res) => {
+            try {
+                if (!this.aiAssistant) {
+                    return res.json({
+                        success: false,
+                        status: 'not_initialized',
+                        message: 'AI Assistant가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const healthStatus = await this.aiAssistant.healthCheck();
+                res.json(healthStatus);
+
+            } catch (error) {
+                console.error('❌ AI 헬스체크 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.post('/api/ai/embed-documents', async (req, res) => {
+            try {
+                if (!this.documentEmbedder) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'Document Embedder가 초기화되지 않았습니다.'
+                    });
+                }
+
+                console.log('📚 문서 임베딩 시작...');
+                const result = await this.documentEmbedder.embedAllDocuments();
+                
+                res.json(result);
+
+            } catch (error) {
+                console.error('❌ 문서 임베딩 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.get('/api/ai/knowledge-status', async (req, res) => {
+            try {
+                if (!this.aiAssistant) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'AI Assistant가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const status = await this.aiAssistant.getKnowledgeBaseStatus();
+                res.json(status);
+
+            } catch (error) {
+                console.error('❌ 지식베이스 상태 조회 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+        
         // 404 핸들러
         this.app.use((req, res) => {
             res.status(404).send(`
@@ -354,6 +534,36 @@ class GameServer {
             console.log('✅ 게임 스캔 완료');
         } catch (error) {
             console.error('❌ 게임 스캔 실패:', error.message);
+        }
+    }
+    
+    /**
+     * AI Assistant 초기화
+     */
+    async initializeAI() {
+        try {
+            console.log('🤖 AI Assistant 초기화 중...');
+            
+            // 환경변수 확인
+            if (!process.env.CLAUDE_API_KEY || !process.env.OPENAI_API_KEY || 
+                !process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+                console.log('⚠️ AI 관련 환경변수가 설정되지 않아 AI Assistant를 건너뜁니다.');
+                return;
+            }
+            
+            // AI Assistant 초기화
+            this.aiAssistant = new AIAssistant();
+            await this.aiAssistant.initialize();
+            
+            // Document Embedder 초기화
+            this.documentEmbedder = new DocumentEmbedder();
+            
+            console.log('✅ AI Assistant 초기화 완료');
+            
+        } catch (error) {
+            console.error('❌ AI Assistant 초기화 실패:', error.message);
+            this.aiAssistant = null;
+            this.documentEmbedder = null;
         }
     }
     
@@ -524,6 +734,28 @@ class GameServer {
                         border-radius: 0.25rem;
                         margin: 0 0.25rem;
                     }
+                    .ai-chat-btn {
+                        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+                        color: white;
+                        padding: 0.75rem 1.5rem;
+                        border-radius: 0.5rem;
+                        text-decoration: none;
+                        font-weight: 600;
+                        display: inline-block;
+                        margin: 1rem 0.5rem 0.5rem 0;
+                        transition: all 0.3s ease;
+                        border: none;
+                        cursor: pointer;
+                    }
+                    .ai-chat-btn:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+                    }
+                    .developer-actions {
+                        margin-top: 1.5rem;
+                        padding-top: 1.5rem;
+                        border-top: 1px solid rgba(16, 185, 129, 0.2);
+                    }
                 </style>
             </head>
             <body>
@@ -553,15 +785,760 @@ class GameServer {
                     </div>
                     
                     <div class="developer-info">
-                        <h4>🛠️ 개발자 정보</h4>
+                        <h4>🛠️ 개발자 도구</h4>
                         <p><strong>게임 API:</strong> 
                             <a href="/api/games" class="api-link">/api/games</a>
                             <a href="/api/admin/rescan" class="api-link">/api/admin/rescan</a>
                         </p>
                         <p><strong>새 게임 추가:</strong> <code>games/</code> 폴더에 게임을 추가하고 <code>game.json</code> 파일을 생성하세요</p>
                         <p><strong>자동 스캔:</strong> 서버 재시작 시 자동으로 새 게임이 감지됩니다</p>
+                        
+                        <div class="developer-actions">
+                            <h5 style="color: #6366f1; margin-bottom: 1rem;">🤖 AI 개발 도우미</h5>
+                            <p style="margin-bottom: 1rem;">게임 개발 질문, 코드 생성, 디버깅 도움을 받아보세요!</p>
+                            <a href="/ai-assistant" class="ai-chat-btn">💬 AI 채팅 상담하기</a>
+                            <a href="/developer-guide" class="ai-chat-btn" style="background: linear-gradient(135deg, #059669, #10b981);">📚 개발자 가이드</a>
+                        </div>
                     </div>
                 </div>
+            </body>
+            </html>
+        `;
+    }
+    
+    /**
+     * AI Assistant 페이지 생성
+     */
+    generateAIAssistantPage() {
+        return `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>🤖 AI 개발 도우미 - Sensor Game Hub</title>
+                <style>
+                    :root {
+                        --primary: #3b82f6;
+                        --secondary: #8b5cf6;
+                        --success: #10b981;
+                        --warning: #f59e0b;
+                        --error: #ef4444;
+                        --background: #0f172a;
+                        --surface: #1e293b;
+                        --card: #334155;
+                        --text-primary: #f8fafc;
+                        --text-secondary: #cbd5e1;
+                        --text-muted: #94a3b8;
+                        --border: #475569;
+                    }
+                    
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }
+                    
+                    body {
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        background: var(--background);
+                        color: var(--text-primary);
+                        height: 100vh;
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    
+                    .header {
+                        background: var(--surface);
+                        border-bottom: 1px solid var(--border);
+                        padding: 1rem 2rem;
+                        display: flex;
+                        justify-content: between;
+                        align-items: center;
+                    }
+                    
+                    .header h1 {
+                        background: linear-gradient(135deg, var(--primary), var(--secondary));
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                        font-size: 1.5rem;
+                    }
+                    
+                    .nav-links {
+                        display: flex;
+                        gap: 1rem;
+                    }
+                    
+                    .nav-link {
+                        color: var(--text-secondary);
+                        text-decoration: none;
+                        padding: 0.5rem 1rem;
+                        border-radius: 0.5rem;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .nav-link:hover {
+                        background: rgba(59, 130, 246, 0.1);
+                        color: var(--primary);
+                    }
+                    
+                    .chat-container {
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        max-width: 1200px;
+                        margin: 0 auto;
+                        width: 100%;
+                        padding: 2rem;
+                    }
+                    
+                    .chat-messages {
+                        flex: 1;
+                        overflow-y: auto;
+                        padding: 1rem;
+                        background: var(--surface);
+                        border-radius: 1rem;
+                        margin-bottom: 1rem;
+                        min-height: 500px;
+                        max-height: 600px;
+                    }
+                    
+                    .message {
+                        margin-bottom: 1.5rem;
+                        display: flex;
+                        align-items: flex-start;
+                        gap: 0.75rem;
+                    }
+                    
+                    .message.user {
+                        flex-direction: row-reverse;
+                    }
+                    
+                    .message-avatar {
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 1.2rem;
+                        flex-shrink: 0;
+                    }
+                    
+                    .message.user .message-avatar {
+                        background: linear-gradient(135deg, var(--primary), var(--secondary));
+                    }
+                    
+                    .message.ai .message-avatar {
+                        background: linear-gradient(135deg, var(--success), #059669);
+                    }
+                    
+                    .message-content {
+                        background: var(--card);
+                        padding: 1rem;
+                        border-radius: 1rem;
+                        max-width: 70%;
+                        word-wrap: break-word;
+                    }
+                    
+                    .message.user .message-content {
+                        background: linear-gradient(135deg, var(--primary), var(--secondary));
+                    }
+                    
+                    .message pre {
+                        background: rgba(0, 0, 0, 0.3);
+                        padding: 1rem;
+                        border-radius: 0.5rem;
+                        overflow-x: auto;
+                        margin: 0.5rem 0;
+                        font-size: 0.9rem;
+                    }
+                    
+                    .chat-input {
+                        display: flex;
+                        gap: 1rem;
+                        align-items: flex-end;
+                    }
+                    
+                    .input-group {
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.5rem;
+                    }
+                    
+                    .quick-actions {
+                        display: flex;
+                        gap: 0.5rem;
+                        flex-wrap: wrap;
+                    }
+                    
+                    .quick-btn {
+                        background: rgba(59, 130, 246, 0.1);
+                        color: var(--primary);
+                        border: 1px solid var(--primary);
+                        padding: 0.25rem 0.75rem;
+                        border-radius: 1rem;
+                        font-size: 0.8rem;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .quick-btn:hover {
+                        background: var(--primary);
+                        color: white;
+                    }
+                    
+                    #messageInput {
+                        background: var(--surface);
+                        border: 1px solid var(--border);
+                        border-radius: 0.75rem;
+                        padding: 1rem;
+                        color: var(--text-primary);
+                        font-family: inherit;
+                        resize: vertical;
+                        min-height: 80px;
+                        max-height: 200px;
+                    }
+                    
+                    #messageInput:focus {
+                        outline: none;
+                        border-color: var(--primary);
+                        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                    }
+                    
+                    .send-btn {
+                        background: linear-gradient(135deg, var(--primary), var(--secondary));
+                        color: white;
+                        border: none;
+                        padding: 1rem 2rem;
+                        border-radius: 0.75rem;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        height: fit-content;
+                    }
+                    
+                    .send-btn:hover:not(:disabled) {
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+                    }
+                    
+                    .send-btn:disabled {
+                        opacity: 0.6;
+                        cursor: not-allowed;
+                    }
+                    
+                    .loading {
+                        display: none;
+                        color: var(--text-muted);
+                        font-style: italic;
+                        padding: 1rem;
+                    }
+                    
+                    .welcome-message {
+                        text-align: center;
+                        padding: 2rem;
+                        color: var(--text-muted);
+                    }
+                    
+                    .welcome-message h2 {
+                        color: var(--primary);
+                        margin-bottom: 1rem;
+                    }
+                    
+                    .status-indicator {
+                        display: inline-block;
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 50%;
+                        margin-right: 0.5rem;
+                    }
+                    
+                    .status-online {
+                        background: var(--success);
+                    }
+                    
+                    .status-offline {
+                        background: var(--error);
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>🤖 AI 개발 도우미</h1>
+                    <div class="nav-links">
+                        <span class="status-indicator" id="aiStatus"></span>
+                        <span id="statusText">연결 확인 중...</span>
+                        <a href="/developer-guide" class="nav-link">📚 개발자 가이드</a>
+                        <a href="/" class="nav-link">🏠 홈으로</a>
+                    </div>
+                </div>
+                
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="welcome-message">
+                            <h2>👋 안녕하세요!</h2>
+                            <p>Sensor Game Hub 개발을 도와드리는 AI 어시스턴트입니다.</p>
+                            <p>게임 개발 질문, 코드 생성, 디버깅 도움 등 무엇이든 물어보세요!</p>
+                        </div>
+                    </div>
+                    
+                    <div class="loading" id="loadingIndicator">
+                        🤖 AI가 답변을 생성하고 있습니다...
+                    </div>
+                    
+                    <div class="chat-input">
+                        <div class="input-group">
+                            <div class="quick-actions">
+                                <button class="quick-btn" onclick="insertQuickQuestion('새 게임을 만들고 싶어요')">🎮 새 게임 만들기</button>
+                                <button class="quick-btn" onclick="insertQuickQuestion('센서 데이터 처리 방법을 알려주세요')">📱 센서 데이터</button>
+                                <button class="quick-btn" onclick="insertQuickQuestion('SessionSDK 사용법을 알려주세요')">🔧 SDK 사용법</button>
+                                <button class="quick-btn" onclick="insertQuickQuestion('디버깅 도움이 필요해요')">🐛 디버깅</button>
+                            </div>
+                            <textarea 
+                                id="messageInput" 
+                                placeholder="게임 개발에 대해 궁금한 것을 물어보세요..." 
+                                onkeydown="handleKeyDown(event)"></textarea>
+                        </div>
+                        <button class="send-btn" id="sendBtn" onclick="sendMessage()">전송</button>
+                    </div>
+                </div>
+
+                <script>
+                    let chatHistory = JSON.parse(localStorage.getItem('aiChatHistory') || '[]');
+                    
+                    // 페이지 로드 시 초기화
+                    document.addEventListener('DOMContentLoaded', function() {
+                        checkAIStatus();
+                        loadChatHistory();
+                    });
+                    
+                    // AI 상태 확인
+                    async function checkAIStatus() {
+                        try {
+                            const response = await fetch('/api/ai/health');
+                            const result = await response.json();
+                            
+                            const statusIndicator = document.getElementById('aiStatus');
+                            const statusText = document.getElementById('statusText');
+                            
+                            if (result.success && result.status === 'healthy') {
+                                statusIndicator.className = 'status-indicator status-online';
+                                statusText.textContent = 'AI 준비 완료';
+                            } else {
+                                statusIndicator.className = 'status-indicator status-offline';
+                                statusText.textContent = 'AI 서비스 불가';
+                            }
+                        } catch (error) {
+                            document.getElementById('aiStatus').className = 'status-indicator status-offline';
+                            document.getElementById('statusText').textContent = 'AI 서비스 오류';
+                        }
+                    }
+                    
+                    // 채팅 기록 로드
+                    function loadChatHistory() {
+                        const messagesContainer = document.getElementById('chatMessages');
+                        
+                        if (chatHistory.length === 0) {
+                            return; // Welcome message 유지
+                        }
+                        
+                        messagesContainer.innerHTML = '';
+                        
+                        chatHistory.forEach(msg => {
+                            addMessageToUI(msg.content, msg.type, false);
+                        });
+                        
+                        scrollToBottom();
+                    }
+                    
+                    // 채팅 기록 저장
+                    function saveChatHistory() {
+                        localStorage.setItem('aiChatHistory', JSON.stringify(chatHistory));
+                    }
+                    
+                    // 빠른 질문 삽입
+                    function insertQuickQuestion(question) {
+                        document.getElementById('messageInput').value = question;
+                        document.getElementById('messageInput').focus();
+                    }
+                    
+                    // 키보드 이벤트 처리
+                    function handleKeyDown(event) {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                            event.preventDefault();
+                            sendMessage();
+                        }
+                    }
+                    
+                    // 메시지 전송
+                    async function sendMessage() {
+                        const input = document.getElementById('messageInput');
+                        const message = input.value.trim();
+                        
+                        if (!message) return;
+                        
+                        // UI에 사용자 메시지 추가
+                        addMessageToUI(message, 'user');
+                        chatHistory.push({ content: message, type: 'user', timestamp: new Date().toISOString() });
+                        
+                        // 입력창 초기화 및 버튼 비활성화
+                        input.value = '';
+                        document.getElementById('sendBtn').disabled = true;
+                        document.getElementById('loadingIndicator').style.display = 'block';
+                        
+                        try {
+                            // AI API 호출
+                            const response = await fetch('/api/ai/query', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ question: message })
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                                addMessageToUI(result.answer, 'ai');
+                                chatHistory.push({ content: result.answer, type: 'ai', timestamp: new Date().toISOString() });
+                            } else {
+                                addMessageToUI('죄송합니다. 오류가 발생했습니다: ' + result.error, 'ai');
+                            }
+                            
+                        } catch (error) {
+                            addMessageToUI('네트워크 오류가 발생했습니다. 다시 시도해주세요.', 'ai');
+                        } finally {
+                            document.getElementById('sendBtn').disabled = false;
+                            document.getElementById('loadingIndicator').style.display = 'none';
+                            saveChatHistory();
+                        }
+                    }
+                    
+                    // UI에 메시지 추가
+                    function addMessageToUI(content, type, scroll = true) {
+                        const messagesContainer = document.getElementById('chatMessages');
+                        
+                        // Welcome message 제거
+                        const welcomeMsg = messagesContainer.querySelector('.welcome-message');
+                        if (welcomeMsg) {
+                            welcomeMsg.remove();
+                        }
+                        
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = \`message \${type}\`;
+                        
+                        const avatar = type === 'user' ? '👤' : '🤖';
+                        
+                        messageDiv.innerHTML = \`
+                            <div class="message-avatar">\${avatar}</div>
+                            <div class="message-content">\${formatMessage(content)}</div>
+                        \`;
+                        
+                        messagesContainer.appendChild(messageDiv);
+                        
+                        if (scroll) {
+                            scrollToBottom();
+                        }
+                    }
+                    
+                    // 메시지 포맷팅
+                    function formatMessage(content) {
+                        // 코드 블록 처리
+                        content = content.replace(/\`\`\`([\\s\\S]*?)\`\`\`/g, '<pre><code>$1</code></pre>');
+                        
+                        // 인라인 코드 처리
+                        content = content.replace(/\`(.+?)\`/g, '<code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 0.25rem;">$1</code>');
+                        
+                        // 줄바꿈 처리
+                        content = content.replace(/\\n/g, '<br>');
+                        
+                        return content;
+                    }
+                    
+                    // 스크롤을 아래로
+                    function scrollToBottom() {
+                        const messagesContainer = document.getElementById('chatMessages');
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
+                    
+                    // 채팅 기록 초기화
+                    function clearHistory() {
+                        if (confirm('채팅 기록을 모두 삭제하시겠습니까?')) {
+                            chatHistory = [];
+                            localStorage.removeItem('aiChatHistory');
+                            location.reload();
+                        }
+                    }
+                </script>
+            </body>
+            </html>
+        `;
+    }
+    
+    /**
+     * 개발자 가이드 페이지 생성
+     */
+    generateDeveloperGuidePage() {
+        return `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>📚 개발자 가이드 - Sensor Game Hub</title>
+                <style>
+                    :root {
+                        --primary: #3b82f6;
+                        --secondary: #8b5cf6;
+                        --success: #10b981;
+                        --background: #0f172a;
+                        --surface: #1e293b;
+                        --text-primary: #f8fafc;
+                        --text-secondary: #cbd5e1;
+                        --border: #475569;
+                    }
+                    
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }
+                    
+                    body {
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        background: var(--background);
+                        color: var(--text-primary);
+                        line-height: 1.6;
+                    }
+                    
+                    .header {
+                        background: var(--surface);
+                        border-bottom: 1px solid var(--border);
+                        padding: 1rem 2rem;
+                        position: sticky;
+                        top: 0;
+                        z-index: 100;
+                    }
+                    
+                    .header h1 {
+                        background: linear-gradient(135deg, var(--primary), var(--secondary));
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                    }
+                    
+                    .nav-links {
+                        margin-top: 1rem;
+                        display: flex;
+                        gap: 1rem;
+                    }
+                    
+                    .nav-link {
+                        color: var(--text-secondary);
+                        text-decoration: none;
+                        padding: 0.5rem 1rem;
+                        border-radius: 0.5rem;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .nav-link:hover {
+                        background: rgba(59, 130, 246, 0.1);
+                        color: var(--primary);
+                    }
+                    
+                    .container {
+                        max-width: 1200px;
+                        margin: 0 auto;
+                        padding: 2rem;
+                    }
+                    
+                    .guide-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                        gap: 2rem;
+                        margin-top: 2rem;
+                    }
+                    
+                    .guide-card {
+                        background: var(--surface);
+                        border: 1px solid var(--border);
+                        border-radius: 1rem;
+                        padding: 2rem;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .guide-card:hover {
+                        transform: translateY(-8px);
+                        border-color: var(--primary);
+                        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+                    }
+                    
+                    .guide-card h3 {
+                        color: var(--primary);
+                        margin-bottom: 1rem;
+                        font-size: 1.5rem;
+                    }
+                    
+                    .guide-card p {
+                        color: var(--text-secondary);
+                        margin-bottom: 1.5rem;
+                    }
+                    
+                    .guide-links {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.5rem;
+                    }
+                    
+                    .guide-link {
+                        color: var(--success);
+                        text-decoration: none;
+                        padding: 0.5rem;
+                        border-radius: 0.5rem;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                    }
+                    
+                    .guide-link:hover {
+                        background: rgba(16, 185, 129, 0.1);
+                    }
+                    
+                    .ai-promote {
+                        background: linear-gradient(135deg, var(--primary), var(--secondary));
+                        border-radius: 1rem;
+                        padding: 2rem;
+                        text-align: center;
+                        margin: 2rem 0;
+                    }
+                    
+                    .ai-promote h2 {
+                        color: white;
+                        margin-bottom: 1rem;
+                    }
+                    
+                    .ai-promote p {
+                        color: rgba(255, 255, 255, 0.9);
+                        margin-bottom: 1.5rem;
+                    }
+                    
+                    .ai-btn {
+                        background: white;
+                        color: var(--primary);
+                        padding: 1rem 2rem;
+                        border-radius: 0.75rem;
+                        text-decoration: none;
+                        font-weight: 600;
+                        display: inline-block;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .ai-btn:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>📚 개발자 가이드</h1>
+                    <div class="nav-links">
+                        <a href="/ai-assistant" class="nav-link">🤖 AI 채팅</a>
+                        <a href="/" class="nav-link">🏠 홈으로</a>
+                    </div>
+                </div>
+                
+                <div class="container">
+                    <div class="ai-promote">
+                        <h2>🤖 AI 개발 도우미와 함께하세요!</h2>
+                        <p>복잡한 문서를 읽는 대신, AI와 대화하며 빠르고 정확한 답변을 받아보세요.</p>
+                        <a href="/ai-assistant" class="ai-btn">💬 AI 채팅 시작하기</a>
+                    </div>
+                    
+                    <div class="guide-grid">
+                        <div class="guide-card">
+                            <h3>🚀 빠른 시작</h3>
+                            <p>Sensor Game Hub에서 첫 게임을 만들어보세요.</p>
+                            <div class="guide-links">
+                                <a href="#" class="guide-link" onclick="openAIChat('게임 템플릿을 사용해서 새 게임을 만들고 싶어요')">📋 게임 템플릿 사용법</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('SessionSDK 기본 사용법을 알려주세요')">🔧 SessionSDK 기본 사용법</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('센서 데이터 처리 방법을 알려주세요')">📱 센서 데이터 처리법</a>
+                            </div>
+                        </div>
+                        
+                        <div class="guide-card">
+                            <h3>🎮 게임 타입</h3>
+                            <p>다양한 게임 타입과 특징을 알아보세요.</p>
+                            <div class="guide-links">
+                                <a href="#" class="guide-link" onclick="openAIChat('솔로 게임 개발 방법을 알려주세요')">🎯 솔로 게임 (1명)</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('듀얼 게임 개발 방법을 알려주세요')">🤝 듀얼 게임 (2명 협력)</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('멀티플레이어 게임 개발 방법을 알려주세요')">👥 멀티 게임 (3-8명 경쟁)</a>
+                            </div>
+                        </div>
+                        
+                        <div class="guide-card">
+                            <h3>📱 센서 활용</h3>
+                            <p>모바일 센서를 게임에 효과적으로 활용하는 방법입니다.</p>
+                            <div class="guide-links">
+                                <a href="#" class="guide-link" onclick="openAIChat('기기 기울기 센서 사용법을 알려주세요')">📐 기울기 센서 (orientation)</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('가속도 센서 사용법을 알려주세요')">🏃 가속도 센서 (acceleration)</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('회전 속도 센서 사용법을 알려주세요')">🔄 회전 속도 (rotationRate)</a>
+                            </div>
+                        </div>
+                        
+                        <div class="guide-card">
+                            <h3>🐛 문제 해결</h3>
+                            <p>일반적인 개발 이슈와 해결 방법입니다.</p>
+                            <div class="guide-links">
+                                <a href="#" class="guide-link" onclick="openAIChat('서버에 연결되지 않았습니다 오류를 해결해주세요')">🔌 연결 오류 해결</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('세션 코드가 undefined로 나와요')">❓ undefined 오류</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('센서 데이터가 오지 않아요')">📡 센서 데이터 문제</a>
+                            </div>
+                        </div>
+                        
+                        <div class="guide-card">
+                            <h3>🎨 UI/UX 디자인</h3>
+                            <p>게임 인터페이스를 멋지게 꾸미는 방법입니다.</p>
+                            <div class="guide-links">
+                                <a href="#" class="guide-link" onclick="openAIChat('게임 UI 디자인 방법을 알려주세요')">🎨 UI 디자인 가이드</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('CSS 테마 변수 사용법을 알려주세요')">🌈 테마 변수 활용</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('반응형 게임 UI 만드는 법을 알려주세요')">📱 반응형 디자인</a>
+                            </div>
+                        </div>
+                        
+                        <div class="guide-card">
+                            <h3>⚡ 성능 최적화</h3>
+                            <p>게임 성능을 향상시키는 팁과 기법입니다.</p>
+                            <div class="guide-links">
+                                <a href="#" class="guide-link" onclick="openAIChat('센서 데이터 throttling 방법을 알려주세요')">🚀 센서 데이터 최적화</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('Canvas 렌더링 최적화 방법을 알려주세요')">🖼️ 렌더링 최적화</a>
+                                <a href="#" class="guide-link" onclick="openAIChat('메모리 누수 방지 방법을 알려주세요')">🧠 메모리 관리</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 3rem; padding: 2rem; background: var(--surface); border-radius: 1rem; text-align: center;">
+                        <h3 style="color: var(--success); margin-bottom: 1rem;">📊 API 엔드포인트</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">개발에 유용한 API들</p>
+                        <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                            <a href="/api/games" style="color: var(--success); text-decoration: none; padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem;">/api/games</a>
+                            <a href="/api/ai/health" style="color: var(--success); text-decoration: none; padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem;">/api/ai/health</a>
+                            <a href="/api/stats" style="color: var(--success); text-decoration: none; padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem;">/api/stats</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <script>
+                    function openAIChat(question) {
+                        // AI 채팅 페이지로 이동하면서 질문을 URL 파라미터로 전달
+                        const encodedQuestion = encodeURIComponent(question);
+                        window.location.href = \`/ai-assistant?q=\${encodedQuestion}\`;
+                    }
+                </script>
             </body>
             </html>
         `;
