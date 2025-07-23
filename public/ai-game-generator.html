@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 AI 게임 생성기 - Sensor Game Hub v6.0</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #8b5cf6;
+            --accent: #06d6a0;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --dark: #0f172a;
+            --gray-900: #0f172a;
+            --gray-800: #1e293b;
+            --gray-700: #334155;
+            --gray-600: #475569;
+            --gray-400: #9ca3af;
+            --gray-200: #e5e7eb;
+            --white: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--gray-900), var(--gray-800));
+            color: var(--white);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: var(--gray-400);
+            margin-bottom: 2rem;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--gray-700);
+            color: var(--white);
+            text-decoration: none;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-btn:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-section, .output-section {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--gray-600);
+            border-radius: 1rem;
+            padding: 2rem;
+            backdrop-filter: blur(12px);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--gray-200);
+            font-weight: 500;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 1rem;
+            background: var(--gray-800);
+            border: 1px solid var(--gray-600);
+            border-radius: 0.5rem;
+            color: var(--white);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .input-field.textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--gray-700);
+            color: var(--white);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-600);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--gray-600);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-container {
+            margin-top: 1.5rem;
+        }
+
+        .result-tabs {
+            display: flex;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--gray-600);
+        }
+
+        .tab {
+            padding: 0.5rem 1rem;
+            background: none;
+            border: none;
+            color: var(--gray-400);
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .code-preview {
+            background: var(--gray-900);
+            border: 1px solid var(--gray-600);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .game-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-card {
+            background: var(--gray-800);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--gray-600);
+        }
+
+        .info-title {
+            font-size: 0.9rem;
+            color: var(--gray-400);
+            margin-bottom: 0.5rem;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: var(--white);
+            text-transform: capitalize;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .examples-section {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--gray-600);
+            border-radius: 1rem;
+            padding: 2rem;
+            backdrop-filter: blur(12px);
+            margin-bottom: 2rem;
+        }
+
+        .example-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .example-card {
+            background: var(--gray-800);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--gray-600);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .example-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .example-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        .example-desc {
+            color: var(--gray-400);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .example-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            padding: 0.25rem 0.5rem;
+            background: var(--gray-700);
+            color: var(--white);
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .history-section {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--gray-600);
+            border-radius: 1rem;
+            padding: 2rem;
+            backdrop-filter: blur(12px);
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--gray-600);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-info {
+            flex: 1;
+        }
+
+        .history-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .history-meta {
+            color: var(--gray-400);
+            font-size: 0.9rem;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 AI 게임 생성기</h1>
+            <p>자연어로 설명하면 완전한 센서 게임을 자동으로 생성합니다</p>
+            <div class="nav-buttons">
+                <a href="/" class="nav-btn">🏠 홈으로</a>
+                <a href="/ai-assistant" class="nav-btn">🤖 AI 도우미</a>
+                <a href="/developer-guide" class="nav-btn">📚 개발 가이드</a>
+            </div>
+        </div>
+
+        <!-- 시스템 상태 -->
+        <div id="systemStatus" class="status-indicator status-warning">
+            <span>⏳</span>
+            <span>AI 시스템 상태 확인 중...</span>
+        </div>
+
+        <!-- 예제 섹션 -->
+        <div class="examples-section">
+            <div class="section-title">
+                <span>💡</span>
+                <span>게임 생성 예제</span>
+            </div>
+            <p style="color: var(--gray-400); margin-bottom: 1rem;">아래 예제를 클릭하거나 직접 입력해보세요</p>
+            <div class="example-grid">
+                <div class="example-card" onclick="useExample('공을 기울여서 장애물을 피하며 골에 도착하는 게임')">
+                    <div class="example-title">틸트 볼 게임</div>
+                    <div class="example-desc">공을 기울여서 장애물을 피하며 골에 도착하는 게임</div>
+                    <div class="example-tags">
+                        <span class="tag">Solo</span>
+                        <span class="tag">Arcade</span>
+                        <span class="tag">Tilt</span>
+                    </div>
+                </div>
+                <div class="example-card" onclick="useExample('두 명이 협력해서 공을 중앙에 유지하는 밸런스 게임')">
+                    <div class="example-title">협력 밸런스</div>
+                    <div class="example-desc">두 명이 협력해서 공을 중앙에 유지하는 밸런스 게임</div>
+                    <div class="example-tags">
+                        <span class="tag">Dual</span>
+                        <span class="tag">Puzzle</span>
+                        <span class="tag">Tilt</span>
+                    </div>
+                </div>
+                <div class="example-card" onclick="useExample('여러 명이 동시에 경쟁하는 빠른 반응 게임')">
+                    <div class="example-title">반응속도 경쟁</div>
+                    <div class="example-desc">여러 명이 동시에 경쟁하는 빠른 반응 게임</div>
+                    <div class="example-tags">
+                        <span class="tag">Multi</span>
+                        <span class="tag">Action</span>
+                        <span class="tag">Shake</span>
+                    </div>
+                </div>
+                <div class="example-card" onclick="useExample('미로에서 탈출하는 퍼즐 게임')">
+                    <div class="example-title">미로 탈출</div>
+                    <div class="example-desc">미로에서 탈출하는 퍼즐 게임</div>
+                    <div class="example-tags">
+                        <span class="tag">Solo</span>
+                        <span class="tag">Puzzle</span>
+                        <span class="tag">Motion</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- 입력 섹션 -->
+            <div class="input-section">
+                <div class="section-title">
+                    <span>📝</span>
+                    <span>게임 생성 요청</span>
+                </div>
+                
+                <div class="input-group">
+                    <label for="gameDescription">게임 설명</label>
+                    <textarea 
+                        id="gameDescription" 
+                        class="input-field textarea" 
+                        placeholder="어떤 게임을 만들고 싶으신가요? 예: '공을 기울여서 장애물을 피하며 골에 도착하는 게임을 만들어줘'"
+                    ></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label for="gameType">게임 타입 (선택사항)</label>
+                    <select id="gameType" class="input-field">
+                        <option value="">자동 감지</option>
+                        <option value="solo">Solo (1인 플레이)</option>
+                        <option value="dual">Dual (2인 협력)</option>
+                        <option value="multi">Multi (다중 경쟁)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="difficulty">난이도 (선택사항)</label>
+                    <select id="difficulty" class="input-field">
+                        <option value="">자동 감지</option>
+                        <option value="easy">쉬움</option>
+                        <option value="medium">보통</option>
+                        <option value="hard">어려움</option>
+                    </select>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="generateBtn" class="btn btn-primary">
+                        <span>🎮</span>
+                        <span>게임 생성하기</span>
+                    </button>
+                    <button id="suggestBtn" class="btn btn-secondary">
+                        <span>💡</span>
+                        <span>아이디어 제안</span>
+                    </button>
+                </div>
+
+                <div id="loadingState" class="loading">
+                    <div class="spinner"></div>
+                    <p id="loadingText">AI가 게임을 생성하고 있습니다...</p>
+                </div>
+            </div>
+
+            <!-- 출력 섹션 -->
+            <div class="output-section">
+                <div class="section-title">
+                    <span>🎯</span>
+                    <span>생성된 게임</span>
+                </div>
+
+                <div id="resultContainer" class="result-container" style="display: none;">
+                    <div class="game-info" id="gameInfo">
+                        <!-- 게임 정보가 여기에 표시됩니다 -->
+                    </div>
+
+                    <div class="result-tabs">
+                        <button class="tab active" onclick="showTab('preview')">미리보기</button>
+                        <button class="tab" onclick="showTab('code')">소스코드</button>
+                        <button class="tab" onclick="showTab('specs')">게임 사양</button>
+                    </div>
+
+                    <div id="preview-content" class="tab-content active">
+                        <p style="color: var(--gray-400); margin-bottom: 1rem;">생성된 게임을 미리 볼 수 있습니다.</p>
+                        <div id="gamePreview">
+                            <!-- 게임 미리보기가 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+
+                    <div id="code-content" class="tab-content">
+                        <div class="code-preview" id="gameCode">
+                            <!-- 게임 코드가 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+
+                    <div id="specs-content" class="tab-content">
+                        <div id="gameSpecs">
+                            <!-- 게임 사양이 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button id="playBtn" class="btn btn-primary">
+                            <span>▶️</span>
+                            <span>게임 플레이</span>
+                        </button>
+                        <button id="downloadBtn" class="btn btn-secondary">
+                            <span>💾</span>
+                            <span>다운로드</span>
+                        </button>
+                        <button id="regenerateBtn" class="btn btn-secondary">
+                            <span>🔄</span>
+                            <span>다시 생성</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="noResult" style="text-align: center; padding: 3rem; color: var(--gray-400);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🎮</div>
+                    <p>게임을 생성하면 여기에 결과가 표시됩니다</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 생성 이력 섹션 -->
+        <div class="history-section">
+            <div class="section-title">
+                <span>📜</span>
+                <span>생성 이력</span>
+            </div>
+            <div id="historyContainer">
+                <p style="text-align: center; color: var(--gray-400); padding: 2rem;">
+                    생성 이력이 여기에 표시됩니다
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentGameData = null;
+        let systemReady = false;
+
+        // 시스템 초기화
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkSystemStatus();
+            await loadGenerationHistory();
+        });
+
+        // 시스템 상태 확인
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch('/api/ai/generator-status');
+                const data = await response.json();
+                
+                const statusEl = document.getElementById('systemStatus');
+                
+                if (data.success && data.status === 'ready') {
+                    statusEl.className = 'status-indicator status-success';
+                    statusEl.innerHTML = '<span>✅</span><span>AI 게임 생성기 준비 완료</span>';
+                    systemReady = true;
+                } else {
+                    statusEl.className = 'status-indicator status-error';
+                    statusEl.innerHTML = '<span>❌</span><span>AI 게임 생성기 초기화 실패</span>';
+                    systemReady = false;
+                }
+            } catch (error) {
+                const statusEl = document.getElementById('systemStatus');
+                statusEl.className = 'status-indicator status-error';
+                statusEl.innerHTML = '<span>❌</span><span>시스템 상태 확인 실패</span>';
+                systemReady = false;
+            }
+        }
+
+        // 예제 사용
+        function useExample(description) {
+            document.getElementById('gameDescription').value = description;
+        }
+
+        // 게임 생성
+        document.getElementById('generateBtn').addEventListener('click', async () => {
+            if (!systemReady) {
+                alert('AI 시스템이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.');
+                return;
+            }
+
+            const description = document.getElementById('gameDescription').value.trim();
+            if (!description) {
+                alert('게임 설명을 입력해주세요.');
+                return;
+            }
+
+            const gameType = document.getElementById('gameType').value;
+            const difficulty = document.getElementById('difficulty').value;
+
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/ai/generate-game', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userInput: description,
+                        options: {
+                            gameType: gameType || undefined,
+                            difficulty: difficulty || undefined
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentGameData = result;
+                    displayGameResult(result);
+                    await loadGenerationHistory(); // 이력 업데이트
+                } else {
+                    alert(`게임 생성 실패: ${result.error}`);
+                }
+
+            } catch (error) {
+                console.error('게임 생성 오류:', error);
+                alert('게임 생성 중 오류가 발생했습니다.');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // 아이디어 제안
+        document.getElementById('suggestBtn').addEventListener('click', async () => {
+            if (!systemReady) {
+                alert('AI 시스템이 준비되지 않았습니다.');
+                return;
+            }
+
+            showLoading(true, '게임 아이디어를 생성하고 있습니다...');
+
+            try {
+                const response = await fetch('/api/ai/suggest-ideas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        category: 'all',
+                        count: 5
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success && result.ideas.length > 0) {
+                    const randomIdea = result.ideas[Math.floor(Math.random() * result.ideas.length)];
+                    document.getElementById('gameDescription').value = randomIdea.description;
+                    
+                    if (randomIdea.gameType) {
+                        document.getElementById('gameType').value = randomIdea.gameType;
+                    }
+                    if (randomIdea.difficulty) {
+                        document.getElementById('difficulty').value = randomIdea.difficulty;
+                    }
+                } else {
+                    alert('아이디어 제안에 실패했습니다.');
+                }
+
+            } catch (error) {
+                console.error('아이디어 제안 오류:', error);
+                alert('아이디어 제안 중 오류가 발생했습니다.');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // 로딩 상태 표시
+        function showLoading(show, text = 'AI가 게임을 생성하고 있습니다...') {
+            const loadingEl = document.getElementById('loadingState');
+            const loadingText = document.getElementById('loadingText');
+            const generateBtn = document.getElementById('generateBtn');
+            const suggestBtn = document.getElementById('suggestBtn');
+
+            if (show) {
+                loadingEl.classList.add('show');
+                loadingText.textContent = text;
+                generateBtn.disabled = true;
+                suggestBtn.disabled = true;
+            } else {
+                loadingEl.classList.remove('show');
+                generateBtn.disabled = false;
+                suggestBtn.disabled = false;
+            }
+        }
+
+        // 게임 결과 표시
+        function displayGameResult(result) {
+            const resultContainer = document.getElementById('resultContainer');
+            const noResult = document.getElementById('noResult');
+            const gameInfo = document.getElementById('gameInfo');
+            const gameCode = document.getElementById('gameCode');
+            const gameSpecs = document.getElementById('gameSpecs');
+
+            // 게임 정보 표시
+            gameInfo.innerHTML = `
+                <div class="info-card">
+                    <div class="info-title">게임 ID</div>
+                    <div class="info-value">${result.gameSpec.suggestedGameId}</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-title">제목</div>
+                    <div class="info-value">${result.gameSpec.suggestedTitle}</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-title">타입</div>
+                    <div class="info-value">${result.gameSpec.gameType}</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-title">장르</div>
+                    <div class="info-value">${result.gameSpec.genre}</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-title">센서</div>
+                    <div class="info-value">${result.gameSpec.sensorMechanics.join(', ')}</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-title">생성 시간</div>
+                    <div class="info-value">${result.metadata.generationTime}ms</div>
+                </div>
+            `;
+
+            // 코드 표시
+            gameCode.textContent = result.gameCode;
+
+            // 게임 사양 표시
+            gameSpecs.innerHTML = `
+                <div class="info-card">
+                    <div class="info-title">목표</div>
+                    <div class="info-value">${result.gameSpec.objective}</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-title">규칙</div>
+                    <div class="info-value">${result.gameSpec.rules.join('<br>')}</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-title">필요 센서</div>
+                    <div class="info-value">${result.gameSpec.sensors.join(', ')}</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-title">복잡도</div>
+                    <div class="info-value">${result.gameSpec.estimatedComplexity}/5</div>
+                </div>
+            `;
+
+            resultContainer.style.display = 'block';
+            noResult.style.display = 'none';
+
+            // 버튼 이벤트 설정
+            setupResultButtons(result);
+        }
+
+        // 결과 버튼 이벤트 설정
+        function setupResultButtons(result) {
+            document.getElementById('playBtn').onclick = () => {
+                const newWindow = window.open('', '_blank');
+                newWindow.document.write(result.gameCode);
+                newWindow.document.close();
+            };
+
+            document.getElementById('downloadBtn').onclick = () => {
+                const blob = new Blob([result.gameCode], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${result.gameSpec.suggestedGameId}.html`;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            document.getElementById('regenerateBtn').onclick = async () => {
+                const description = document.getElementById('gameDescription').value;
+                if (description) {
+                    document.getElementById('generateBtn').click();
+                }
+            };
+        }
+
+        // 탭 전환
+        function showTab(tabName) {
+            // 탭 버튼 활성화
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.textContent.includes(getTabLabel(tabName))) {
+                    tab.classList.add('active');
+                }
+            });
+
+            // 탭 내용 표시
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-content`).classList.add('active');
+        }
+
+        function getTabLabel(tabName) {
+            const labels = {
+                preview: '미리보기',
+                code: '소스코드',
+                specs: '게임 사양'
+            };
+            return labels[tabName] || tabName;
+        }
+
+        // 생성 이력 로드
+        async function loadGenerationHistory() {
+            try {
+                const response = await fetch('/api/ai/generation-history?limit=5');
+                const data = await response.json();
+                
+                if (data.success && data.history.length > 0) {
+                    displayHistory(data.history);
+                }
+            } catch (error) {
+                console.error('이력 로드 실패:', error);
+            }
+        }
+
+        // 이력 표시
+        function displayHistory(history) {
+            const container = document.getElementById('historyContainer');
+            
+            container.innerHTML = history.map(item => `
+                <div class="history-item">
+                    <div class="history-info">
+                        <div class="history-title">${item.input}</div>
+                        <div class="history-meta">
+                            ${new Date(item.timestamp).toLocaleString()} | 
+                            ${item.result.success ? '성공' : '실패'}
+                        </div>
+                    </div>
+                    <div class="history-actions">
+                        <button class="btn btn-secondary btn-small" onclick="useHistoryItem('${item.input}')">
+                            재사용
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 이력 아이템 재사용
+        function useHistoryItem(input) {
+            document.getElementById('gameDescription').value = input;
+        }
+    </script>
+</body>
+</html>

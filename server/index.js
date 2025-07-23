@@ -19,6 +19,7 @@ const SessionManager = require('./SessionManager');
 const GameScanner = require('./GameScanner');
 const AIAssistant = require('./AIAssistant');
 const DocumentEmbedder = require('./DocumentEmbedder');
+const AIGameGenerator = require('./AIGameGenerator');
 
 class GameServer {
     constructor() {
@@ -36,6 +37,7 @@ class GameServer {
         this.gameScanner = new GameScanner();
         this.aiAssistant = null; // 지연 초기화
         this.documentEmbedder = null; // 지연 초기화
+        this.aiGameGenerator = null; // 지연 초기화
         this.port = process.env.PORT || 3000;
         
         this.setupMiddleware();
@@ -87,6 +89,11 @@ class GameServer {
         // AI Assistant 페이지
         this.app.get('/ai-assistant', (req, res) => {
             res.send(this.generateAIAssistantPage());
+        });
+        
+        // AI 게임 생성기 페이지
+        this.app.get('/ai-game-generator', (req, res) => {
+            res.sendFile(path.join(__dirname, '../public/ai-game-generator.html'));
         });
         
         // 개발자 가이드 페이지
@@ -495,6 +502,141 @@ class GameServer {
             }
         });
 
+        // AI 게임 생성 API 라우트
+        this.app.post('/api/ai/generate-game', async (req, res) => {
+            try {
+                if (!this.aiGameGenerator) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'AI 게임 생성기가 초기화되지 않았습니다. 환경변수를 확인해주세요.'
+                    });
+                }
+
+                const { userInput, options } = req.body;
+                
+                if (!userInput) {
+                    return res.status(400).json({
+                        success: false,
+                        error: '게임 생성 요청이 제공되지 않았습니다.'
+                    });
+                }
+
+                console.log(`🎮 AI 게임 생성 요청: "${userInput}"`);
+                const result = await this.aiGameGenerator.generateGame(userInput, options || {});
+                
+                res.json(result);
+
+            } catch (error) {
+                console.error('❌ AI 게임 생성 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.post('/api/ai/suggest-ideas', async (req, res) => {
+            try {
+                if (!this.aiGameGenerator) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'AI 게임 생성기가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { category, count } = req.body;
+                
+                console.log(`💡 게임 아이디어 제안 요청: 카테고리=${category || 'all'}, 개수=${count || 5}`);
+                const result = await this.aiGameGenerator.suggestGameIdeas(category, count);
+                
+                res.json(result);
+
+            } catch (error) {
+                console.error('❌ 게임 아이디어 제안 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.get('/api/ai/generation-history', async (req, res) => {
+            try {
+                if (!this.aiGameGenerator) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'AI 게임 생성기가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const limit = parseInt(req.query.limit) || 10;
+                const result = this.aiGameGenerator.getGenerationHistory(limit);
+                
+                res.json(result);
+
+            } catch (error) {
+                console.error('❌ 생성 이력 조회 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.post('/api/ai/regenerate-game', async (req, res) => {
+            try {
+                if (!this.aiGameGenerator) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'AI 게임 생성기가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { generationId, modifications } = req.body;
+                
+                if (!generationId) {
+                    return res.status(400).json({
+                        success: false,
+                        error: '재생성할 게임 ID가 제공되지 않았습니다.'
+                    });
+                }
+
+                console.log(`🔄 AI 게임 재생성 요청: ${generationId}`);
+                const result = await this.aiGameGenerator.regenerateGame(generationId, modifications || {});
+                
+                res.json(result);
+
+            } catch (error) {
+                console.error('❌ AI 게임 재생성 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.app.get('/api/ai/generator-status', async (req, res) => {
+            try {
+                if (!this.aiGameGenerator) {
+                    return res.json({
+                        success: false,
+                        status: 'not_initialized',
+                        message: 'AI 게임 생성기가 초기화되지 않았습니다.'
+                    });
+                }
+
+                const status = await this.aiGameGenerator.getStatus();
+                res.json(status);
+
+            } catch (error) {
+                console.error('❌ 생성기 상태 확인 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
         this.app.get('/api/ai/knowledge-status', async (req, res) => {
             try {
                 if (!this.aiAssistant) {
@@ -558,12 +700,17 @@ class GameServer {
             // Document Embedder 초기화
             this.documentEmbedder = new DocumentEmbedder();
             
-            console.log('✅ AI Assistant 초기화 완료');
+            // AI Game Generator 초기화
+            this.aiGameGenerator = new AIGameGenerator();
+            await this.aiGameGenerator.initialize();
+            
+            console.log('✅ AI Assistant 및 게임 생성기 초기화 완료');
             
         } catch (error) {
             console.error('❌ AI Assistant 초기화 실패:', error.message);
             this.aiAssistant = null;
             this.documentEmbedder = null;
+            this.aiGameGenerator = null;
         }
     }
     
@@ -796,6 +943,7 @@ class GameServer {
                         <div class="developer-actions">
                             <h5 style="color: #6366f1; margin-bottom: 1rem;">🤖 AI 개발 도우미</h5>
                             <p style="margin-bottom: 1rem;">게임 개발 질문, 코드 생성, 디버깅 도움을 받아보세요!</p>
+                            <a href="/ai-game-generator" class="ai-chat-btn" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎮 AI 게임 생성기</a>
                             <a href="/ai-assistant" class="ai-chat-btn">💬 AI 채팅 상담하기</a>
                             <a href="/developer-guide" class="ai-chat-btn" style="background: linear-gradient(135deg, #059669, #10b981);">📚 개발자 가이드</a>
                         </div>
