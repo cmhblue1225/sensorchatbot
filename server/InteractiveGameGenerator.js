@@ -23,7 +23,7 @@ class InteractiveGameGenerator {
             openaiApiKey: process.env.OPENAI_API_KEY,
             supabaseUrl: process.env.SUPABASE_URL,
             supabaseKey: process.env.SUPABASE_ANON_KEY,
-            claudeModel: 'claude-3-sonnet-20240229',
+            claudeModel: 'claude-3-5-sonnet-20241022',
             maxTokens: 8000
         };
 
