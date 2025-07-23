@@ -32,6 +32,7 @@ class InteractiveGameGenerator {
         this.vectorStore = null;
         this.embeddings = null;
         this.llm = null;
+        this.mockMode = false;
 
         // 대화 세션 관리
         this.activeSessions = new Map(); // sessionId -> conversationData
@@ -43,17 +44,29 @@ class InteractiveGameGenerator {
         try {
             console.log('🎯 대화형 게임 생성기 초기화 중...');
 
+            // 환경변수 체크
+            if (!this.config.claudeApiKey) {
+                console.log('⚠️ Claude API 키가 설정되지 않음 - 더미 모드로 동작');
+                this.mockMode = true;
+                console.log('✅ 대화형 게임 생성기 초기화 완료 (더미 모드)');
+                return;
+            }
+
             // Supabase 클라이언트 초기화
-            this.supabaseClient = createClient(
-                this.config.supabaseUrl,
-                this.config.supabaseKey
-            );
+            if (this.config.supabaseUrl && this.config.supabaseKey) {
+                this.supabaseClient = createClient(
+                    this.config.supabaseUrl,
+                    this.config.supabaseKey
+                );
+            }
 
             // OpenAI 임베딩 초기화
-            this.embeddings = new OpenAIEmbeddings({
-                openAIApiKey: this.config.openaiApiKey,
-                modelName: 'text-embedding-3-small',
-            });
+            if (this.config.openaiApiKey) {
+                this.embeddings = new OpenAIEmbeddings({
+                    openAIApiKey: this.config.openaiApiKey,
+                    modelName: 'text-embedding-3-small',
+                });
+            }
 
             // Claude LLM 초기화
             this.llm = new ChatAnthropic({
@@ -64,17 +77,20 @@ class InteractiveGameGenerator {
             });
 
             // Supabase 벡터 저장소 초기화
-            this.vectorStore = new SupabaseVectorStore(this.embeddings, {
-                client: this.supabaseClient,
-                tableName: 'game_knowledge',
-                queryName: 'match_documents'
-            });
+            if (this.supabaseClient && this.embeddings) {
+                this.vectorStore = new SupabaseVectorStore(this.embeddings, {
+                    client: this.supabaseClient,
+                    tableName: 'game_knowledge',
+                    queryName: 'match_documents'
+                });
+            }
 
             console.log('✅ 대화형 게임 생성기 초기화 완료');
 
         } catch (error) {
             console.error('❌ 대화형 게임 생성기 초기화 실패:', error);
-            throw error;
+            console.log('⚠️ 더미 모드로 대체 동작');
+            this.mockMode = true;
         }
     }
 
@@ -224,40 +240,50 @@ class InteractiveGameGenerator {
 관련 컨텍스트:
 ${context}
 
+중요: 사용자가 구체적인 게임 아이디어를 제시했다면 다음 정확한 JSON 형식으로 응답 끝에 포함하세요:
+{"readyForNext": true, "gameType": "solo|dual|multi", "genre": "추정장르", "title": "제안제목"}
+
 응답 형식:
 - 자연스러운 대화체로 응답
 - 게임 아이디어에 대한 긍정적 피드백
 - 구체적인 질문으로 정보 수집
-- 다음 단계 준비 여부 JSON 포함: {"readyForNext": boolean, "gameType": "solo|dual|multi", "genre": "추정장르", "title": "제안제목"}`;
+- 충분한 정보가 있으면 반드시 위 JSON을 포함하세요`;
 
         const response = await this.llm.invoke([{ role: 'user', content: prompt }]);
         
-        // JSON 추출 시도
-        const jsonMatch = response.content.match(/\{[^}]*\}/);
-        let extracted = {};
-        if (jsonMatch) {
-            try {
-                extracted = JSON.parse(jsonMatch[0]);
-            } catch (e) {
-                console.log('JSON 파싱 실패, 기본값 사용');
-            }
-        }
-
+        // 개선된 JSON 추출 로직
+        let extracted = this.extractJSONFromResponse(response.content);
+        
         let newStage = session.stage;
         let requirements = {};
 
-        if (extracted.readyForNext) {
+        // 게임 아이디어가 구체적이면 자동으로 다음 단계로
+        const hasGameIdea = userMessage.length > 10 && 
+            (userMessage.includes('게임') || userMessage.includes('만들') || 
+             userMessage.includes('기울') || userMessage.includes('흔들') || 
+             userMessage.includes('센서'));
+
+        if (extracted.readyForNext || hasGameIdea) {
             newStage = 'details';
             requirements = {
-                gameType: extracted.gameType,
-                genre: extracted.genre,
-                title: extracted.title,
+                gameType: extracted.gameType || this.inferGameType(userMessage),
+                genre: extracted.genre || this.inferGenre(userMessage),
+                title: extracted.title || this.generateTitle(userMessage),
                 description: userMessage
             };
         }
 
+        // JSON 제거하여 깔끔한 메시지 반환
+        const cleanMessage = this.removeJSONFromMessage(response.content);
+        
+        // 진행 안내 메시지 추가
+        let finalMessage = cleanMessage;
+        if (newStage === 'details') {
+            finalMessage += '\n\n✅ 게임 아이디어가 확인되었습니다! 세부사항을 정의해보겠습니다.';
+        }
+
         return {
-            message: response.content.replace(/\{[^}]*\}/, '').trim(),
+            message: finalMessage,
             newStage: newStage,
             requirements: requirements
         };
@@ -267,6 +293,12 @@ ${context}
      * 세부사항 단계: 게임 메커니즘 구체화
      */
     async processDetailsStage(session, userMessage, context) {
+        // 키워드 기반 단계 전환 체크
+        const progressKeywords = ['진행', '다음', '계속', '확인', '넘어가', '완료', '좋아', '괜찮', '맞아'];
+        const hasProgressKeyword = progressKeywords.some(keyword => 
+            userMessage.toLowerCase().includes(keyword)
+        );
+
         const prompt = `사용자가 ${session.gameRequirements.gameType} 타입의 "${session.gameRequirements.title}" 게임을 개발 중입니다.
 
 현재 수집된 정보:
@@ -282,37 +314,48 @@ ${context}
 3. 난이도 수준 결정
 4. 메커니즘 단계로 진행 준비 확인
 
+중요: 충분한 정보가 수집되었다고 판단되면 다음 정확한 JSON 형식으로 응답 끝에 포함하세요:
+{"readyForMechanics": true, "sensorMechanics": ["tilt", "shake"], "difficulty": "easy|medium|hard", "objectives": "승리조건"}
+
 관련 컨텍스트:
 ${context}
 
-응답에 JSON 포함: {"readyForMechanics": boolean, "sensorMechanics": ["tilt", "shake", etc], "difficulty": "easy|medium|hard", "objectives": "승리조건"}`;
+자연스러운 대화체로 응답하되, 충분한 정보가 수집되었다고 판단되면 반드시 위 JSON을 포함하세요.`;
 
         const response = await this.llm.invoke([{ role: 'user', content: prompt }]);
         
-        const jsonMatch = response.content.match(/\{[^}]*\}/);
-        let extracted = {};
-        if (jsonMatch) {
-            try {
-                extracted = JSON.parse(jsonMatch[0]);
-            } catch (e) {
-                console.log('JSON 파싱 실패');
-            }
-        }
-
+        // 개선된 JSON 추출 로직
+        let extracted = this.extractJSONFromResponse(response.content);
+        
         let newStage = session.stage;
         let requirements = {};
 
-        if (extracted.readyForMechanics) {
+        // 키워드 기반 전환 또는 JSON 기반 전환
+        const shouldProgress = hasProgressKeyword || extracted.readyForMechanics || 
+            this.hasMinimumDetailsRequirements(session.gameRequirements);
+
+        if (shouldProgress) {
             newStage = 'mechanics';
             requirements = {
-                sensorMechanics: extracted.sensorMechanics || [],
-                difficulty: extracted.difficulty,
-                objectives: extracted.objectives
+                sensorMechanics: extracted.sensorMechanics || ['tilt'],
+                difficulty: extracted.difficulty || 'medium',
+                objectives: extracted.objectives || '게임 목표 달성'
             };
         }
 
+        // JSON 제거하여 깔끔한 메시지 반환
+        const cleanMessage = this.removeJSONFromMessage(response.content);
+        
+        // 진행 안내 메시지 추가
+        let finalMessage = cleanMessage;
+        if (shouldProgress) {
+            finalMessage += '\n\n✅ 세부사항이 정리되었습니다! 게임 메커니즘 단계로 넘어가겠습니다.';
+        } else if (!hasProgressKeyword) {
+            finalMessage += '\n\n💡 더 추가하고 싶은 내용이 있으시면 말씀해주세요. 준비가 되면 "다음으로 진행해줘"라고 말씀해주세요.';
+        }
+
         return {
-            message: response.content.replace(/\{[^}]*\}/, '').trim(),
+            message: finalMessage,
             newStage: newStage,
             requirements: requirements
         };
@@ -322,6 +365,12 @@ ${context}
      * 메커니즘 단계: 게임 로직 세부사항
      */
     async processMechanicsStage(session, userMessage, context) {
+        // 키워드 기반 단계 전환 체크
+        const progressKeywords = ['진행', '다음', '계속', '확인', '넘어가', '완료', '좋아', '괜찮', '맞아'];
+        const hasProgressKeyword = progressKeywords.some(keyword => 
+            userMessage.toLowerCase().includes(keyword)
+        );
+
         const prompt = `게임 "${session.gameRequirements.title}"의 세부 메커니즘을 정의하고 있습니다.
 
 현재 요구사항:
@@ -339,36 +388,53 @@ ${context}
 4. 특별한 기능이나 파워업
 5. 최종 확인 단계 준비 여부
 
+중요: 사용자가 더 이상 추가할 내용이 없거나 다음 단계로 진행하려는 의도를 보이면, 
+다음과 같은 정확한 JSON 형식으로 응답 끝에 포함하세요:
+{"readyForConfirmation": true, "gameplayElements": {"scoring": "점수방식", "interactions": "상호작용", "feedback": "피드백"}, "specialRequirements": ["특별요구사항들"]}
+
 관련 컨텍스트:
 ${context}
 
-응답에 JSON 포함: {"readyForConfirmation": boolean, "gameplayElements": {...}, "specialRequirements": [...]}`;
+자연스러운 대화체로 응답하되, 충분한 정보가 수집되었다고 판단되면 반드시 위 JSON을 포함하세요.`;
 
         const response = await this.llm.invoke([{ role: 'user', content: prompt }]);
         
-        const jsonMatch = response.content.match(/\{[^}]*\}/, 's');
-        let extracted = {};
-        if (jsonMatch) {
-            try {
-                extracted = JSON.parse(jsonMatch[0]);
-            } catch (e) {
-                console.log('JSON 파싱 실패');
-            }
-        }
-
+        // 개선된 JSON 추출 로직
+        let extracted = this.extractJSONFromResponse(response.content);
+        
         let newStage = session.stage;
         let requirements = {};
 
-        if (extracted.readyForConfirmation) {
+        // 키워드 기반 전환 또는 JSON 기반 전환
+        const shouldProgress = hasProgressKeyword || extracted.readyForConfirmation || 
+            this.hasMinimumMechanicsRequirements(session.gameRequirements);
+
+        if (shouldProgress) {
             newStage = 'confirmation';
             requirements = {
-                gameplayElements: extracted.gameplayElements || {},
-                specialRequirements: extracted.specialRequirements || []
+                gameplayElements: extracted.gameplayElements || {
+                    scoring: '점수 획득 시스템',
+                    interactions: '게임 상호작용',
+                    feedback: '시각적 피드백'
+                },
+                specialRequirements: extracted.specialRequirements || [],
+                confirmed: false // 확인 단계 진입 표시
             };
         }
 
+        // JSON 제거하여 깔끔한 메시지 반환
+        const cleanMessage = this.removeJSONFromMessage(response.content);
+        
+        // 진행 안내 메시지 추가
+        let finalMessage = cleanMessage;
+        if (shouldProgress) {
+            finalMessage += '\n\n✅ 충분한 정보가 수집되었습니다! 최종 확인 단계로 넘어가겠습니다.';
+        } else if (!hasProgressKeyword) {
+            finalMessage += '\n\n💡 더 추가하고 싶은 내용이 있으시면 말씀해주세요. 준비가 되면 "다음 단계로 진행해줘"라고 말씀해주세요.';
+        }
+
         return {
-            message: response.content.replace(/\{[^}]*\}/, '').trim(),
+            message: finalMessage,
             newStage: newStage,
             requirements: requirements
         };
@@ -380,33 +446,46 @@ ${context}
     async processConfirmationStage(session, userMessage, context) {
         const requirements = session.gameRequirements;
         
-        if (userMessage.toLowerCase().includes('생성') || userMessage.toLowerCase().includes('만들어') || userMessage.toLowerCase().includes('확인')) {
+        // 게임 생성 코드 감지
+        const generateKeywords = ['생성', '만들어', '확인', '좋아', '완료', '시작', '진행'];
+        const shouldGenerate = generateKeywords.some(keyword => 
+            userMessage.toLowerCase().includes(keyword)
+        );
+        
+        if (shouldGenerate) {
+            // 요구사항 최종 업데이트
+            session.gameRequirements.confirmed = true;
+            
             return {
-                message: "완벽합니다! 모든 요구사항이 정리되었습니다. 이제 게임을 생성하겠습니다. 잠시만 기다려주세요...",
+                message: "✨ 완볽합니다! 모든 요구사항이 정리되었습니다. \n\n🎮 이제 고품질 HTML5 게임을 생성하겠습니다. \n잠시만 기다려주세요...",
                 newStage: 'generating'
             };
         }
 
-        const prompt = `게임 "${requirements.title}"의 모든 요구사항을 정리했습니다:
+        const prompt = `게임 "${requirements.title}"의 모든 요구사항을 최종 정리했습니다:
 
-📋 게임 사양:
-- 제목: ${requirements.title}
-- 타입: ${requirements.gameType}
-- 장르: ${requirements.genre}
-- 센서: ${requirements.sensorMechanics?.join(', ')}
-- 난이도: ${requirements.difficulty}
-- 목표: ${requirements.objectives}
-- 특별 요구사항: ${requirements.specialRequirements?.join(', ')}
+📋 **게임 사양 요약:**
+- **제목**: ${requirements.title}
+- **타입**: ${requirements.gameType} (센서 ${requirements.gameType === 'solo' ? '1개' : requirements.gameType === 'dual' ? '2개' : '여러개'} 사용)
+- **장르**: ${requirements.genre}
+- **센서 활용**: ${requirements.sensorMechanics?.join(', ') || '기울기 센서'}
+- **난이도**: ${requirements.difficulty || '보통'}
+- **게임 목표**: ${requirements.objectives || '기본 게임 목표'}
+- **점수 시스템**: ${requirements.gameplayElements?.scoring || '기본 점수 시스템'}
+- **특별 기능**: ${requirements.specialRequirements?.join(', ') || '없음'}
 
-사용자가 수정을 원하는 부분: "${userMessage}"
+사용자 피드백: "${userMessage}"
 
-수정사항을 반영하여 최종 확인해주세요. 모든 것이 준비되면 "게임 생성" 버튼을 눌러주세요!`;
+최종 확인 메시지를 제공하고, 사용자가 수정을 원하는 부분이 있다면 반영해주세요. 
+
+모든 것이 만족스럽다면 "게임 생성하기" 버튼을 누르거나 "생성해주세요"라고 말씀해주세요!`;
 
         const response = await this.llm.invoke([{ role: 'user', content: prompt }]);
 
         return {
-            message: response.content,
-            newStage: session.stage // 확인 단계 유지
+            message: response.content + '\n\n🎯 **준비 완료!** 위 내용으로 게임을 생성하시려면 "게임 생성하기" 버튼을 눌러주세요!',
+            newStage: session.stage, // 확인 단계 유지
+            requirements: { confirmed: true } // 확인 완료 표시
         };
     }
 
@@ -888,6 +967,118 @@ ${context}
      */
     cleanupSession(sessionId) {
         return this.activeSessions.delete(sessionId);
+    }
+
+    /**
+     * 개선된 JSON 추출 로직
+     */
+    extractJSONFromResponse(content) {
+        try {
+            // 여러 JSON 패턴 시도
+            const patterns = [
+                /\{[^{}]*"ready[^}]*\}/g,  // readyFor... 키를 포함한 JSON
+                /\{[^{}]*"gameType"[^}]*\}/g,  // gameType을 포함한 JSON
+                /\{[^{}]*"sensorMechanics"[^}]*\}/g,  // sensorMechanics를 포함한 JSON
+                /\{[^{}]*"gameplayElements"[^}]*\}/g,  // gameplayElements를 포함한 JSON
+                /\{[\s\S]*?\}/g  // 일반적인 JSON 패턴
+            ];
+
+            for (const pattern of patterns) {
+                const matches = content.match(pattern);
+                if (matches) {
+                    for (const match of matches) {
+                        try {
+                            const parsed = JSON.parse(match);
+                            return parsed;
+                        } catch (e) {
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            return {};
+        } catch (error) {
+            console.log('JSON 추출 실패:', error);
+            return {};
+        }
+    }
+
+    /**
+     * 메시지에서 JSON 제거
+     */
+    removeJSONFromMessage(content) {
+        try {
+            // JSON 패턴들을 제거
+            return content
+                .replace(/\{[\s\S]*?\}/g, '')
+                .replace(/```json[\s\S]*?```/g, '')
+                .trim();
+        } catch (error) {
+            return content;
+        }
+    }
+
+    /**
+     * 게임 타입 추론
+     */
+    inferGameType(userMessage) {
+        const message = userMessage.toLowerCase();
+        if (message.includes('친구') || message.includes('둘이') || message.includes('협력')) {
+            return 'dual';
+        } else if (message.includes('여러') || message.includes('경쟁') || message.includes('멀티')) {
+            return 'multi';
+        }
+        return 'solo';
+    }
+
+    /**
+     * 장르 추론
+     */
+    inferGenre(userMessage) {
+        const message = userMessage.toLowerCase();
+        if (message.includes('미로')) return '미로 게임';
+        if (message.includes('공') || message.includes('볼')) return '물리 게임';
+        if (message.includes('반응') || message.includes('빠르')) return '반응속도 게임';
+        if (message.includes('우주') || message.includes('비행')) return '시뮬레이션';
+        if (message.includes('요리')) return '시뮬레이션';
+        if (message.includes('벽돌') || message.includes('블록')) return '아케이드';
+        return '액션 게임';
+    }
+
+    /**
+     * 제목 생성
+     */
+    generateTitle(userMessage) {
+        const message = userMessage.toLowerCase();
+        if (message.includes('미로')) return '센서 미로 게임';
+        if (message.includes('공')) return '센서 볼 게임';
+        if (message.includes('반응')) return '센서 반응속도 게임';
+        if (message.includes('우주')) return '센서 우주선 게임';
+        if (message.includes('요리')) return '센서 요리 게임';
+        if (message.includes('벽돌')) return '센서 벽돌깨기';
+        return '센서 게임';
+    }
+
+    /**
+     * 세부사항 최소 요구사항 체크
+     */
+    hasMinimumDetailsRequirements(requirements) {
+        return requirements && 
+               requirements.gameType && 
+               requirements.title && 
+               requirements.description;
+    }
+
+    /**
+     * 메커니즘 최소 요구사항 체크
+     */
+    hasMinimumMechanicsRequirements(requirements) {
+        return requirements && 
+               requirements.gameType && 
+               requirements.sensorMechanics && 
+               requirements.difficulty && 
+               requirements.objectives;
     }
 
     /**

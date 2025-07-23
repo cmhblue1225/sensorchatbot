@@ -952,10 +952,15 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
         try {
             console.log('🤖 AI Assistant 초기화 중...');
             
+            // Interactive Game Generator는 항상 초기화 (더미 모드 지원)
+            this.interactiveGameGenerator = new InteractiveGameGenerator();
+            await this.interactiveGameGenerator.initialize();
+            
             // 환경변수 확인
             if (!process.env.CLAUDE_API_KEY || !process.env.OPENAI_API_KEY || 
                 !process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
                 console.log('⚠️ AI 관련 환경변수가 설정되지 않아 AI Assistant를 건너뜁니다.');
+                console.log('✅ Interactive Game Generator는 데모 모드로 동작합니다.');
                 return;
             }
             
@@ -970,18 +975,15 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             this.aiGameGenerator = new AIGameGenerator();
             await this.aiGameGenerator.initialize();
             
-            // Interactive Game Generator 초기화
-            this.interactiveGameGenerator = new InteractiveGameGenerator();
-            await this.interactiveGameGenerator.initialize();
             
             console.log('✅ AI Assistant 및 게임 생성기 초기화 완료');
             
         } catch (error) {
             console.error('❌ AI Assistant 초기화 실패:', error.message);
+            // Interactive Game Generator는 유지 (더미 모드로 동작)
             this.aiAssistant = null;
             this.documentEmbedder = null;
             this.aiGameGenerator = null;
-            this.interactiveGameGenerator = null;
         }
     }
     
