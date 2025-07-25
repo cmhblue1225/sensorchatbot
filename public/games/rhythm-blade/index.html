@@ -14,7 +14,7 @@
         <div class="ui-panel session-panel" id="sessionPanel">
             <div class="session-title">⚔️ Rhythm Blade</div>
             <div style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
-                두 명이 협력하여 플레이하는 3D 리듬 게임!<br>
+                2명의 협력하여 플레이하는 3D 리듬 게임!<br>
                 선택한 음악에 맞춘 특별한 비트맵으로 플레이하세요!<br>
                 완벽한 타이밍과 협력으로 최고 점수를 달성하세요!
             </div>
@@ -63,12 +63,6 @@
                         <div class="track-icon">💎</div>
                         <div class="track-name">Crystal Cave</div>
                         <div class="track-details">Progressive</div>
-                        <div class="track-status"></div>
-                    </div>
-                    <div class="track-option" data-track="neon-city" id="track-neon-city">
-                        <div class="track-icon">🏙️</div>
-                        <div class="track-name">Neon City</div>
-                        <div class="track-details">Retrowave</div>
                         <div class="track-status"></div>
                     </div>
                     <div class="track-option" data-track="thunder-storm" id="track-thunder-storm">
@@ -138,9 +132,12 @@
         
         <!-- 컨트롤 패널 -->
         <div class="ui-panel control-panel hidden" id="controlPanel">
-            <button class="btn btn-secondary" onclick="game.resetGame()">🔄 재시작</button>
-            <button class="btn btn-secondary" onclick="game.togglePause()">⏸️ 일시정지</button>
-            <a href="/" class="btn btn-secondary">🏠 허브로</a>
+            <div class="control-grid">
+                <button class="btn btn-secondary" onclick="game.resetGame()">🔄 재시작</button>
+                <button class="btn btn-secondary" onclick="game.togglePause()">⏸️ 일시정지</button>
+                <button class="btn btn-secondary" onclick="game.showModeSelection()">🎵 모드선택</button>
+                <a href="/" class="btn btn-secondary">🏠 허브로</a>
+            </div>
         </div>
         
         <!-- ✅ 바닥 가이드라인 게임 설명 (탭소닉 스타일) -->
