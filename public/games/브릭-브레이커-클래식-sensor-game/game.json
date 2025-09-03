@@ -1,0 +1,33 @@
+{
+  "id": "브릭-브레이커-클래식",
+  "title": "브릭 브레이커 클래식",
+  "description": "벽돌 깨기 게임을 만들고 싶어.",
+  "gameType": "solo",
+  "difficulty": "medium",
+  "version": "1.0.0",
+  "author": "AI Game Generator",
+  "createdAt": "2025-09-03T15:36:25.060Z",
+  "sensors": [
+    "orientation"
+  ],
+  "controls": "sensor",
+  "category": "아케이드",
+  "minPlayers": 1,
+  "maxPlayers": 1,
+  "features": [
+    "mobile-sensors",
+    "real-time-gameplay",
+    "responsive-design"
+  ],
+  "requirements": {
+    "mobile": true,
+    "gyroscope": true,
+    "accelerometer": true,
+    "orientation": true
+  },
+  "integration": {
+    "sessionSDK": true,
+    "autoSession": true,
+    "qrCode": true
+  }
+}

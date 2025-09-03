@@ -74,6 +74,11 @@ class DocumentEmbedder {
                     description: '프로젝트 개요 문서'
                 },
                 {
+                    filePath: `${basePath}/CLAUDE.md`,
+                    type: 'guide',
+                    description: '프로젝트 상세 문서 및 아키텍처 가이드'
+                },
+                {
                     filePath: `${basePath}/GAME_TEMPLATE.html`,
                     type: 'template',
                     description: '게임 개발 템플릿'
@@ -82,6 +87,11 @@ class DocumentEmbedder {
                     filePath: `${basePath}/public/js/SessionSDK.js`,
                     type: 'api',
                     description: 'SessionSDK API 참조'
+                },
+                {
+                    filePath: `${basePath}/public/sensor.html`,
+                    type: 'template',
+                    description: '센서 클라이언트 템플릿'
                 }
             ];
 
@@ -92,6 +102,9 @@ class DocumentEmbedder {
 
             // 예제 게임들 처리
             await this.processExampleGames();
+
+            // 주요 서버 파일들 처리
+            await this.processServerFiles();
 
             console.log('✅ 모든 문서 임베딩 완료');
 
@@ -136,45 +149,79 @@ class DocumentEmbedder {
     }
 
     /**
-     * 개별 문서 처리
+     * 개별 문서 처리 (재시도 로직 포함)
      */
-    async processDocument(docInfo) {
+    async processDocument(docInfo, retryCount = 0) {
         try {
             console.log(`📄 처리 중: ${path.basename(docInfo.filePath)}`);
 
             // 파일 읽기
             const content = await fs.readFile(docInfo.filePath, 'utf-8');
 
+            // 빈 파일 체크
+            if (!content || content.trim().length === 0) {
+                console.log(`⚠️ ${path.basename(docInfo.filePath)} 파일이 비어있음, 건너뜀`);
+                return;
+            }
+
             // 텍스트 청킹
             const chunks = await this.textSplitter.splitText(content);
             console.log(`📋 ${chunks.length}개 청크 생성됨`);
+
+            let processedChunks = 0;
+            let failedChunks = 0;
 
             // 각 청크 임베딩 및 저장
             for (let i = 0; i < chunks.length; i++) {
                 const chunk = chunks[i];
                 
-                // 임베딩 생성
-                const embedding = await this.embeddings.embedQuery(chunk);
+                try {
+                    // 빈 청크 스킵
+                    if (!chunk || chunk.trim().length < 10) {
+                        continue;
+                    }
 
-                // 메타데이터 생성
-                const metadata = {
-                    source_file: path.basename(docInfo.filePath),
-                    document_type: docInfo.type,
-                    description: docInfo.description,
-                    chunk_index: i,
-                    total_chunks: chunks.length,
-                    char_count: chunk.length
-                };
+                    // 임베딩 생성 (재시도 포함)
+                    const embedding = await this.generateEmbeddingWithRetry(chunk, 3);
 
-                // Supabase에 저장
-                await this.saveEmbedding(chunk, embedding, metadata);
+                    // 메타데이터 생성
+                    const metadata = {
+                        source_file: path.basename(docInfo.filePath),
+                        document_type: docInfo.type,
+                        description: docInfo.description,
+                        chunk_index: i,
+                        total_chunks: chunks.length,
+                        char_count: chunk.length
+                    };
+
+                    // Supabase에 저장
+                    await this.saveEmbeddingWithRetry(chunk, embedding, metadata, 3);
+                    processedChunks++;
+
+                } catch (chunkError) {
+                    console.error(`❌ 청크 ${i} 처리 실패:`, chunkError.message);
+                    failedChunks++;
+                }
             }
 
-            console.log(`✅ ${path.basename(docInfo.filePath)} 처리 완료`);
+            console.log(`✅ ${path.basename(docInfo.filePath)} 처리 완료 (${processedChunks}/${chunks.length} 청크 성공)`);
+
+            if (failedChunks > 0) {
+                console.log(`⚠️ ${failedChunks}개 청크 처리 실패`);
+            }
 
         } catch (error) {
-            console.error(`❌ 문서 처리 실패 (${docInfo.filePath}):`, error);
-            throw error;
+            console.error(`❌ 문서 처리 실패 (${docInfo.filePath}):`, error.message);
+            
+            // 재시도 로직
+            if (retryCount < 2) {
+                console.log(`🔄 재시도 중... (${retryCount + 1}/2)`);
+                await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // 지수 백오프
+                return this.processDocument(docInfo, retryCount + 1);
+            }
+            
+            console.error(`❌ ${path.basename(docInfo.filePath)} 최종 처리 실패`);
+            // 개별 문서 실패로 전체 프로세스를 중단하지 않음
         }
     }
 
@@ -236,6 +283,81 @@ class DocumentEmbedder {
     }
 
     /**
+     * 주요 서버 파일들 처리
+     */
+    async processServerFiles() {
+        try {
+            const serverDir = '/Users/dev/졸업작품/sensorchatbot/server';
+            const serverFiles = [
+                {
+                    fileName: 'SessionManager.js',
+                    description: '세션 관리 시스템'
+                },
+                {
+                    fileName: 'GameScanner.js', 
+                    description: '게임 자동 스캔 시스템'
+                },
+                {
+                    fileName: 'AIAssistant.js',
+                    description: 'AI 어시스턴트 RAG 시스템'
+                },
+                {
+                    fileName: 'GameTemplateEngine.js',
+                    description: '게임 템플릿 엔진'
+                },
+                {
+                    fileName: 'InteractiveGameGenerator.js',
+                    description: '대화형 게임 생성기'
+                }
+            ];
+
+            for (const fileInfo of serverFiles) {
+                const filePath = path.join(serverDir, fileInfo.fileName);
+                
+                try {
+                    // 파일 존재 확인
+                    await fs.access(filePath);
+                    
+                    console.log(`🔧 서버 파일 처리 중: ${fileInfo.fileName}`);
+
+                    const content = await fs.readFile(filePath, 'utf-8');
+                    
+                    // JavaScript 코드 청킹
+                    const chunks = await this.textSplitter.splitText(content);
+
+                    for (let i = 0; i < chunks.length; i++) {
+                        const chunk = chunks[i];
+                        const embedding = await this.embeddings.embedQuery(chunk);
+
+                        const metadata = {
+                            source_file: fileInfo.fileName,
+                            document_type: 'server_code',
+                            description: fileInfo.description,
+                            file_type: 'javascript',
+                            chunk_index: i,
+                            total_chunks: chunks.length,
+                            char_count: chunk.length
+                        };
+
+                        await this.saveEmbedding(chunk, embedding, metadata);
+                    }
+
+                    console.log(`✅ ${fileInfo.fileName} 처리 완료`);
+
+                } catch (fileError) {
+                    console.log(`⚠️ ${fileInfo.fileName} 파일 없음, 건너뜀`);
+                }
+            }
+
+            console.log('✅ 모든 서버 파일 처리 완료');
+
+        } catch (error) {
+            console.error('❌ 서버 파일 처리 실패:', error);
+            throw error;
+        }
+    }
+
+    /**
      * HTML에서 JavaScript 코드 추출
      */
     extractJavaScriptFromHTML(htmlContent) {
@@ -255,29 +377,73 @@ class DocumentEmbedder {
     }
 
     /**
-     * 임베딩 데이터 저장
+     * 재시도 포함 임베딩 생성
+     */
+    async generateEmbeddingWithRetry(text, maxRetries = 3) {
+        let lastError;
+        
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const embedding = await this.embeddings.embedQuery(text);
+                return embedding;
+            } catch (error) {
+                lastError = error;
+                console.log(`⚠️ 임베딩 생성 실패 (시도 ${attempt + 1}/${maxRetries}): ${error.message}`);
+                
+                if (attempt < maxRetries - 1) {
+                    // 지수 백오프
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                }
+            }
+        }
+        
+        throw new Error(`임베딩 생성 최종 실패: ${lastError?.message}`);
+    }
+
+    /**
+     * 재시도 포함 임베딩 저장
+     */
+    async saveEmbeddingWithRetry(content, embedding, metadata, maxRetries = 3) {
+        let lastError;
+        
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const { error } = await this.supabaseClient
+                    .from('game_knowledge')
+                    .insert({
+                        content: content,
+                        embedding: embedding,
+                        metadata: metadata,
+                        document_type: metadata.document_type,
+                        source_file: metadata.source_file,
+                        chunk_index: metadata.chunk_index
+                    });
+
+                if (error) {
+                    throw error;
+                }
+                
+                return; // 성공
+                
+            } catch (error) {
+                lastError = error;
+                console.log(`⚠️ 임베딩 저장 실패 (시도 ${attempt + 1}/${maxRetries}): ${error.message}`);
+                
+                if (attempt < maxRetries - 1) {
+                    // 지수 백오프
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                }
+            }
+        }
+        
+        throw new Error(`임베딩 저장 최종 실패: ${lastError?.message}`);
+    }
+
+    /**
+     * 임베딩 데이터 저장 (하위 호환성)
      */
     async saveEmbedding(content, embedding, metadata) {
-        try {
-            const { error } = await this.supabaseClient
-                .from('game_knowledge')
-                .insert({
-                    content: content,
-                    embedding: embedding,
-                    metadata: metadata,
-                    document_type: metadata.document_type,
-                    source_file: metadata.source_file,
-                    chunk_index: metadata.chunk_index
-                });
-
-            if (error) {
-                throw error;
-            }
-
-        } catch (error) {
-            console.error('❌ 임베딩 저장 실패:', error);
-            throw error;
-        }
+        return this.saveEmbeddingWithRetry(content, embedding, metadata, 1);
     }
 
     /**
