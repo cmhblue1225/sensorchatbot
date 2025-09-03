@@ -41,6 +41,46 @@ class DocumentEmbedder {
     }
 
     /**
+     * 배포 환경에 따른 기본 경로 감지
+     */
+    detectBasePath() {
+        // Render.com 배포 환경 감지
+        if (process.env.RENDER) {
+            return '/opt/render/project/src';
+        }
+        
+        // 로컬 개발 환경 감지
+        if (process.cwd().includes('졸업작품/sensorchatbot')) {
+            return '/Users/dev/졸업작품/sensorchatbot';
+        }
+        
+        // 기본적으로 현재 작업 디렉토리 사용
+        return process.cwd();
+    }
+
+    /**
+     * 실제 존재하는 파일만 필터링
+     */
+    async filterExistingFiles(potentialDocuments) {
+        const existingDocuments = [];
+        
+        console.log('📋 파일 존재 여부 확인 중...');
+        
+        for (const doc of potentialDocuments) {
+            try {
+                await fs.access(doc.filePath);
+                existingDocuments.push(doc);
+                console.log(`  ✅ ${path.basename(doc.filePath)} - 존재함`);
+            } catch (error) {
+                console.log(`  ❌ ${path.basename(doc.filePath)} - 없음 (${doc.filePath})`);
+            }
+        }
+        
+        console.log(`📊 총 ${existingDocuments.length}/${potentialDocuments.length}개 파일이 사용 가능합니다.`);
+        return existingDocuments;
+    }
+
+    /**
      * 전체 문서 임베딩 프로세스 실행
      */
     async embedAllDocuments() {
@@ -50,9 +90,15 @@ class DocumentEmbedder {
             // 기존 데이터 정리
             await this.clearExistingData();
 
-            // 문서 파일들 정의 (현재 프로젝트 경로로 수정)
-            const basePath = '/Users/dev/졸업작품/sensorchatbot';
-            const documents = [
+            // 문서 파일들 정의 (동적 경로 감지)
+            const basePath = this.detectBasePath();
+            console.log(`📁 감지된 기본 경로: ${basePath}`);
+            console.log(`🔍 현재 작업 디렉토리: ${process.cwd()}`);
+            console.log(`🌍 환경: ${process.env.NODE_ENV || 'development'}`);
+            console.log(`🏢 Render 환경: ${process.env.RENDER ? 'Yes' : 'No'}`);
+            
+            // 사용 가능한 파일만 필터링하여 문서 목록 생성
+            const potentialDocuments = [
                 {
                     filePath: `${basePath}/AI_ASSISTANT_PROMPTS.md`,
                     type: 'prompt',
@@ -94,6 +140,9 @@ class DocumentEmbedder {
                     description: '센서 클라이언트 템플릿'
                 }
             ];
+
+            // 실제 존재하는 파일만 필터링
+            const documents = await this.filterExistingFiles(potentialDocuments);
 
             // 각 문서 처리
             for (const doc of documents) {
@@ -230,10 +279,26 @@ class DocumentEmbedder {
      */
     async processExampleGames() {
         try {
-            const gamesDir = '/Users/dev/졸업작품/sensorchatbot/public/games';
-            const gameTypes = ['solo', 'dual', 'multi', 'quick-draw', 'tilt-maze', 'cake-delivery', 'acorn-battle', 'rhythm-blade', 'shot-target', 'telephone'];
+            const basePath = this.detectBasePath();
+            const gamesDir = `${basePath}/public/games`;
+            
+            console.log(`🎮 게임 디렉토리 확인 중: ${gamesDir}`);
+            
+            // 실제 존재하는 게임 디렉토리 스캔
+            let availableGames = [];
+            try {
+                const gameEntries = await fs.readdir(gamesDir, { withFileTypes: true });
+                availableGames = gameEntries
+                    .filter(entry => entry.isDirectory())
+                    .map(entry => entry.name);
+                    
+                console.log(`📁 발견된 게임 폴더: ${availableGames.join(', ')}`);
+            } catch (error) {
+                console.log(`❌ 게임 디렉토리 접근 실패: ${error.message}`);
+                return;
+            }
 
-            for (const gameType of gameTypes) {
+            for (const gameType of availableGames) {
                 const gamePath = path.join(gamesDir, gameType, 'index.html');
                 
                 try {
@@ -287,8 +352,12 @@ class DocumentEmbedder {
      */
     async processServerFiles() {
         try {
-            const serverDir = '/Users/dev/졸업작품/sensorchatbot/server';
-            const serverFiles = [
+            const basePath = this.detectBasePath();
+            const serverDir = `${basePath}/server`;
+            
+            console.log(`🔧 서버 디렉토리 확인 중: ${serverDir}`);
+            
+            const potentialServerFiles = [
                 {
                     fileName: 'SessionManager.js',
                     description: '세션 관리 시스템'
@@ -311,13 +380,25 @@ class DocumentEmbedder {
                 }
             ];
 
-            for (const fileInfo of serverFiles) {
+            // 실제 존재하는 서버 파일만 필터링
+            const availableServerFiles = [];
+            for (const fileInfo of potentialServerFiles) {
+                const filePath = path.join(serverDir, fileInfo.fileName);
+                try {
+                    await fs.access(filePath);
+                    availableServerFiles.push(fileInfo);
+                    console.log(`  ✅ ${fileInfo.fileName} - 존재함`);
+                } catch (error) {
+                    console.log(`  ❌ ${fileInfo.fileName} - 없음`);
+                }
+            }
+            
+            console.log(`📊 총 ${availableServerFiles.length}/${potentialServerFiles.length}개 서버 파일이 사용 가능합니다.`);
+
+            for (const fileInfo of availableServerFiles) {
                 const filePath = path.join(serverDir, fileInfo.fileName);
                 
                 try {
-                    // 파일 존재 확인
-                    await fs.access(filePath);
-                    
                     console.log(`🔧 서버 파일 처리 중: ${fileInfo.fileName}`);
 
                     const content = await fs.readFile(filePath, 'utf-8');
