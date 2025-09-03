@@ -1,17 +1,17 @@
 {
-  "id": "브릭-브레이커-클래식",
-  "title": "브릭 브레이커 클래식",
-  "description": "벽돌 깨기 게임을 만들고 싶어.",
+  "id": "tilt---roll-maze",
+  "title": "Tilt & Roll Maze",
+  "description": "스마트폰을 기울여서 공을 굴리는 미로 게임",
   "gameType": "solo",
-  "difficulty": "medium",
+  "difficulty": "easy|medium|hard",
   "version": "1.0.0",
   "author": "AI Game Generator",
-  "createdAt": "2025-09-03T15:36:25.060Z",
+  "createdAt": "2025-09-03T16:12:40.863Z",
   "sensors": [
     "orientation"
   ],
   "controls": "sensor",
-  "category": "아케이드",
+  "category": "puzzle",
   "minPlayers": 1,
   "maxPlayers": 1,
   "features": [
