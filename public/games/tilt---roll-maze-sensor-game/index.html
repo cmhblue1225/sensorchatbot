@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tilt & Roll Maze</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --background: #0f172a;
+            --text: #e2e8f0;
+            --accent: #f472b6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--background);
+            color: var(--text);
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #gameCanvas {
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            max-width: 100%;
+            max-height: 80vh;
+        }
+
+        #ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .status {
+            font-size: 1.2rem;
+            color: var(--accent);
+        }
+
+        #qrCode {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            padding: 2rem;
+            border-radius: 8px;
+            border: 2px solid var(--primary);
+            display: none;
+        }
+
+        button {
+            background: var(--primary);
+            color: var(--text);
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            min-height: 44px;
+            margin: 0.5rem;
+        }
+
+        button:hover {
+            background: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui">
+            <div class="status">Time: <span id="timeDisplay">60</span></div>
+            <div class="status">Score: <span id="scoreDisplay">0</span></div>
+        </div>
+        <div id="qrCode"></div>
+    </div>
+
+    <div id="gameOverModal" class="modal">
+        <h2>Game Over</h2>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button id="restartButton">Play Again</button>
+    </div>
+
+    <script src="/js/SessionSDK.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const GAME_CONFIG = {
+                width: 800,
+                height: 600,
+                ballRadius: 10,
+                mazeWallThickness: 20,
+                timeLimit: 60,
+                fps: 60
+            };
+
+            class Game {
+                constructor() {
+                    this.canvas = document.getElementById('gameCanvas');
+                    this.ctx = this.canvas.getContext('2d');
+                    this.canvas.width = GAME_CONFIG.width;
+                    this.canvas.height = GAME_CONFIG.height;
+
+                    this.state = 'ready';
+                    this.score = 0;
+                    this.timeRemaining = GAME_CONFIG.timeLimit;
+                    
+                    this.ball = {
+                        x: 50,
+                        y: 50,
+                        vx: 0,
+                        vy: 0,
+                        radius: GAME_CONFIG.ballRadius
+                    };
+
+                    this.maze = this.generateMaze();
+                    this.setupSDK();
+                    this.setupEventListeners();
+                    this.lastTime = 0;
+                    this.sensorData = { beta: 0, gamma: 0 };
+                }
+
+                setupSDK() {
+                    this.sdk = new SessionSDK({
+                        gameId: 'Tilt---Roll-Maze',
+                        gameType: 'solo'
+                    });
+
+                    this.sdk.on('connected', () => {
+                        this.sdk.createSession();
+                    });
+
+                    this.sdk.on('session-created', (event) => {
+                        const session = event.detail || event;
+                        console.log('Session created:', session);
+                    });
+
+                    this.sdk.on('sensor-data', (event) => {
+                        const data = event.detail || event;
+                        this.sensorData = {
+                            beta: data.orientation.beta,
+                            gamma: data.orientation.gamma
+                        };
+                    });
+                }
+
+                generateMaze() {
+                    // 간단한 미로 생성 로직
+                    return {
+                        walls: [
+                            { x: 100, y: 100, width: 20, height: 200 },
+                            { x: 300, y: 200, width: 200, height: 20 },
+                            { x: 500, y: 100, width: 20, height: 400 }
+                        ],
+                        goal: { x: 700, y: 500, radius: 30 }
+                    };
+                }
+
+                update(deltaTime) {
+                    if (this.state !== 'playing') return;
+
+                    // 공 물리 업데이트
+                    this.ball.vx += this.sensorData.gamma * 0.1;
+                    this.ball.vy += this.sensorData.beta * 0.1;
+
+                    // 마찰력 적용
+                    this.ball.vx *= 0.95;
+                    this.ball.vy *= 0.95;
+
+                    // 위치 업데이트
+                    this.ball.x += this.ball.vx;
+                    this.ball.y += this.ball.vy;
+
+                    // 벽 충돌 체크
+                    this.checkWallCollisions();
+
+                    // 목표 지점 도달 체크
+                    if (this.checkGoal()) {
+                        this.win();
+                    }
+
+                    // 시간 업데이트
+                    this.timeRemaining -= deltaTime / 1000;
+                    if (this.timeRemaining <= 0) {
+                        this.gameOver();
+                    }
+                }
+
+                render() {
+                    this.ctx.fillStyle = var(--background);
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                    // 미로 그리기
+                    this.ctx.fillStyle = var(--primary);
+                    this.maze.walls.forEach(wall => {
+                        this.ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+                    });
+
+                    // 목표 지점 그리기
+                    this.ctx.fillStyle = var(--accent);
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.maze.goal.x, this.maze.goal.y, 
+                               this.maze.goal.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    // 공 그리기
+                    this.ctx.fillStyle = var(--secondary);
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    // UI 업데이트
+                    document.getElementById('timeDisplay').textContent = 
+                        Math.max(0, Math.floor(this.timeRemaining));
+                    document.getElementById('scoreDisplay').textContent = this.score;
+                }
+
+                gameLoop(timestamp) {
+                    const deltaTime = timestamp - this.lastTime;
+                    this.lastTime = timestamp;
+
+                    this.update(deltaTime);
+                    this.render();
+
+                    if (this.state === 'playing') {
+                        requestAnimationFrame(this.gameLoop.bind(this));
+                    }
+                }
+
+                start() {
+                    this.state = 'playing';
+                    this.lastTime = performance.now();
+                    requestAnimationFrame(this.gameLoop.bind(this));
+                }
+
+                setupEventListeners() {
+                    document.getElementById('restartButton').addEventListener('click', () => {
+                        this.restart();
+                    });
+                }
+
+                checkWallCollisions() {
+                    this.maze.walls.forEach(wall => {
+                        // 간단한 충돌 검사
+                        if (this.ball.x + this.ball.radius > wall.x &&
+                            this.ball.x - this.ball.radius < wall.x + wall.width &&
+                            this.ball.y + this.ball.radius > wall.y &&
+                            this.ball.y - this.ball.radius < wall.y + wall.height) {
+                            
+                            // 충돌 응답
+                            this.ball.vx *= -0.5;
+                            this.ball.vy *= -0.5;
+                        }
+                    });
+                }
+
+                checkGoal() {
+                    const dx = this.ball.x - this.maze.goal.x;
+                    const dy = this.ball.y - this.maze.goal.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    return distance < this.maze.goal.radius;
+                }
+
+                win() {
+                    this.state = 'won';
+                    this.score += Math.floor(this.timeRemaining * 10);
+                    this.showGameOver();
+                }
+
+                gameOver() {
+                    this.state = 'gameOver';
+                    this.showGameOver();
+                }
+
+                showGameOver() {
+                    document.getElementById('finalScore').textContent = this.score;
+                    document.getElementById('gameOverModal').style.display = 'block';
+                }
+
+                restart() {
+                    this.ball = {
+                        x: 50,
+                        y: 50,
+                        vx: 0,
+                        vy: 0,
+                        radius: GAME_CONFIG.ballRadius
+                    };
+                    this.score = 0;
+                    this.timeRemaining = GAME_CONFIG.timeLimit;
+                    document.getElementById('gameOverModal').style.display = 'none';
+                    this.start();
+                }
+            }
+
+            // 게임 인스턴스 생성 및 시작
+            const game = new Game();
+            game.start();
+        });
+    </script>
+</body>
+</html>
