@@ -249,7 +249,7 @@ ${context}
 - 구체적인 질문으로 정보 수집
 - 충분한 정보가 있으면 반드시 위 JSON을 포함하세요`;
 
-        const response = await this.llm.invoke([{ role: 'user', content: prompt }]);
+        const response = await this.safeInvokeLLM(prompt, 'initial', userMessage);
         
         // 개선된 JSON 추출 로직
         let extracted = this.extractJSONFromResponse(response.content);
@@ -322,7 +322,7 @@ ${context}
 
 자연스러운 대화체로 응답하되, 충분한 정보가 수집되었다고 판단되면 반드시 위 JSON을 포함하세요.`;
 
-        const response = await this.llm.invoke([{ role: 'user', content: prompt }]);
+        const response = await this.safeInvokeLLM(prompt, 'initial', userMessage);
         
         // 개선된 JSON 추출 로직
         let extracted = this.extractJSONFromResponse(response.content);
@@ -397,7 +397,7 @@ ${context}
 
 자연스러운 대화체로 응답하되, 충분한 정보가 수집되었다고 판단되면 반드시 위 JSON을 포함하세요.`;
 
-        const response = await this.llm.invoke([{ role: 'user', content: prompt }]);
+        const response = await this.safeInvokeLLM(prompt, 'initial', userMessage);
         
         // 개선된 JSON 추출 로직
         let extracted = this.extractJSONFromResponse(response.content);
@@ -469,7 +469,7 @@ ${context}
 
 요청에 따라 수정사항을 반영하고, 다시 확인해주세요.`;
             
-            const response = await this.llm.invoke([{ role: 'user', content: prompt }]);
+            const response = await this.safeInvokeLLM(prompt, 'initial', userMessage);
             
             return {
                 message: response.content + '\n\n💡 수정이 완료되었다면 "확인" 또는 "좋아"라고 말씀해주세요!',
@@ -755,10 +755,101 @@ ${context}
     }
 
     /**
+     * 안전한 LLM 호출 (더미 모드 지원)
+     */
+    async safeInvokeLLM(prompt, stage = 'general', userMessage = '') {
+        if (this.mockMode || !this.llm) {
+            console.log('🎭 더미 모드 - 기본 응답 생성');
+            return { content: this.generateMockResponse(stage, userMessage) };
+        }
+        
+        try {
+            return await this.llm.invoke([{ role: 'user', content: prompt }]);
+        } catch (error) {
+            console.error('❌ Claude API 호출 실패:', error);
+            console.log('🎭 더미 모드로 대체');
+            return { content: this.generateMockResponse(stage, userMessage) };
+        }
+    }
+
+    /**
+     * 더미 응답 생성
+     */
+    generateMockResponse(stage, userMessage) {
+        switch (stage) {
+            case 'initial':
+                return `🎮 **흥미로운 게임 아이디어네요!**
+
+"${userMessage}"에 대한 피드백을 드리겠습니다.
+
+모바일 센서를 활용한 게임으로 개발하기에 매우 좋은 아이디어입니다. 다음과 같은 방향으로 구체화해보는 것이 어떨까요?
+
+몇 가지 질문이 있습니다:
+1. 혼자 플레이하는 게임인가요, 여러 명이 함께 하는 게임인가요?
+2. 어떤 센서를 주로 사용하고 싶으신가요? (기울기, 흔들기, 회전 등)
+3. 게임의 목표는 무엇인가요?
+
+더 자세히 알려주시면 완벽한 게임으로 만들어드리겠습니다! ✨
+
+{"readyForNext": false}`;
+
+            case 'details':
+                return `📝 **게임 세부사항을 구체화해보겠습니다.**
+
+말씀해주신 내용을 바탕으로 게임의 세부 요소들을 정리해보았습니다.
+
+추가로 알고 싶은 것들:
+1. 게임의 난이도는 어느 정도로 생각하시나요?
+2. 특별한 시각적 효과나 사운드가 필요한가요?
+3. 점수나 레벨 시스템이 있나요?
+
+이 정보들을 바탕으로 게임 메카닉을 설계해보겠습니다! 🎯
+
+{"readyForNext": false}`;
+
+            case 'mechanics':
+                return `⚙️ **게임 메카닉 설계 중입니다.**
+
+지금까지의 정보를 종합하여 게임 메카닉을 구성해보았습니다.
+
+현재까지 정리된 내용:
+- 게임 타입: Solo Game
+- 기본 조작: 기울기 센서
+- 목표: 점수 획득
+
+이 설계가 맞는지 확인해주시고, 수정하고 싶은 부분이 있으면 알려주세요! 🔧
+
+{"readyForNext": true}`;
+
+            case 'confirmation':
+                return `✅ **게임 생성을 확인해주세요.**
+
+최종 게임 사양:
+- 제목: 센서 게임
+- 타입: Solo Game  
+- 장르: 액션
+- 조작: 모바일 센서
+
+이대로 게임을 생성할까요? "확인" 또는 "생성"이라고 말씀해주시면 바로 게임을 만들어드리겠습니다! 🚀
+
+{"readyForNext": true, "canGenerate": true}`;
+
+            default:
+                return `안녕하세요! 어떤 게임을 만들어드릴까요? 🎮`;
+        }
+    }
+
+    /**
      * 관련 컨텍스트 검색
      */
     async getRelevantContext(userMessage) {
         try {
+            // vectorStore가 초기화되지 않은 경우 기본 컨텍스트 반환
+            if (!this.vectorStore) {
+                console.log('⚠️ VectorStore가 초기화되지 않음 - 기본 컨텍스트 사용');
+                return this.getDefaultContext();
+            }
+
             const retriever = this.vectorStore.asRetriever({
                 k: 3,
                 searchType: 'similarity'
@@ -767,8 +858,32 @@ ${context}
             return docs.map(doc => doc.pageContent).join('\n\n');
         } catch (error) {
             console.error('컨텍스트 검색 실패:', error);
-            return '';
+            console.log('📋 기본 컨텍스트 사용으로 대체');
+            return this.getDefaultContext();
         }
+    }
+
+    /**
+     * 기본 컨텍스트 반환 (RAG 사용 불가 시)
+     */
+    getDefaultContext() {
+        return `# Sensor Game Hub 게임 개발 기본 정보
+
+## 지원하는 게임 타입
+- **Solo Game**: 1개 센서로 플레이하는 게임 (예: 공 굴리기, 미로 탈출)
+- **Dual Game**: 2개 센서로 협력하는 게임 (예: 협동 퍼즐)
+- **Multi Game**: 3-8명이 동시에 플레이하는 경쟁 게임
+
+## 센서 데이터 구조
+- **orientation**: alpha(회전), beta(앞뒤기울기), gamma(좌우기울기)
+- **acceleration**: x(좌우), y(상하), z(앞뒤) 가속도
+- **rotationRate**: 회전 속도
+
+## 필수 개발 패턴
+- SessionSDK 사용 필수
+- 서버 연결 완료 후 세션 생성
+- event.detail || event 패턴으로 이벤트 처리
+- HTML5 Canvas 기반 렌더링`;
     }
 
     /**
