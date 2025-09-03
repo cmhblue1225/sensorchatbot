@@ -50,35 +50,36 @@ class DocumentEmbedder {
             // 기존 데이터 정리
             await this.clearExistingData();
 
-            // 문서 파일들 정의
+            // 문서 파일들 정의 (현재 프로젝트 경로로 수정)
+            const basePath = '/Users/dev/졸업작품/sensorchatbot';
             const documents = [
                 {
-                    filePath: '/Users/minhyuk/Desktop/센서게임/langchain 시도/sensor-game-hub-v6/AI_ASSISTANT_PROMPTS.md',
+                    filePath: `${basePath}/AI_ASSISTANT_PROMPTS.md`,
                     type: 'prompt',
                     description: 'AI 어시스턴트용 프롬프트 템플릿'
                 },
                 {
-                    filePath: '/Users/minhyuk/Desktop/센서게임/langchain 시도/sensor-game-hub-v6/DEVELOPER_GUIDE.md',
+                    filePath: `${basePath}/DEVELOPER_GUIDE.md`,
                     type: 'guide',
                     description: '개발자 가이드 문서'
                 },
                 {
-                    filePath: '/Users/minhyuk/Desktop/센서게임/langchain 시도/sensor-game-hub-v6/learning_data',
+                    filePath: `${basePath}/learning_data`,
                     type: 'guide',
                     description: '종합 학습 데이터'
                 },
                 {
-                    filePath: '/Users/minhyuk/Desktop/센서게임/langchain 시도/sensor-game-hub-v6/README.md',
+                    filePath: `${basePath}/README.md`,
                     type: 'guide',
                     description: '프로젝트 개요 문서'
                 },
                 {
-                    filePath: '/Users/minhyuk/Desktop/센서게임/langchain 시도/sensor-game-hub-v6/GAME_TEMPLATE.html',
+                    filePath: `${basePath}/GAME_TEMPLATE.html`,
                     type: 'template',
                     description: '게임 개발 템플릿'
                 },
                 {
-                    filePath: '/Users/minhyuk/Desktop/센서게임/langchain 시도/sensor-game-hub-v6/public/js/SessionSDK.js',
+                    filePath: `${basePath}/public/js/SessionSDK.js`,
                     type: 'api',
                     description: 'SessionSDK API 참조'
                 }
@@ -182,8 +183,8 @@ class DocumentEmbedder {
      */
     async processExampleGames() {
         try {
-            const gamesDir = '/Users/minhyuk/Desktop/센서게임/langchain 시도/sensor-game-hub-v6/public/games';
-            const gameTypes = ['solo', 'dual', 'multi', 'quick-draw', 'tilt-maze', 'cake-delivery'];
+            const gamesDir = '/Users/dev/졸업작품/sensorchatbot/public/games';
+            const gameTypes = ['solo', 'dual', 'multi', 'quick-draw', 'tilt-maze', 'cake-delivery', 'acorn-battle', 'rhythm-blade', 'shot-target', 'telephone'];
 
             for (const gameType of gameTypes) {
                 const gamePath = path.join(gamesDir, gameType, 'index.html');
