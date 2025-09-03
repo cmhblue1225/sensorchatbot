@@ -127,16 +127,36 @@ class AIAssistant {
         // 프롬프트 템플릿 생성
         const promptTemplate = PromptTemplate.fromTemplate(systemPrompt);
 
-        // RAG 체인 구성
+        // RAG 체인 구성 - 직접 벡터 검색 구현
         this.ragChain = RunnableSequence.from([
             {
                 context: async (input) => {
-                    const retriever = this.vectorStore.asRetriever({
-                        k: 5, // 상위 5개 문서 검색
-                        searchType: 'similarity'
-                    });
-                    const docs = await retriever.getRelevantDocuments(input.question);
-                    return docs.map(doc => doc.pageContent).join('\n\n');
+                    try {
+                        // 질문을 임베딩으로 변환
+                        const queryEmbedding = await this.embeddings.embedQuery(input.question);
+                        
+                        // Supabase RPC 직접 호출
+                        const { data, error } = await this.supabaseClient
+                            .rpc('match_documents', {
+                                query_embedding: queryEmbedding,
+                                match_threshold: 0.7,
+                                match_count: 5
+                            });
+
+                        if (error) {
+                            console.error('벡터 검색 오류:', error);
+                            return '관련 문서를 찾을 수 없습니다.';
+                        }
+
+                        if (!data || data.length === 0) {
+                            return '관련 문서를 찾을 수 없습니다.';
+                        }
+
+                        return data.map(doc => doc.content).join('\n\n');
+                    } catch (error) {
+                        console.error('컨텍스트 검색 오류:', error);
+                        return '문서 검색 중 오류가 발생했습니다.';
+                    }
                 },
                 question: (input) => input.question,
             },

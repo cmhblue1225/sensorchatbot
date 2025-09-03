@@ -379,23 +379,62 @@ class GameServer {
 
                 const { question } = req.body;
                 
-                if (!question) {
+                if (!question || typeof question !== 'string' || question.trim() === '') {
                     return res.status(400).json({
                         success: false,
-                        error: '질문이 제공되지 않았습니다.'
+                        error: '유효한 질문이 제공되지 않았습니다.'
                     });
                 }
 
                 console.log(`🤔 AI 질문 요청: "${question}"`);
-                const result = await this.aiAssistant.query(question);
+                
+                // 헬스 체크 먼저 실행
+                const healthCheck = await this.aiAssistant.healthCheck();
+                if (!healthCheck.success) {
+                    console.error('❌ AI Assistant 헬스 체크 실패:', healthCheck.error);
+                    return res.status(503).json({
+                        success: false,
+                        error: 'AI 서비스가 현재 사용할 수 없습니다. 잠시 후 다시 시도해주세요.'
+                    });
+                }
+
+                const result = await this.aiAssistant.query(question.trim());
+                
+                // 결과 검증
+                if (!result || typeof result !== 'object') {
+                    throw new Error('AI Assistant로부터 유효하지 않은 응답을 받았습니다.');
+                }
+
+                // 답변이 비어있는 경우 처리
+                if (result.success && (!result.answer || result.answer.trim() === '')) {
+                    result.answer = '죄송합니다. 해당 질문에 대한 적절한 답변을 생성하지 못했습니다. 다른 방식으로 질문해 주세요.';
+                }
                 
                 res.json(result);
 
             } catch (error) {
                 console.error('❌ AI 질문 처리 실패:', error);
-                res.status(500).json({
+                
+                // 구체적인 오류 분류
+                let errorMessage = '죄송합니다. 처리 중 오류가 발생했습니다.';
+                let statusCode = 500;
+                
+                if (error.message.includes('documents')) {
+                    errorMessage = '문서 검색 중 오류가 발생했습니다. 관리자에게 문의하세요.';
+                } else if (error.message.includes('embedding')) {
+                    errorMessage = '텍스트 분석 중 오류가 발생했습니다. 다시 시도해 주세요.';
+                } else if (error.message.includes('network') || error.message.includes('timeout')) {
+                    errorMessage = '네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+                    statusCode = 503;
+                } else if (error.message.includes('API key')) {
+                    errorMessage = 'AI 서비스 인증 오류입니다. 관리자에게 문의하세요.';
+                    statusCode = 503;
+                }
+                
+                res.status(statusCode).json({
                     success: false,
-                    error: error.message
+                    error: errorMessage,
+                    details: process.env.NODE_ENV === 'development' ? error.message : undefined
                 });
             }
         });
