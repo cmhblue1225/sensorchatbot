@@ -975,6 +975,8 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             this.aiGameGenerator = new AIGameGenerator();
             await this.aiGameGenerator.initialize();
             
+            // 자동 문서 임베딩 실행
+            await this.autoEmbedDocuments();
             
             console.log('✅ AI Assistant 및 게임 생성기 초기화 완료');
             
@@ -984,6 +986,43 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             this.aiAssistant = null;
             this.documentEmbedder = null;
             this.aiGameGenerator = null;
+        }
+    }
+    
+    /**
+     * 자동 문서 임베딩 실행
+     */
+    async autoEmbedDocuments() {
+        try {
+            if (!this.documentEmbedder) {
+                console.log('⚠️ DocumentEmbedder가 초기화되지 않아 임베딩을 건너뜁니다.');
+                return;
+            }
+
+            console.log('🔍 기존 임베딩 데이터 확인 중...');
+            
+            // 기존 데이터 확인
+            const stats = await this.documentEmbedder.getEmbeddingStats();
+            
+            if (stats && stats.total > 0) {
+                console.log(`📊 기존 임베딩 데이터 발견: ${stats.total}개 문서`);
+                console.log('✅ 임베딩 건너뜀 (기존 데이터 사용)');
+                return;
+            }
+            
+            console.log('📚 새로운 문서 임베딩 시작...');
+            const result = await this.documentEmbedder.embedAllDocuments();
+            
+            if (result.success) {
+                console.log('✅ 자동 임베딩 완료!');
+                console.log(`📊 총 ${result.stats.total}개 문서가 임베딩되었습니다.`);
+            } else {
+                console.log('⚠️ 임베딩 중 일부 오류 발생, 계속 진행합니다.');
+            }
+            
+        } catch (error) {
+            console.error('❌ 자동 임베딩 실패:', error.message);
+            console.log('⚠️ 임베딩 실패했지만 서버는 계속 실행됩니다.');
         }
     }
     

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>브릭 브레이커 클래식</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --background: #0f172a;
+            --text: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--background);
+            color: var(--text);
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #gameCanvas {
+            background: #1e293b;
+            border-radius: 8px;
+            max-width: 100%;
+        }
+
+        .ui-container {
+            width: 100%;
+            max-width: 600px;
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status {
+            font-size: 1.2rem;
+            padding: 10px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 4px;
+        }
+
+        #qrCode {
+            margin: 20px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .button {
+            min-width: 44px;
+            min-height: 44px;
+            padding: 12px 24px;
+            background: var(--primary);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .button:hover {
+            background: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div class="ui-container">
+        <div class="status">점수: <span id="score">0</span></div>
+        <div class="status">생명: <span id="lives">3</span></div>
+    </div>
+    <div id="qrCode"></div>
+    <button id="startButton" class="button">게임 시작</button>
+
+    <script src="/js/SessionSDK.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const GAME_WIDTH = 600;
+            const GAME_HEIGHT = 800;
+
+            // 캔버스 크기 설정
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
+
+            // 게임 상태
+            const gameState = {
+                status: 'ready', // ready, playing, paused, gameOver
+                score: 0,
+                lives: 3,
+                bricks: [],
+                paddle: {
+                    x: GAME_WIDTH / 2,
+                    width: 100,
+                    height: 20,
+                    speed: 8
+                },
+                ball: {
+                    x: GAME_WIDTH / 2,
+                    y: GAME_HEIGHT - 50,
+                    radius: 8,
+                    dx: 5,
+                    dy: -5
+                }
+            };
+
+            // SessionSDK 초기화
+            const sdk = new SessionSDK({
+                gameId: '-----------',
+                gameType: 'solo'
+            });
+
+            // 센서 데이터 처리
+            let sensorData = {
+                gamma: 0,
+                acceleration: { x: 0, y: 0, z: 0 }
+            };
+
+            sdk.on('connected', () => {
+                sdk.createSession();
+            });
+
+            sdk.on('session-created', (event) => {
+                const session = event.detail || event;
+                console.log('Session created:', session);
+            });
+
+            sdk.on('sensor-data', (event) => {
+                const data = event.detail || event;
+                sensorData = {
+                    gamma: data.orientation?.gamma || 0,
+                    acceleration: data.acceleration || { x: 0, y: 0, z: 0 }
+                };
+            });
+
+            // 벽돌 초기화
+            function initBricks() {
+                const BRICK_ROWS = 5;
+                const BRICK_COLS = 8;
+                const BRICK_WIDTH = (GAME_WIDTH - 40) / BRICK_COLS;
+                const BRICK_HEIGHT = 30;
+                const BRICK_PADDING = 4;
+
+                gameState.bricks = [];
+                for (let r = 0; r < BRICK_ROWS; r++) {
+                    for (let c = 0; c < BRICK_COLS; c++) {
+                        gameState.bricks.push({
+                            x: c * (BRICK_WIDTH + BRICK_PADDING) + 20,
+                            y: r * (BRICK_HEIGHT + BRICK_PADDING) + 50,
+                            width: BRICK_WIDTH,
+                            height: BRICK_HEIGHT,
+                            active: true
+                        });
+                    }
+                }
+            }
+
+            // 게임 업데이트
+            function update() {
+                if (gameState.status !== 'playing') return;
+
+                // 패들 이동
+                const paddleDelta = (sensorData.gamma / 90) * gameState.paddle.speed;
+                gameState.paddle.x = Math.max(0,
+                    Math.min(GAME_WIDTH - gameState.paddle.width,
+                        gameState.paddle.x + paddleDelta));
+
+                // 볼 이동
+                gameState.ball.x += gameState.ball.dx;
+                gameState.ball.y += gameState.ball.dy;
+
+                // 벽 충돌
+                if (gameState.ball.x + gameState.ball.radius > GAME_WIDTH ||
+                    gameState.ball.x - gameState.ball.radius < 0) {
+                    gameState.ball.dx *= -1;
+                }
+                if (gameState.ball.y - gameState.ball.radius < 0) {
+                    gameState.ball.dy *= -1;
+                }
+
+                // 패들 충돌
+                if (gameState.ball.y + gameState.ball.radius > GAME_HEIGHT - gameState.paddle.height &&
+                    gameState.ball.x > gameState.paddle.x &&
+                    gameState.ball.x < gameState.paddle.x + gameState.paddle.width) {
+                    gameState.ball.dy *= -1;
+                }
+
+                // 벽돌 충돌
+                gameState.bricks.forEach(brick => {
+                    if (!brick.active) return;
+
+                    if (gameState.ball.x > brick.x &&
+                        gameState.ball.x < brick.x + brick.width &&
+                        gameState.ball.y > brick.y &&
+                        gameState.ball.y < brick.y + brick.height) {
+                        brick.active = false;
+                        gameState.ball.dy *= -1;
+                        gameState.score += 10;
+                        document.getElementById('score').textContent = gameState.score;
+                    }
+                });
+
+                // 볼 놓침
+                if (gameState.ball.y + gameState.ball.radius > GAME_HEIGHT) {
+                    gameState.lives--;
+                    document.getElementById('lives').textContent = gameState.lives;
+                    if (gameState.lives <= 0) {
+                        gameState.status = 'gameOver';
+                    } else {
+                        resetBall();
+                    }
+                }
+            }
+
+            // 렌더링
+            function render() {
+                ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+                // 패들 그리기
+                ctx.fillStyle = var(--primary);
+                ctx.fillRect(gameState.paddle.x, GAME_HEIGHT - gameState.paddle.height,
+                    gameState.paddle.width, gameState.paddle.height);
+
+                // 볼 그리기
+                ctx.beginPath();
+                ctx.arc(gameState.ball.x, gameState.ball.y,
+                    gameState.ball.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.closePath();
+
+                // 벽돌 그리기
+                gameState.bricks.forEach(brick => {
+                    if (!brick.active) return;
+                    ctx.fillStyle = var(--secondary);
+                    ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+                });
+
+                // 게임오버 표시
+                if (gameState.status === 'gameOver') {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+                    ctx.font = '48px system-ui';
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('GAME OVER', GAME_WIDTH/2, GAME_HEIGHT/2);
+                }
+            }
+
+            // 게임 루프
+            function gameLoop() {
+                update();
+                render();
+                requestAnimationFrame(gameLoop);
+            }
+
+            // 볼 리셋
+            function resetBall() {
+                gameState.ball.x = GAME_WIDTH / 2;
+                gameState.ball.y = GAME_HEIGHT - 50;
+                gameState.ball.dx = 5;
+                gameState.ball.dy = -5;
+            }
+
+            // 게임 시작
+            document.getElementById('startButton').addEventListener('click', () => {
+                if (gameState.status === 'ready' || gameState.status === 'gameOver') {
+                    gameState.status = 'playing';
+                    gameState.score = 0;
+                    gameState.lives = 3;
+                    document.getElementById('score').textContent = '0';
+                    document.getElementById('lives').textContent = '3';
+                    initBricks();
+                    resetBall();
+                }
+            });
+
+            // 게임 초기화 및 시작
+            initBricks();
+            gameLoop();
+        });
+    </script>
+</body>
+</html>
