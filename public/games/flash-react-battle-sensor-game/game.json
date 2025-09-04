@@ -1,0 +1,33 @@
+{
+  "id": "flash-react-battle",
+  "title": "Flash React Battle",
+  "description": "여러 명이 경쟁하는 반응속도 테스트 게임을 제작하고 싶어.",
+  "gameType": "multi",
+  "difficulty": "medium",
+  "version": "1.0.0",
+  "author": "AI Game Generator",
+  "createdAt": "2025-09-04T04:29:04.067Z",
+  "sensors": [
+    "orientation"
+  ],
+  "controls": "sensor",
+  "category": "캐주얼",
+  "minPlayers": 2,
+  "maxPlayers": 10,
+  "features": [
+    "mobile-sensors",
+    "real-time-gameplay",
+    "responsive-design"
+  ],
+  "requirements": {
+    "mobile": true,
+    "gyroscope": true,
+    "accelerometer": true,
+    "orientation": true
+  },
+  "integration": {
+    "sessionSDK": true,
+    "autoSession": true,
+    "qrCode": true
+  }
+}
