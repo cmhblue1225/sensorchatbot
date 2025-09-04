@@ -536,33 +536,105 @@ class GameGenreClassifier {
     async classifyGameIdea(userInput) {
         console.log('🔍 게임 아이디어 분류 시작:', userInput);
         
-        // 기존 analyzeGameTheme 메소드 활용
-        const analysis = this.analyzeGameTheme(userInput);
+        // 1. 장르 분석
+        const detectedGenres = this.analyzeGenres(userInput);
+        const primaryGenre = this.selectPrimaryGenre(detectedGenres);
+        
+        // 2. 복잡도 분석
+        const complexity = this.analyzeComplexity(userInput);
+        
+        // 3. 테마 키워드 추출
+        const themeKeywords = this.extractThemeKeywords(userInput);
+        
+        // 4. 센서 매핑 생성
+        const sensorMapping = this.createSensorMapping({
+            primaryGenre,
+            detectedGenres,
+            complexity,
+            themeKeywords
+        });
         
         // InteractiveGameGenerator에서 사용할 형태로 변환
         const classification = {
             // 주 장르
-            primaryGenre: analysis.primaryGenre,
-            confidence: analysis.confidence,
+            primaryGenre: primaryGenre,
+            confidence: detectedGenres.length > 0 ? detectedGenres[0].score / 10 : 0.5,
             
             // 추가 장르들
-            secondaryGenres: analysis.detectedGenres.slice(1, 3).map(g => g.genre),
+            secondaryGenres: detectedGenres.slice(1, 3).map(g => g.genre),
             
             // 게임 타입 추정 (단어 분석으로)
             gameType: this.estimateGameType(userInput),
             
             // 센서 메카닉
-            sensorMechanics: analysis.sensorMapping,
+            sensorMechanics: sensorMapping,
             
             // 난이도
-            difficulty: analysis.complexity,
+            difficulty: complexity,
             
             // 원본 분석 결과
-            fullAnalysis: analysis
+            fullAnalysis: {
+                primaryGenre,
+                detectedGenres,
+                complexity,
+                themeKeywords,
+                sensorMapping
+            }
         };
 
         console.log('📊 분류 결과:', classification);
         return classification;
+    }
+
+    /**
+     * 복잡도 분석
+     */
+    analyzeComplexity(text) {
+        const lowerText = text.toLowerCase();
+        
+        // 복잡도 키워드들
+        const easyKeywords = ['간단한', '쉬운', '단순한', '기본적인', '초보'];
+        const mediumKeywords = ['보통', '일반적인', '적당한'];
+        const hardKeywords = ['복잡한', '어려운', '고급', '전문적인', '도전적인'];
+        
+        let easyScore = 0;
+        let mediumScore = 0;
+        let hardScore = 0;
+        
+        easyKeywords.forEach(keyword => {
+            if (lowerText.includes(keyword)) easyScore++;
+        });
+        
+        mediumKeywords.forEach(keyword => {
+            if (lowerText.includes(keyword)) mediumScore++;
+        });
+        
+        hardKeywords.forEach(keyword => {
+            if (lowerText.includes(keyword)) hardScore++;
+        });
+        
+        if (hardScore > 0) return 'hard';
+        if (mediumScore > 0) return 'medium';
+        if (easyScore > 0) return 'easy';
+        
+        return 'medium'; // 기본값
+    }
+
+    /**
+     * 테마 키워드 추출
+     */
+    extractThemeKeywords(text) {
+        const words = text.toLowerCase()
+            .replace(/[^\w\s가-힣]/g, ' ')
+            .split(/\s+/)
+            .filter(word => word.length > 1);
+        
+        // 게임 관련 키워드들만 필터링
+        const gameKeywords = words.filter(word => {
+            return !['게임', '만들기', '하고', '싶어요', '원해요', '해주세요', '같은', '이런', '저런'].includes(word);
+        });
+        
+        return gameKeywords.slice(0, 10); // 상위 10개만
     }
 
     /**
