@@ -862,6 +862,26 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                 }
 
                 const result = await this.interactiveGameGenerator.generateFinalGame(sessionId);
+                
+                // 게임이 성공적으로 생성되고 저장되었다면 게임 스캐너 재실행
+                if (result.success && result.gamePath) {
+                    console.log('🔄 새로운 게임 생성 완료 - 게임 스캐너 재실행 중...');
+                    try {
+                        // 게임 스캐너 재실행
+                        await this.rescanGames();
+                        console.log('✅ 게임 스캐너 재실행 완료 - 새 게임이 등록되었습니다.');
+                        
+                        // 결과에 등록 성공 정보 추가
+                        result.gameRegistered = true;
+                        result.message = '게임이 성공적으로 생성되고 등록되었습니다! 이제 게임 허브에서 플레이할 수 있습니다.';
+                        
+                    } catch (scanError) {
+                        console.error('⚠️ 게임 스캐너 재실행 실패:', scanError);
+                        result.gameRegistered = false;
+                        result.warning = '게임이 생성되었지만 자동 등록에 실패했습니다. 수동으로 새로고침해 주세요.';
+                    }
+                }
+                
                 res.json(result);
 
             } catch (error) {
@@ -2263,6 +2283,24 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
         });
     }
     
+    /**
+     * 게임 재스캔 (내부 사용)
+     */
+    async rescanGames() {
+        try {
+            console.log('🔄 게임 재스캔 시작...');
+            await this.gameScanner.scanGames();
+            console.log('✅ 게임 재스캔 완료');
+            return {
+                success: true,
+                stats: this.gameScanner.getStats()
+            };
+        } catch (error) {
+            console.error('❌ 게임 재스캔 실패:', error);
+            throw error;
+        }
+    }
+
     /**
      * 서버 종료
      */
