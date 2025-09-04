@@ -14,6 +14,64 @@ const { JSDOM } = require('jsdom');
 
 class GameValidator {
     constructor() {
+        this.genreSpecificRules = {
+            'physics': {
+                requiredPatterns: [
+                    /gravity/i,
+                    /friction/i,
+                    /velocity|vx.*vy|speed/i,
+                    /collision|bounce|reflect/i,
+                    /Math\.(sin|cos|atan2)/,
+                ],
+                recommendedElements: ['physics engine', 'collision detection', 'momentum'],
+                keyFeatures: ['중력 시뮬레이션', '물체 충돌', '관성 적용']
+            },
+            'cooking': {
+                requiredPatterns: [
+                    /stir|mix|shake|flip/i,
+                    /recipe|ingredient|cooking/i,
+                    /timer|time|duration/i,
+                    /temperature|heat|cook/i,
+                    /progress|quality|done/i,
+                ],
+                recommendedElements: ['gesture recognition', 'timer system', 'progress tracking'],
+                keyFeatures: ['제스처 인식', '타이밍 시스템', '요리 진행도']
+            },
+            'action': {
+                requiredPatterns: [
+                    /combo|score|points/i,
+                    /speed|fast|quick/i,
+                    /enemy|obstacle|avoid/i,
+                    /powerup|bonus/i,
+                    /level|difficulty/i,
+                ],
+                recommendedElements: ['combo system', 'difficulty scaling', 'score system'],
+                keyFeatures: ['콤보 시스템', '점수 경쟁', '난이도 증가']
+            },
+            'puzzle': {
+                requiredPatterns: [
+                    /solve|solution|puzzle/i,
+                    /hint|help|guide/i,
+                    /level|stage|challenge/i,
+                    /logic|think|strategy/i,
+                    /complete|finish|success/i,
+                ],
+                recommendedElements: ['hint system', 'level progression', 'solution validation'],
+                keyFeatures: ['문제 해결', '힌트 시스템', '단계적 진행']
+            },
+            'racing': {
+                requiredPatterns: [
+                    /steering|turn|control/i,
+                    /track|road|path/i,
+                    /speed|acceleration|brake/i,
+                    /lap|time|record/i,
+                    /car|vehicle|drive/i,
+                ],
+                recommendedElements: ['steering control', 'speed management', 'track system'],
+                keyFeatures: ['조향 제어', '속도 관리', '경주 트랙']
+            }
+        };
+
         this.validationRules = {
             // 필수 HTML 요소들
             requiredElements: [
@@ -56,21 +114,29 @@ class GameValidator {
     /**
      * 게임 파일 전체 검증
      */
-    async validateGame(gameId, gamePath) {
+    async validateGame(gameId, gamePath, gameMetadata = null) {
         const results = {
             gameId,
             gamePath,
             isValid: true,
             score: 0,
-            maxScore: 100,
+            maxScore: 130, // 장르별 검증 30점 추가
             errors: [],
             warnings: [],
             suggestions: [],
-            details: {}
+            details: {},
+            genreCompliance: null
         };
 
         try {
             console.log(`🔍 게임 검증 시작: ${gameId}`);
+            
+            // 게임 장르 정보 추출
+            const genre = this.extractGenreInfo(gameMetadata, gameId);
+            if (genre) {
+                console.log(`🎯 장르별 검증 활성화: ${genre}`);
+                results.genre = genre;
+            }
             
             // 1. 파일 존재성 검증
             const fileValidation = await this.validateFileStructure(gamePath);
@@ -93,6 +159,28 @@ class GameValidator {
                 results.isValid = false;
             }
             results.warnings.push(...htmlValidation.warnings);
+
+            // 2.5. 장르별 특화 검증 (메타데이터 기반)
+            if (results.genre) {
+                const genreValidation = await this.validateGenreSpecifics(
+                    await fs.readFile(htmlPath, 'utf-8'), 
+                    results.genre
+                );
+                results.details.genreCompliance = genreValidation;
+                results.genreCompliance = genreValidation.compliance;
+                results.score += genreValidation.score;
+                
+                console.log(`🎯 ${results.genre} 장르 검증 점수: ${genreValidation.score}/${genreValidation.maxScore}`);
+                
+                // 장르 특화 개선 제안을 전체 제안에 추가
+                if (genreValidation.compliance.recommendations.length > 0) {
+                    results.suggestions.push('=== 장르별 특화 개선 제안 ===');
+                    genreValidation.compliance.recommendations.forEach(rec => {
+                        results.suggestions.push(`${rec.category}:`);
+                        rec.items.forEach(item => results.suggestions.push(`  - ${item}`));
+                    });
+                }
+            }
 
             // 3. JavaScript 코드 검증
             const jsValidation = await this.validateJavaScript(htmlPath);
@@ -521,17 +609,235 @@ class GameValidator {
     }
 
     /**
+     * 게임 장르 정보 추출
+     */
+    extractGenreInfo(gameMetadata, gameId) {
+        // 메타데이터에서 장르 정보 추출
+        if (gameMetadata && gameMetadata.genre) {
+            return gameMetadata.genre.toLowerCase();
+        }
+        
+        // 게임 ID에서 장르 추론
+        const genreKeywords = {
+            'physics': ['physics', 'ball', 'gravity', 'bounce'],
+            'cooking': ['cooking', 'cook', 'recipe', 'kitchen'],
+            'action': ['action', 'fight', 'battle', 'shoot'],
+            'puzzle': ['puzzle', 'maze', 'solve', 'logic'],
+            'racing': ['racing', 'race', 'car', 'speed', 'drive']
+        };
+
+        for (const [genre, keywords] of Object.entries(genreKeywords)) {
+            if (keywords.some(keyword => gameId.toLowerCase().includes(keyword))) {
+                return genre;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 장르별 특화 검증
+     */
+    async validateGenreSpecifics(htmlContent, genre) {
+        const results = {
+            score: 0,
+            maxScore: 30,
+            compliance: {
+                requiredPatterns: { found: 0, total: 0, details: [] },
+                keyFeatures: { found: 0, total: 0, details: [] },
+                recommendations: []
+            }
+        };
+
+        if (!genre || !this.genreSpecificRules[genre]) {
+            console.log(`⚠️ 장르별 검증 규칙이 없음: ${genre}`);
+            return results;
+        }
+
+        const rules = this.genreSpecificRules[genre];
+        console.log(`🎯 ${genre} 장르 특화 검증 시작`);
+
+        // 1. 필수 패턴 검증 (20점)
+        const patternResults = this.validateGenrePatterns(htmlContent, rules.requiredPatterns);
+        results.compliance.requiredPatterns = patternResults;
+        results.score += Math.round((patternResults.found / patternResults.total) * 20);
+
+        // 2. 핵심 기능 검증 (10점)  
+        const featureResults = this.validateKeyFeatures(htmlContent, rules.keyFeatures);
+        results.compliance.keyFeatures = featureResults;
+        results.score += Math.round((featureResults.found / featureResults.total) * 10);
+
+        // 3. 개선 제안 생성
+        results.compliance.recommendations = this.generateGenreRecommendations(
+            rules, 
+            patternResults, 
+            featureResults
+        );
+
+        console.log(`✅ ${genre} 장르 검증 완료: ${results.score}/${results.maxScore}점`);
+        return results;
+    }
+
+    /**
+     * 장르별 패턴 검증
+     */
+    validateGenrePatterns(htmlContent, patterns) {
+        const results = {
+            found: 0,
+            total: patterns.length,
+            details: []
+        };
+
+        for (const pattern of patterns) {
+            const matches = htmlContent.match(pattern);
+            const found = matches && matches.length > 0;
+            
+            results.details.push({
+                pattern: pattern.toString(),
+                found: found,
+                matches: found ? matches.length : 0,
+                description: this.getPatternDescription(pattern)
+            });
+
+            if (found) {
+                results.found++;
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * 핵심 기능 검증
+     */
+    validateKeyFeatures(htmlContent, keyFeatures) {
+        const results = {
+            found: 0,
+            total: keyFeatures.length,
+            details: []
+        };
+
+        for (const feature of keyFeatures) {
+            // 각 핵심 기능에 대한 키워드 검색
+            const keywords = this.getFeatureKeywords(feature);
+            let featureFound = false;
+
+            for (const keyword of keywords) {
+                if (htmlContent.toLowerCase().includes(keyword.toLowerCase())) {
+                    featureFound = true;
+                    break;
+                }
+            }
+
+            results.details.push({
+                feature: feature,
+                found: featureFound,
+                keywords: keywords
+            });
+
+            if (featureFound) {
+                results.found++;
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * 패턴 설명 생성
+     */
+    getPatternDescription(pattern) {
+        const descriptions = {
+            '/gravity/i': '중력 관련 코드',
+            '/friction/i': '마찰력 구현',
+            '/velocity|vx.*vy|speed/i': '속도 및 운동 벡터',
+            '/collision|bounce|reflect/i': '충돌 및 반사 처리',
+            '/Math\\.(sin|cos|atan2)/': '수학적 계산 (삼각함수)',
+            '/stir|mix|shake|flip/i': '요리 동작 (저어주기, 섞기 등)',
+            '/recipe|ingredient|cooking/i': '레시피 및 재료 시스템',
+            '/timer|time|duration/i': '타이머 시스템',
+            '/combo|score|points/i': '점수 및 콤보 시스템',
+            '/speed|fast|quick/i': '속도 및 빠른 반응',
+            '/solve|solution|puzzle/i': '문제 해결 및 퍼즐',
+            '/steering|turn|control/i': '조향 및 제어 시스템'
+        };
+
+        return descriptions[pattern.toString()] || '특화 기능 패턴';
+    }
+
+    /**
+     * 기능별 키워드 매핑
+     */
+    getFeatureKeywords(feature) {
+        const keywordMap = {
+            '중력 시뮬레이션': ['gravity', '중력', 'fall', 'drop'],
+            '물체 충돌': ['collision', 'hit', 'bounce', '충돌', '반사'],
+            '관성 적용': ['momentum', 'inertia', 'velocity', '관성', '속도'],
+            '제스처 인식': ['gesture', 'shake', 'stir', '제스처', '흔들기'],
+            '타이밍 시스템': ['timer', 'timing', 'duration', '타이밍', '시간'],
+            '요리 진행도': ['progress', 'cooking', 'done', '진행도', '완성도'],
+            '콤보 시스템': ['combo', 'chain', 'streak', '콤보', '연속'],
+            '점수 경쟁': ['score', 'point', 'highscore', '점수', '경쟁'],
+            '난이도 증가': ['difficulty', 'level', 'hard', '난이도', '레벨'],
+            '문제 해결': ['solve', 'solution', 'puzzle', '해결', '퍼즐'],
+            '힌트 시스템': ['hint', 'help', 'guide', '힌트', '도움말'],
+            '단계적 진행': ['stage', 'level', 'progress', '단계', '진행'],
+            '조향 제어': ['steering', 'control', 'turn', '조향', '제어'],
+            '속도 관리': ['speed', 'acceleration', 'brake', '속도', '가속'],
+            '경주 트랙': ['track', 'road', 'course', '트랙', '코스']
+        };
+
+        return keywordMap[feature] || [feature];
+    }
+
+    /**
+     * 장르별 개선 제안 생성
+     */
+    generateGenreRecommendations(rules, patternResults, featureResults) {
+        const recommendations = [];
+
+        // 누락된 패턴에 대한 제안
+        const missingPatterns = patternResults.details.filter(p => !p.found);
+        if (missingPatterns.length > 0) {
+            recommendations.push({
+                category: '누락된 핵심 기능',
+                items: missingPatterns.map(p => `${p.description} 구현 필요`)
+            });
+        }
+
+        // 누락된 핵심 기능에 대한 제안
+        const missingFeatures = featureResults.details.filter(f => !f.found);
+        if (missingFeatures.length > 0) {
+            recommendations.push({
+                category: '추천 기능 추가',
+                items: missingFeatures.map(f => `${f.feature} 기능 구현 권장`)
+            });
+        }
+
+        // 장르별 추천 요소 제안
+        if (rules.recommendedElements) {
+            recommendations.push({
+                category: '장르 특화 개선',
+                items: rules.recommendedElements.map(elem => `${elem} 최적화 권장`)
+            });
+        }
+
+        return recommendations;
+    }
+
+    /**
      * 검증 보고서 생성
      */
     generateReport(validationResult) {
-        const { gameId, score, grade, errors, warnings, suggestions } = validationResult;
+        const { gameId, score, maxScore, grade, errors, warnings, suggestions, genre, genreCompliance } = validationResult;
         
         let report = `
 🎮 게임 검증 보고서: ${gameId}
 ==================================
 
-📊 총점: ${score}/100 (등급: ${grade})
+📊 총점: ${score}/${maxScore || 100} (등급: ${grade})
 🎯 게임 상태: ${validationResult.isValid ? '✅ 플레이 가능' : '❌ 수정 필요'}
+${genre ? `🎮 장르: ${genre.toUpperCase()}` : ''}
 
 `;
 
@@ -554,6 +860,43 @@ class GameValidator {
             suggestions.forEach((suggestion, index) => {
                 report += `  ${index + 1}. ${suggestion}\n`;
             });
+        }
+
+        // 장르별 특화 검증 결과 추가
+        if (genre && genreCompliance) {
+            report += `\n🎯 ${genre.toUpperCase()} 장르 특화 검증:\n`;
+            report += `==================================\n`;
+            
+            // 필수 패턴 검증 결과
+            if (genreCompliance.requiredPatterns) {
+                const { found, total, details } = genreCompliance.requiredPatterns;
+                report += `\n📋 핵심 패턴 검증: ${found}/${total}개 발견\n`;
+                details.forEach(detail => {
+                    const icon = detail.found ? '✅' : '❌';
+                    report += `  ${icon} ${detail.description}${detail.found ? ` (${detail.matches}개 발견)` : ''}\n`;
+                });
+            }
+
+            // 핵심 기능 검증 결과
+            if (genreCompliance.keyFeatures) {
+                const { found, total, details } = genreCompliance.keyFeatures;
+                report += `\n🔧 핵심 기능 검증: ${found}/${total}개 구현\n`;
+                details.forEach(detail => {
+                    const icon = detail.found ? '✅' : '❌';
+                    report += `  ${icon} ${detail.feature}\n`;
+                });
+            }
+
+            // 개선 제안
+            if (genreCompliance.recommendations.length > 0) {
+                report += `\n🚀 장르별 개선 제안:\n`;
+                genreCompliance.recommendations.forEach(rec => {
+                    report += `\n${rec.category}:\n`;
+                    rec.items.forEach(item => {
+                        report += `  • ${item}\n`;
+                    });
+                });
+            }
         }
 
         report += '\n==================================\n';
