@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Flash React Battle</title>
+    
+    <!-- 필수 스크립트 태그들 -->
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- QR Code Generator -->
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- SessionSDK -->
+    <script src="/js/SessionSDK.js"></script>
+    
     <style>
         :root {
             --primary: #3b82f6;
@@ -76,6 +87,10 @@
             padding: 24px;
         }
 
+        .session-info {
+            margin-bottom: 20px;
+        }
+
         .session-code {
             font-size: 24px;
             font-weight: bold;
@@ -87,6 +102,18 @@
             background: white;
             padding: 16px;
             border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .connection-status {
+            margin-bottom: 20px;
+        }
+
+        .sensor-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
         }
 
         .status-indicator {
@@ -146,8 +173,23 @@
         </div>
 
         <div id="sessionPanel" class="ui-panel session-panel">
-            <div id="sessionCode">세션 코드: ----</div>
-            <div id="qrContainer">QR 코드 생성 중...</div>
+            <div class="session-info">
+                <h3>게임 세션</h3>
+                <div class="session-code">
+                    <span>세션 코드: </span>
+                    <strong id="session-code-display">-</strong>
+                </div>
+                <div class="qr-container" id="qrContainer">
+                    QR 코드 생성 중...
+                </div>
+            </div>
+            <div class="connection-status">
+                <div class="sensor-status">
+                    <span>📱 센서:</span>
+                    <span class="status-indicator waiting" id="sensor-status">대기중</span>
+                </div>
+            </div>
+            <button id="start-game-btn" disabled>게임 시작</button>
         </div>
 
         <div id="gameStatus" class="game-status">
@@ -165,14 +207,17 @@
                 this.canvas = document.getElementById('gameCanvas');
                 this.ctx = this.canvas.getContext('2d');
                 this.elements = {
+                    canvas: document.getElementById('gameCanvas'),
                     serverStatus: document.getElementById('serverStatus'),
                     sensorStatus: document.getElementById('sensorStatus'),
-                    sessionCode: document.getElementById('sessionCode'),
+                    sessionCode: document.getElementById('session-code-display'),
                     qrContainer: document.getElementById('qrContainer'),
                     sessionPanel: document.getElementById('sessionPanel'),
                     scoreValue: document.getElementById('scoreValue'),
                     roundInfo: document.getElementById('roundInfo'),
-                    gameStatus: document.getElementById('gameStatus')
+                    gameStatus: document.getElementById('gameStatus'),
+                    startBtn: document.getElementById('start-game-btn'),
+                    statusIndicator: document.getElementById('sensor-status')
                 };
 
                 this.state = {
@@ -195,6 +240,12 @@
                     maxRounds: 10,
                     targetSize: 50,
                     targetSpeed: 5
+                };
+
+                this.player = {
+                    health: 100,
+                    energy: 100,
+                    aimOffset: { x: 0, y: 0 }
                 };
 
                 this.target = {
@@ -222,30 +273,67 @@
 
             setupSDKEvents() {
                 this.sdk.on('connected', async () => {
-                    this.state.connected = true;
-                    this.updateServerStatus(true);
-                    this.updateGameStatus('서버 연결됨 - 세션 생성 중...');
-                    await this.createGameSession();
+                    try {
+                        this.state.connected = true;
+                        this.updateServerStatus(true);
+                        this.updateGameStatus('서버 연결됨 - 세션 생성 중...');
+                        await this.createGameSession();
+                    } catch (error) {
+                        console.error('Connected event handler error:', error);
+                        this.updateGameStatus('연결 처리 중 오류가 발생했습니다.');
+                    }
                 });
 
                 this.sdk.on('session-created', (event) => {
-                    const session = event.detail || event;
-                    this.state.sessionCode = session.sessionCode;
-                    this.displaySessionInfo(session);
-                    this.updateGameStatus('센서 연결 대기 중...');
+                    try {
+                        const session = event.detail || event;
+                        if (!session || !session.sessionCode) {
+                            throw new Error('Invalid session data received');
+                        }
+                        this.state.sessionCode = session.sessionCode;
+                        this.displaySessionInfo(session);
+                        this.updateGameStatus('센서 연결 대기 중...');
+                    } catch (error) {
+                        console.error('Session created event handler error:', error);
+                        this.updateGameStatus('세션 정보 처리 중 오류가 발생했습니다.');
+                    }
                 });
 
                 this.sdk.on('sensor-connected', (event) => {
-                    const data = event.detail || event;
-                    this.state.sensorConnected = true;
-                    this.updateSensorStatus(true);
-                    this.hideSessionPanel();
-                    this.startGame();
+                    try {
+                        const data = event.detail || event;
+                        this.state.sensorConnected = true;
+                        this.updateSensorStatus(true);
+                        this.hideSessionPanel();
+                        this.startGame();
+                    } catch (error) {
+                        console.error('Sensor connected event handler error:', error);
+                        this.updateGameStatus('센서 연결 처리 중 오류가 발생했습니다.');
+                    }
                 });
 
                 this.sdk.on('sensor-data', (event) => {
-                    const data = event.detail || event;
-                    this.processSensorData(data);
+                    try {
+                        const data = event.detail || event;
+                        this.processSensorData(data);
+                    } catch (error) {
+                        console.error('Sensor data event handler error:', error);
+                        // 센서 데이터 오류는 게임을 중단하지 않고 로그만 출력
+                    }
+                });
+
+                // 추가 에러 이벤트 처리
+                this.sdk.on('connection-error', (event) => {
+                    const error = event.detail || event;
+                    console.error('Connection error:', error);
+                    this.updateGameStatus('서버 연결 오류가 발생했습니다.');
+                    this.updateServerStatus(false);
+                });
+
+                this.sdk.on('session-error', (event) => {
+                    const error = event.detail || event;
+                    console.error('Session error:', error);
+                    this.updateGameStatus('세션 오류가 발생했습니다.');
                 });
             }
 
@@ -255,7 +343,16 @@
                 } catch (error) {
                     console.error('세션 생성 실패:', error);
                     this.updateGameStatus('세션 생성 실패. 재시도 중...');
-                    setTimeout(() => this.createGameSession(), 3000);
+                    
+                    // 재시도 횟수 제한
+                    if (!this.retryCount) this.retryCount = 0;
+                    this.retryCount++;
+                    
+                    if (this.retryCount < 5) {
+                        setTimeout(() => this.createGameSession(), 3000 * this.retryCount);
+                    } else {
+                        this.updateGameStatus('세션 생성에 계속 실패합니다. 페이지를 새로고침해주세요.');
+                    }
                 }
             }
 
@@ -264,38 +361,66 @@
                 
                 const sensorUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
                 try {
-                    const qrElement = await QRCode.toCanvas(sensorUrl, {
-                        width: 200,
-                        margin: 2,
-                        color: {
-                            dark: '#000000',
-                            light: '#FFFFFF'
-                        }
-                    });
+                    // QRCodeGenerator 클래스 사용 (SessionSDK에서 제공)
+                    const qrElement = await QRCodeGenerator.generateElement(sensorUrl, 200);
                     this.elements.qrContainer.innerHTML = '';
                     this.elements.qrContainer.appendChild(qrElement);
                 } catch (error) {
-                    console.error('QR 코드 생성 실패:', error);
-                    this.elements.qrContainer.innerHTML = `<p>QR 코드: ${sensorUrl}</p>`;
+                    console.error('QR 코드 생성 실패, 폴백 처리:', error);
+                    // 폴백: 텍스트 링크 표시
+                    this.elements.qrContainer.innerHTML = `
+                        <div class="qr-fallback">
+                            <p>QR 코드를 스캔할 수 없는 경우:</p>
+                            <a href="${sensorUrl}" target="_blank">${sensorUrl}</a>
+                        </div>
+                    `;
                 }
             }
 
             processSensorData(data) {
+                // 센서 데이터 유효성 검사 강화
+                if (!data || !data.data) {
+                    console.warn('Invalid sensor data received:', data);
+                    return;
+                }
+                
                 const sensorData = data.data;
                 
+                // 오리엔테이션 데이터 처리 (안전한 접근)
                 if (sensorData.orientation) {
-                    this.sensorData.tilt.x = sensorData.orientation.beta || 0;
-                    this.sensorData.tilt.y = sensorData.orientation.gamma || 0;
-                    this.sensorData.rotation = sensorData.orientation.alpha || 0;
+                    const orientation = sensorData.orientation;
+                    this.sensorData.tilt.x = typeof orientation.beta === 'number' ? orientation.beta : 0;
+                    this.sensorData.tilt.y = typeof orientation.gamma === 'number' ? orientation.gamma : 0;
+                    this.sensorData.rotation = typeof orientation.alpha === 'number' ? orientation.alpha : 0;
+                } else {
+                    // 오리엔테이션 데이터가 없을 때 기본값 유지
+                    console.warn('No orientation data in sensor input');
                 }
                 
-                if (sensorData.acceleration) {
-                    this.sensorData.acceleration = sensorData.acceleration;
-                    this.checkShake();
+                // 가속도 데이터 처리 (안전한 접근)
+                if (sensorData.acceleration && typeof sensorData.acceleration === 'object') {
+                    const acc = sensorData.acceleration;
+                    this.sensorData.acceleration = {
+                        x: typeof acc.x === 'number' ? acc.x : 0,
+                        y: typeof acc.y === 'number' ? acc.y : 0,
+                        z: typeof acc.z === 'number' ? acc.z : 0
+                    };
+                    
+                    // 흔들기 감지 (게임이 실행 중일 때만)
+                    if (this.state.playing && !this.state.paused) {
+                        this.checkShake();
+                    }
+                } else {
+                    console.warn('No acceleration data in sensor input');
                 }
                 
+                // 게임 로직 적용 (게임이 실행 중이고 일시정지가 아닐 때만)
                 if (this.state.playing && !this.state.paused) {
-                    this.applyMotion();
+                    try {
+                        this.applyMotion();
+                    } catch (error) {
+                        console.error('Error in applyMotion:', error);
+                    }
                 }
             }
 
@@ -307,6 +432,51 @@
                 if (magnitude > threshold && this.target.visible) {
                     this.hitTarget();
                 }
+            }
+
+            // 누락된 applyMotion 메서드 구현
+            applyMotion() {
+                // 기기 기울기를 이용한 조준 시스템 (미세한 보정)
+                const sensitivity = 0.5;
+                const tiltX = Math.max(-1, Math.min(1, this.sensorData.tilt.y / 30)); // gamma (좌우)
+                const tiltY = Math.max(-1, Math.min(1, this.sensorData.tilt.x / 30)); // beta (앞뒤)
+                
+                // 조준점 미세 조정 (게임 중 기기를 약간 기울여서 조준 가능)
+                this.player.aimOffset.x += tiltX * sensitivity;
+                this.player.aimOffset.y += tiltY * sensitivity;
+                
+                // 조준 오프셋 제한
+                this.player.aimOffset.x = Math.max(-20, Math.min(20, this.player.aimOffset.x));
+                this.player.aimOffset.y = Math.max(-20, Math.min(20, this.player.aimOffset.y));
+            }
+
+            // 센서 상태 업데이트 메서드
+            updateSensorStatus(connected) {
+                if (connected) {
+                    this.elements.statusIndicator.className = 'status-indicator connected';
+                    this.elements.statusIndicator.style.background = 'var(--success)';
+                } else {
+                    this.elements.statusIndicator.className = 'status-indicator disconnected';
+                    this.elements.statusIndicator.style.background = 'var(--error)';
+                }
+            }
+
+            // 세션 패널 숨기기 메서드
+            hideSessionPanel() {
+                if (this.elements.sessionPanel) {
+                    this.elements.sessionPanel.style.display = 'none';
+                }
+            }
+
+            // 서버 연결 상태 업데이트
+            updateServerStatus(connected) {
+                console.log(`서버 연결 상태: ${connected ? '연결됨' : '연결 안됨'}`);
+            }
+
+            // 게임 상태 메시지 업데이트
+            updateGameStatus(message) {
+                console.log(`게임 상태: ${message}`);
+                // 필요시 UI 요소에 메시지 표시
             }
 
             hitTarget() {
