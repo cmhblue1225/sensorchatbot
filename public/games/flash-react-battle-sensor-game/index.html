@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Flash React Battle</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --background: #0f172a;
+            --text: #e2e8f0;
+            --accent: #f472b6;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--background);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #gameCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        .game-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .ui-panel {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 16px;
+            pointer-events: auto;
+        }
+
+        .score-panel {
+            top: 20px;
+            left: 20px;
+            min-width: 150px;
+        }
+
+        .status-panel {
+            top: 20px;
+            right: 20px;
+        }
+
+        .session-panel {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            padding: 24px;
+        }
+
+        .session-code {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .qr-container {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--error);
+            display: inline-block;
+            margin-left: 8px;
+        }
+
+        .status-indicator.connected {
+            background: var(--success);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .game-status {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.8);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .flash {
+            animation: flash 0.5s infinite;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div class="game-ui">
+        <div class="ui-panel score-panel">
+            <div id="scoreValue">점수: 0</div>
+            <div id="roundInfo">라운드: 0/10</div>
+        </div>
+        
+        <div class="ui-panel status-panel">
+            <div class="status-item">
+                서버: <div id="serverStatus" class="status-indicator"></div>
+            </div>
+            <div class="status-item">
+                센서: <div id="sensorStatus" class="status-indicator"></div>
+            </div>
+        </div>
+
+        <div id="sessionPanel" class="ui-panel session-panel">
+            <div id="sessionCode">세션 코드: ----</div>
+            <div id="qrContainer">QR 코드 생성 중...</div>
+        </div>
+
+        <div id="gameStatus" class="game-status">
+            게임 준비 중...
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+
+    <script>
+        class FlashReactBattle {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.elements = {
+                    serverStatus: document.getElementById('serverStatus'),
+                    sensorStatus: document.getElementById('sensorStatus'),
+                    sessionCode: document.getElementById('sessionCode'),
+                    qrContainer: document.getElementById('qrContainer'),
+                    sessionPanel: document.getElementById('sessionPanel'),
+                    scoreValue: document.getElementById('scoreValue'),
+                    roundInfo: document.getElementById('roundInfo'),
+                    gameStatus: document.getElementById('gameStatus')
+                };
+
+                this.state = {
+                    connected: false,
+                    sensorConnected: false,
+                    playing: false,
+                    paused: false,
+                    round: 0,
+                    score: 0,
+                    sessionCode: null
+                };
+
+                this.sensorData = {
+                    tilt: { x: 0, y: 0 },
+                    acceleration: { x: 0, y: 0, z: 0 },
+                    rotation: 0
+                };
+
+                this.config = {
+                    maxRounds: 10,
+                    targetSize: 50,
+                    targetSpeed: 5
+                };
+
+                this.target = {
+                    x: 0,
+                    y: 0,
+                    visible: false,
+                    timestamp: 0
+                };
+
+                this.initSDK();
+                this.setupEventListeners();
+                this.resizeCanvas();
+                this.gameLoop();
+            }
+
+            initSDK() {
+                this.sdk = new SessionSDK({
+                    gameId: 'flash-react-battle',
+                    gameType: 'multi',
+                    debug: true
+                });
+
+                this.setupSDKEvents();
+            }
+
+            setupSDKEvents() {
+                this.sdk.on('connected', async () => {
+                    this.state.connected = true;
+                    this.updateServerStatus(true);
+                    this.updateGameStatus('서버 연결됨 - 세션 생성 중...');
+                    await this.createGameSession();
+                });
+
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    this.state.sessionCode = session.sessionCode;
+                    this.displaySessionInfo(session);
+                    this.updateGameStatus('센서 연결 대기 중...');
+                });
+
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
+                    this.state.sensorConnected = true;
+                    this.updateSensorStatus(true);
+                    this.hideSessionPanel();
+                    this.startGame();
+                });
+
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    this.processSensorData(data);
+                });
+            }
+
+            async createGameSession() {
+                try {
+                    await this.sdk.createSession();
+                } catch (error) {
+                    console.error('세션 생성 실패:', error);
+                    this.updateGameStatus('세션 생성 실패. 재시도 중...');
+                    setTimeout(() => this.createGameSession(), 3000);
+                }
+            }
+
+            async displaySessionInfo(session) {
+                this.elements.sessionCode.textContent = `세션 코드: ${session.sessionCode}`;
+                
+                const sensorUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                try {
+                    const qrElement = await QRCode.toCanvas(sensorUrl, {
+                        width: 200,
+                        margin: 2,
+                        color: {
+                            dark: '#000000',
+                            light: '#FFFFFF'
+                        }
+                    });
+                    this.elements.qrContainer.innerHTML = '';
+                    this.elements.qrContainer.appendChild(qrElement);
+                } catch (error) {
+                    console.error('QR 코드 생성 실패:', error);
+                    this.elements.qrContainer.innerHTML = `<p>QR 코드: ${sensorUrl}</p>`;
+                }
+            }
+
+            processSensorData(data) {
+                const sensorData = data.data;
+                
+                if (sensorData.orientation) {
+                    this.sensorData.tilt.x = sensorData.orientation.beta || 0;
+                    this.sensorData.tilt.y = sensorData.orientation.gamma || 0;
+                    this.sensorData.rotation = sensorData.orientation.alpha || 0;
+                }
+                
+                if (sensorData.acceleration) {
+                    this.sensorData.acceleration = sensorData.acceleration;
+                    this.checkShake();
+                }
+                
+                if (this.state.playing && !this.state.paused) {
+                    this.applyMotion();
+                }
+            }
+
+            checkShake() {
+                const threshold = 15;
+                const acc = this.sensorData.acceleration;
+                const magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+                
+                if (magnitude > threshold && this.target.visible) {
+                    this.hitTarget();
+                }
+            }
+
+            hitTarget() {
+                const reactionTime = Date.now() - this.target.timestamp;
+                const maxScore = 1000;
+                const minReactionTime = 200;
+                const maxReactionTime = 1000;
+                
+                let score = Math.max(0, Math.floor(
+                    maxScore * (1 - (reactionTime - minReactionTime) / (maxReactionTime - minReactionTime))
+                ));
+
+                this.state.score += score;
+                this.target.visible = false;
+                this.updateScore();
+                this.nextRound();
+            }
+
+            startGame() {
+                this.state.playing = true;
+                this.state.round = 0;
+                this.state.score = 0;
+                this.updateScore();
+                this.nextRound();
+            }
+
+            nextRound() {
+                this.state.round++;
+                if (this.state.round > this.config.maxRounds) {
+                    this.endGame();
+                    return;
+                }
+
+                this.elements.roundInfo.textContent = `라운드: ${this.state.round}/${this.config.maxRounds}`;
+                setTimeout(() => this.showTarget(), Math.random() * 2000 + 1000);
+            }
+
+            showTarget() {
+                if (!this.state.playing) return;
+                
+                this.target.x = Math.random() * (this.canvas.width - this.config.targetSize);
+                this.target.y = Math.random() * (this.canvas.height - this.config.targetSize);
+                this.target.visible = true;
+                this.target.timestamp = Date.now();
+            }
+
+            endGame() {
+                this.state.playing = false;
+                this.updateGameStatus(`게임 종료! 최종 점수: ${this.state.score}`);
+                setTimeout(() => {
+                    if (confirm('다시 시작하시겠습니까?')) {
+                        this.startGame();
+                    }
+                }, 1000);
+            }
+
+            updateScore() {
+                this.elements.scoreValue.textContent = `점수: ${this.state.score}`;
+            }
+
+            updateGameStatus(message) {
+                this.elements.gameStatus.textContent = message;
+            }
+
+            updateServerStatus(connected) {
+                this.elements.serverStatus.classList.toggle('connected', connected);
+            }
+
+            updateSensorStatus(connected) {
+                this.elements.sensorStatus.classList.toggle('connected', connected);
+            }
+
+            hideSessionPanel() {
+                this.elements.sessionPanel.classList.add('hidden');
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            gameLoop() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                if (this.state.playing && this.target.visible) {
+                    this.ctx.fillStyle = '#f472b6';
+                    this.ctx.beginPath();
+                    this.ctx.arc(
+                        this.target.x + this.config.targetSize/2,
+                        this.target.y + this.config.targetSize/2,
+                        this.config.targetSize/2,
+                        0,
+                        Math.PI * 2
+                    );
+                    this.ctx.fill();
+                }
+
+                requestAnimationFrame(() => this.gameLoop());
+            }
+
+            setupEventListeners() {
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+        }
+
+        // 게임 인스턴스 생성
+        window.addEventListener('load', () => {
+            const game = new FlashReactBattle();
+        });
+    </script>
+</body>
+</html>
