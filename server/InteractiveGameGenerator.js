@@ -15,6 +15,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const fs = require('fs').promises;
 const path = require('path');
+const GameValidator = require('./GameValidator');
 
 class InteractiveGameGenerator {
     constructor() {
@@ -36,6 +37,9 @@ class InteractiveGameGenerator {
 
         // 대화 세션 관리
         this.activeSessions = new Map(); // sessionId -> conversationData
+        
+        // 게임 검증 시스템
+        this.gameValidator = new GameValidator();
         
         this.initialize();
     }
@@ -564,7 +568,7 @@ ${requirements.specialRequirements?.length > 0 ?
 
             // 게임 생성 프롬프트
             const gameGenerationPrompt = `당신은 Sensor Game Hub v6.0의 최고 전문 게임 개발자입니다.
-다음 상세 요구사항에 따라 완벽히 실행 가능한 HTML5 게임을 생성해주세요.
+다음 상세 요구사항에 따라 **실제로 작동하는** 완벽한 HTML5 센서 게임을 생성해주세요.
 
 📋 게임 상세 사양:
 제목: ${session.gameRequirements.title}
@@ -576,63 +580,179 @@ ${requirements.specialRequirements?.length > 0 ?
 목표: ${session.gameRequirements.objectives}
 특별 요구사항: ${session.gameRequirements.specialRequirements?.join(', ')}
 
-🎯 필수 구현 사항:
-1. **SessionSDK 완벽 통합**:
-   - new SessionSDK({ gameId: '${session.gameRequirements.title?.replace(/[^a-zA-Z0-9]/g, '-')}', gameType: '${session.gameRequirements.gameType}' })
-   - sdk.on('connected', () => { createSession(); }) 패턴 준수
-   - sdk.on('session-created', (event) => { const session = event.detail || event; }) 패턴 사용
-   - sdk.on('sensor-data', (event) => { const data = event.detail || event; }) 패턴 사용
+🎯 필수 구현 사항 (완전한 코드로 구현):
 
-2. **센서 데이터 활용**:
-   - orientation 데이터: alpha(0-360), beta(-180~180), gamma(-90~90)
-   - acceleration 데이터: x, y, z 축 가속도
-   - rotationRate 데이터: alpha, beta, gamma 회전 속도
-   - 센서 데이터 smoothing 및 threshold 적용
+1. **SessionSDK 완벽 통합** - 이 패턴을 정확히 따라주세요:
+   \`\`\`javascript
+   // SDK 초기화 (constructor에서)
+   this.sdk = new SessionSDK({
+       gameId: '${session.gameRequirements.title?.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}',
+       gameType: '${session.gameRequirements.gameType}',
+       debug: true
+   });
+   
+   // 필수 이벤트 핸들러 (setupSDKEvents 메서드에서)
+   this.sdk.on('connected', async () => {
+       this.state.connected = true;
+       this.updateServerStatus(true);
+       this.updateGameStatus('서버 연결됨 - 세션 생성 중...');
+       await this.createGameSession(); // 중요: 연결 후 세션 생성
+   });
+   
+   this.sdk.on('session-created', (event) => {
+       const session = event.detail || event; // 중요: 이 패턴 필수
+       this.state.sessionCode = session.sessionCode;
+       this.displaySessionInfo(session);
+       this.updateGameStatus('센서 연결 대기 중...');
+   });
+   
+   this.sdk.on('sensor-connected', (event) => {
+       const data = event.detail || event; // 중요: 이 패턴 필수
+       this.state.sensorConnected = true;
+       this.updateSensorStatus(true);
+       this.hideSessionPanel();
+       this.startGame();
+   });
+   
+   this.sdk.on('sensor-data', (event) => {
+       const data = event.detail || event; // 중요: 이 패턴 필수
+       this.processSensorData(data);
+   });
+   \`\`\`
 
-3. **게임 로직 완성도**:
-   - 완전한 게임 루프 (update, render)
-   - 승리/실패 조건 명확히 구현
-   - 점수 시스템 완성
-   - 게임 상태 관리 (ready, playing, paused, gameOver)
+2. **QR 코드 생성 (반드시 포함)**:
+   \`\`\`javascript
+   async displaySessionInfo(session) {
+       this.elements.sessionCode.textContent = session.sessionCode || '----';
+       
+       const sensorUrl = \`\${window.location.origin}/sensor.html?session=\${session.sessionCode}\`;
+       try {
+           const qrElement = await QRCodeGenerator.generateElement(sensorUrl, 200);
+           this.elements.qrContainer.innerHTML = '';
+           this.elements.qrContainer.appendChild(qrElement);
+       } catch (error) {
+           console.error('QR 코드 생성 실패:', error);
+           this.elements.qrContainer.innerHTML = \`<p>QR 코드: \${sensorUrl}</p>\`;
+       }
+   }
+   \`\`\`
 
-4. **UI/UX 요소**:
-   - 게임 상태 표시
-   - 센서 연결 상태 표시
-   - QR 코드 표시 (Session SDK 자동 생성)
-   - 점수 및 생명 표시
-   - 게임 종료 시 결과 화면
+3. **완전한 UI 구조 (반드시 포함)**:
+   - 점수 패널 (좌상단): scoreValue, objectives, comboCount
+   - 상태 패널 (우상단): 서버/센서 연결 표시, 게임 상태
+   - 세션 패널 (중앙): 세션 코드, QR 코드, 연결 안내
+   - 센서 활동 패널 (좌하단): tiltX, tiltY, acceleration, rotation
+   - 컨트롤 패널 (하단): 재시작, 일시정지, 허브로 버튼
 
-5. **기술적 품질**:
-   - CSS 커스텀 속성 활용 (--primary: #3b82f6, --secondary: #8b5cf6 등)
-   - Canvas 2D Context 최적화
-   - 반응형 디자인 (모바일 우선)
-   - requestAnimationFrame 사용
-   - 메모리 누수 방지 코드
+4. **센서 데이터 처리 (완전한 구현)**:
+   \`\`\`javascript
+   processSensorData(data) {
+       const sensorData = data.data;
+       
+       // 기울기 데이터 (orientation)
+       if (sensorData.orientation) {
+           this.sensorData.tilt.x = sensorData.orientation.beta || 0;  // 앞뒤
+           this.sensorData.tilt.y = sensorData.orientation.gamma || 0; // 좌우
+           this.sensorData.rotation = sensorData.orientation.alpha || 0; // 회전
+       }
+       
+       // 가속도 데이터
+       if (sensorData.acceleration) {
+           this.sensorData.acceleration = sensorData.acceleration;
+       }
+       
+       this.updateSensorDisplay();
+       
+       if (this.state.playing && !this.state.paused) {
+           this.applyMotion(); // 센서 데이터를 게임에 적용
+       }
+   }
+   
+   applyMotion() {
+       const sensitivity = 0.3;
+       const maxTilt = 45;
+       
+       // 기울기를 정규화 (-1 ~ 1)
+       const normalizedTiltX = Math.max(-1, Math.min(1, this.sensorData.tilt.y / maxTilt));
+       const normalizedTiltY = Math.max(-1, Math.min(1, this.sensorData.tilt.x / maxTilt));
+       
+       // 게임 오브젝트에 움직임 적용 (예: 공 이동)
+       // this.ball.vx += normalizedTiltX * this.config.ballSpeed * sensitivity;
+       // this.ball.vy += normalizedTiltY * this.config.ballSpeed * sensitivity;
+   }
+   \`\`\`
+
+5. **게임 로직 완성도**:
+   - Canvas 기반 완전한 게임 구현
+   - requestAnimationFrame을 사용한 게임 루프
+   - 센서 기반 실제 게임플레이 메커니즘
+   - 점수 시스템, 승리/실패 조건
+   - 게임 상태 관리 (준비, 플레이, 일시정지, 종료)
+
+6. **필수 HTML 구조**:
+   \`\`\`html
+   <canvas id="gameCanvas"></canvas>
+   <div class="game-ui">
+       <div class="ui-panel score-panel">
+           <div class="score-title">🎯 점수</div>
+           <div class="score-value" id="scoreValue">0</div>
+       </div>
+       <div class="ui-panel status-panel">
+           <div class="status-item">
+               <span class="status-text">서버 연결</span>
+               <div class="status-indicator" id="serverStatus"></div>
+           </div>
+           <div class="status-item">
+               <span class="status-text">센서 연결</span>
+               <div class="status-indicator" id="sensorStatus"></div>
+           </div>
+       </div>
+       <div class="ui-panel session-panel" id="sessionPanel">
+           <div class="session-code" id="sessionCode">----</div>
+           <div class="qr-container" id="qrContainer">QR 코드 생성 중...</div>
+       </div>
+       <div class="ui-panel sensor-activity-panel hidden" id="sensorActivityPanel">
+           <div class="activity-grid">
+               <div class="activity-item">
+                   <div class="activity-label">기울기 X</div>
+                   <div class="activity-value" id="tiltX">0.0</div>
+               </div>
+               <!-- 다른 센서 값들... -->
+           </div>
+       </div>
+   </div>
+   \`\`\`
+
+7. **필수 스크립트 태그**:
+   \`\`\`html
+   <script src="/socket.io/socket.io.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+   <script src="/js/SessionSDK.js"></script>
+   \`\`\`
 
 📚 개발 참고자료:
 ${context}
 
-🚨 중요 제약조건:
-- HTML5 DOCTYPE 선언 필수
-- 단일 HTML 파일로 완성 (외부 의존성 최소화)
-- SessionSDK는 "/js/SessionSDK.js" 경로에서 로드
-- 모든 JavaScript 코드는 DOMContentLoaded 이후 실행
-- 에러 처리 및 폴백 로직 포함
-- 브라우저 호환성 고려 (iOS Safari, Android Chrome)
+🚨 **절대적 요구사항**:
+1. 단일 HTML 파일로 완성 (모든 CSS/JS 인라인)
+2. 완전히 작동하는 SessionSDK 통합
+3. QR 코드가 실제로 생성되고 표시됨
+4. 센서 연결 시 게임이 실제로 플레이 가능함
+5. 모든 UI 요소가 올바르게 작동함
+6. 에러 처리 및 폴백 완전 구현
 
-⚡ 성능 최적화:
-- Canvas 렌더링 최적화
-- 센서 데이터 throttling (50ms 간격)
-- 불필요한 DOM 조작 최소화
-- 게임 객체 pooling 적용
+⚡ 성능 및 품질:
+- CSS 커스텀 속성 활용: --primary: #3b82f6, --secondary: #8b5cf6 등
+- 반응형 디자인 (모바일 최적화)
+- 메모리 누수 방지
+- 브라우저 호환성 (iOS Safari, Android Chrome)
 
-🎨 디자인 가이드라인:
-- 다크 테마 기반 (#0f172a 배경)
+🎨 디자인:
+- 다크 테마 (#0f172a 배경)
 - 네온 색상 액센트
-- 깔끔한 미니멀 UI
-- 터치 친화적 버튼 크기 (44px 이상)
+- 최신 UI/UX 트렌드 적용
 
-반드시 완전하고 실행 가능한 HTML 파일을 생성하세요. 게임이 즉시 플레이 가능해야 합니다.`;
+**반드시 즉시 플레이 가능한 완전한 게임을 생성하세요. 템플릿이 아닌 실제 작동하는 게임이어야 합니다!**`;
 
             console.log('🤖 Claude API 호출 시작...');
             const response = await this.llm.invoke([{ role: 'user', content: gameGenerationPrompt }]);
@@ -688,11 +808,20 @@ ${context}
                 sessionId: sessionId
             };
 
+            // 게임 파일 저장
+            console.log('💾 게임 파일 저장 중...');
+            const saveResult = await this.saveGameToFiles(gameCode, metadata);
+            
+            if (!saveResult.success) {
+                throw new Error(`게임 파일 저장 실패: ${saveResult.error}`);
+            }
+
             // 세션 정리
             session.stage = 'completed';
             session.lastUpdated = new Date().toISOString();
 
-            console.log(`✅ 게임 생성 완료: ${session.gameRequirements.title}`);
+            console.log(`✅ 게임 생성 및 저장 완료: ${session.gameRequirements.title}`);
+            console.log(`📁 게임 경로: ${saveResult.gamePath}`);
 
             return {
                 success: true,
@@ -700,7 +829,10 @@ ${context}
                 gameCode: gameCode,
                 metadata: metadata,
                 validation: validation,
-                requirements: session.gameRequirements
+                requirements: session.gameRequirements,
+                gamePath: saveResult.gamePath,
+                gameId: saveResult.gameId,
+                playUrl: saveResult.playUrl
             };
 
         } catch (error) {
@@ -1292,6 +1424,131 @@ ${context}
                requirements.sensorMechanics && 
                requirements.difficulty && 
                requirements.objectives;
+    }
+
+    /**
+     * 게임 파일 저장
+     */
+    async saveGameToFiles(gameCode, metadata) {
+        try {
+            const gameId = this.generateGameId(metadata.title);
+            const gamePath = path.join(process.cwd(), 'public', 'games', gameId);
+            
+            console.log(`📁 게임 폴더 생성: ${gamePath}`);
+            
+            // 게임 폴더 생성
+            await fs.mkdir(gamePath, { recursive: true });
+            
+            // index.html 파일 저장
+            const indexPath = path.join(gamePath, 'index.html');
+            await fs.writeFile(indexPath, gameCode, 'utf8');
+            console.log(`✅ index.html 저장 완료: ${indexPath}`);
+            
+            // game.json 메타데이터 파일 저장
+            const gameJson = {
+                ...metadata,
+                gameId: gameId,
+                filePaths: {
+                    index: 'index.html'
+                },
+                createdAt: new Date().toISOString(),
+                version: '1.0.0'
+            };
+            
+            const metadataPath = path.join(gamePath, 'game.json');
+            await fs.writeFile(metadataPath, JSON.stringify(gameJson, null, 2), 'utf8');
+            console.log(`✅ game.json 저장 완료: ${metadataPath}`);
+            
+            // README.md 파일 생성
+            const readme = this.generateReadme(metadata);
+            const readmePath = path.join(gamePath, 'README.md');
+            await fs.writeFile(readmePath, readme, 'utf8');
+            console.log(`✅ README.md 저장 완료: ${readmePath}`);
+            
+            // 🔍 게임 자동 검증 실행
+            console.log(`🔍 게임 검증 시작: ${gameId}`);
+            const validationResult = await this.gameValidator.validateGame(gameId, gamePath);
+            
+            // 검증 보고서 생성 및 출력
+            const validationReport = this.gameValidator.generateReport(validationResult);
+            console.log(validationReport);
+            
+            // 검증 결과를 파일로 저장 (개발자용)
+            const reportPath = path.join(gamePath, 'VALIDATION_REPORT.md');
+            await fs.writeFile(reportPath, validationReport, 'utf8');
+            console.log(`📋 검증 보고서 저장: ${reportPath}`);
+            
+            const playUrl = `/games/${gameId}/`;
+            
+            return {
+                success: true,
+                gameId: gameId,
+                gamePath: gamePath,
+                playUrl: playUrl,
+                validation: validationResult,
+                files: {
+                    index: indexPath,
+                    metadata: metadataPath,
+                    readme: readmePath,
+                    validation: reportPath
+                }
+            };
+            
+        } catch (error) {
+            console.error('❌ 게임 파일 저장 실패:', error);
+            return {
+                success: false,
+                error: error.message,
+                details: error.stack
+            };
+        }
+    }
+
+    /**
+     * 게임 ID 생성 (제목을 기반으로 안전한 폴더명 생성)
+     */
+    generateGameId(title) {
+        // 제목을 안전한 폴더명으로 변환
+        const baseId = title
+            .toLowerCase()
+            .replace(/[^a-z0-9가-힣\s]/g, '') // 알파벳, 숫자, 한글, 공백만 허용
+            .replace(/\s+/g, '-') // 공백을 하이픈으로 변경
+            .replace(/-+/g, '-') // 연속 하이픈 제거
+            .replace(/^-|-$/g, '') // 시작/끝 하이픈 제거
+            .substring(0, 50); // 최대 50자
+            
+        // 타임스탬프 추가로 고유성 보장
+        const timestamp = Date.now().toString().slice(-6);
+        return `${baseId}-${timestamp}`;
+    }
+
+    /**
+     * README.md 파일 내용 생성
+     */
+    generateReadme(metadata) {
+        return `# ${metadata.title}
+
+${metadata.description}
+
+## 게임 정보
+- **타입**: ${metadata.gameType}
+- **장르**: ${metadata.genre}
+- **난이도**: ${metadata.difficulty}
+- **센서 메커니즘**: ${metadata.sensorMechanics?.join(', ')}
+
+## 플레이 방법
+1. 게임 화면에 표시되는 QR 코드를 모바일로 스캔하거나
+2. 세션 코드를 센서 클라이언트에 입력하세요
+3. 센서가 연결되면 게임이 시작됩니다!
+
+## 생성 정보
+- **생성 시간**: ${metadata.generatedAt}
+- **세션 ID**: ${metadata.sessionId}
+- **버전**: 1.0.0
+
+---
+🎮 Generated by Sensor Game Hub v6.0 Interactive Game Generator
+`;
     }
 
     /**

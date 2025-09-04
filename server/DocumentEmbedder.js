@@ -99,6 +99,23 @@ class DocumentEmbedder {
             
             // 사용 가능한 파일만 필터링하여 문서 목록 생성
             const potentialDocuments = [
+                // 핵심 완벽 가이드 문서들 (최우선)
+                {
+                    filePath: `${basePath}/docs/PERFECT_GAME_DEVELOPMENT_GUIDE.md`,
+                    type: 'master_guide',
+                    description: '센서 게임 완벽 개발 가이드 - 100% 성공 패턴'
+                },
+                {
+                    filePath: `${basePath}/docs/SESSIONSK_INTEGRATION_PATTERNS.md`,
+                    type: 'integration_guide',
+                    description: 'SessionSDK 통합 패턴 완벽 가이드'
+                },
+                {
+                    filePath: `${basePath}/docs/SENSOR_GAME_TROUBLESHOOTING.md`,
+                    type: 'troubleshooting',
+                    description: '센서 게임 문제 해결 및 디버깅 가이드'
+                },
+                // 기존 중요 문서들
                 {
                     filePath: `${basePath}/AI_ASSISTANT_PROMPTS.md`,
                     type: 'prompt',
