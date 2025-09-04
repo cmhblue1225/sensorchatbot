@@ -528,6 +528,80 @@ class GameGenreClassifier {
 
         return null;
     }
+
+    /**
+     * 🎯 게임 아이디어 분류 (InteractiveGameGenerator에서 사용)
+     * 사용자 입력을 분석하여 게임 장르, 타입, 센서 메카닉을 결정
+     */
+    async classifyGameIdea(userInput) {
+        console.log('🔍 게임 아이디어 분류 시작:', userInput);
+        
+        // 기존 analyzeGameTheme 메소드 활용
+        const analysis = this.analyzeGameTheme(userInput);
+        
+        // InteractiveGameGenerator에서 사용할 형태로 변환
+        const classification = {
+            // 주 장르
+            primaryGenre: analysis.primaryGenre,
+            confidence: analysis.confidence,
+            
+            // 추가 장르들
+            secondaryGenres: analysis.detectedGenres.slice(1, 3).map(g => g.genre),
+            
+            // 게임 타입 추정 (단어 분석으로)
+            gameType: this.estimateGameType(userInput),
+            
+            // 센서 메카닉
+            sensorMechanics: analysis.sensorMapping,
+            
+            // 난이도
+            difficulty: analysis.complexity,
+            
+            // 원본 분석 결과
+            fullAnalysis: analysis
+        };
+
+        console.log('📊 분류 결과:', classification);
+        return classification;
+    }
+
+    /**
+     * 게임 타입 추정 (솔로/듀얼/멀티)
+     */
+    estimateGameType(userInput) {
+        const text = userInput.toLowerCase();
+        
+        // 멀티플레이어 키워드
+        const multiKeywords = ['여러명', '다수', '경쟁', '대전', '순위', '랭킹', '친구들', '같이', '함께'];
+        
+        // 듀얼 플레이어 키워드  
+        const dualKeywords = ['2명', '둘이', '협력', '파트너', '팀', '듀얼'];
+        
+        // 솔로 키워드
+        const soloKeywords = ['혼자', '1명', '개인', '솔로'];
+
+        // 키워드 매칭
+        for (const keyword of multiKeywords) {
+            if (text.includes(keyword)) {
+                return 'multi';
+            }
+        }
+        
+        for (const keyword of dualKeywords) {
+            if (text.includes(keyword)) {
+                return 'dual';
+            }
+        }
+        
+        for (const keyword of soloKeywords) {
+            if (text.includes(keyword)) {
+                return 'solo';
+            }
+        }
+
+        // 기본값은 솔로
+        return 'solo';
+    }
 }
 
 module.exports = GameGenreClassifier;
