@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Emotion Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #f8f9fa;
+      padding: 1.5rem;
+      padding-bottom: 80px;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 2rem;
+    }
+
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .section h2 {
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      color: #343a40;
+    }
+
+    .diary-entry {
+      border-bottom: 1px solid #dee2e6;
+      padding: 0.6rem 0;
+    }
+
+    .diary-entry:last-child {
+      border-bottom: none;
+    }
+
+    .diary-entry a {
+      text-decoration: none;
+      color: #212529;
+      display: block;
+      transition: 0.2s;
+    }
+
+    .diary-entry a:hover {
+      color: #339af0;
+    }
+
+    .entry-meta {
+      font-size: 0.9rem;
+      color: #868e96;
+      margin-bottom: 0.3rem;
+      padding-left: 0.5rem;
+    }
+
+    .entry-snippet {
+      font-size: 1rem;
+      padding-left: 0.5rem;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .buttons a {
+      padding: 0.8rem 1.2rem;
+      background: #339af0;
+      color: white;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: background 0.2s;
+    }
+
+    .buttons a:hover {
+      background: #228be6;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 감정 대시보드</h1>
+
+  <div class="section" id="recent-diaries">
+    <h2>📝 최근 내 일기</h2>
+    <div id="my-diaries">불러오는 중...</div>
+  </div>
+
+  <div class="section" id="popular-diaries">
+    <h2>🔥 인기 공유 일기</h2>
+    <div id="shared-diaries">불러오는 중...</div>
+  </div>
+
+  <div class="section" id="weekly-summary">
+    <h2>🧠 GPT 주간 감정 요약</h2>
+    <div id="gpt-summary">요약 불러오는 중...</div>
+  </div>
+
+  <div class="buttons">
+    <a href="write-diary.html">✍️ 일기 쓰기</a>
+    <a href="stats.html">📈 감정 통계</a>
+    <a href="community.html">🌐 커뮤니티</a>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { checkAuth } from './js/auth.js';
+    import { insertBottomNav } from './js/components/nav.js';
+
+    checkAuth();
+    insertBottomNav();
+
+    async function loadDashboard() {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // 내 최근 일기
+      const { data: myDiaries } = await supabase
+        .from('diaries')
+        .select('id, content, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      const myEl = document.getElementById('my-diaries');
+      myEl.innerHTML = myDiaries.length === 0
+        ? '<p>작성한 일기가 없습니다.</p>'
+        : myDiaries.map(d => `
+          <div class="diary-entry">
+            <a href="diary-detail.html?id=${d.id}">
+              <div class="entry-meta">${new Date(d.created_at).toLocaleDateString()}</div>
+              <div class="entry-snippet">${d.content.slice(0, 80)}...</div>
+            </a>
+          </div>
+        `).join('');
+
+      // 인기 공유 일기
+      const { data: shared } = await supabase
+        .from('shared_diaries')
+        .select('diary_id, content, likes, created_at')
+        .order('likes', { ascending: false })
+        .limit(3);
+
+      const sharedEl = document.getElementById('shared-diaries');
+      sharedEl.innerHTML = shared.length === 0
+        ? '<p>공유된 일기가 없습니다.</p>'
+        : shared.map(d => `
+          <div class="diary-entry">
+            <a href="diary-detail.html?id=${d.diary_id}">
+              <div class="entry-meta">❤️ ${d.likes} · ${new Date(d.created_at).toLocaleDateString()}</div>
+              <div class="entry-snippet">${d.content.slice(0, 80)}...</div>
+            </a>
+          </div>
+        `).join('');
+
+      // 주간 감정 요약
+      const { data: emotions } = await supabase
+        .from('diaries')
+        .select('emotion, created_at')
+        .eq('user_id', user.id);
+
+      const scores = { happy: 2, neutral: 1, anxious: 0, sad: -1, angry: -2 };
+      const weekDays = ['월', '화', '수', '목', '금', '토', '일'];
+      const weekMap = { 월: [], 화: [], 수: [], 목: [], 금: [], 토: [], 일: [] };
+
+      emotions.forEach(entry => {
+        const date = new Date(entry.created_at);
+        const weekday = weekDays[date.getDay() === 0 ? 6 : date.getDay() - 1];
+        const score = scores[entry.emotion];
+        if (score !== undefined) {
+          weekMap[weekday].push(score);
+        }
+      });
+
+      const summaryPayload = weekDays.map(day => {
+        const arr = weekMap[day];
+        const avg = arr.length ? (arr.reduce((a,b) => a+b) / arr.length).toFixed(2) : null;
+        return { date: day, score: avg };
+      });
+
+      const res = await fetch('https://emotion-gpt-api.onrender.com/api/emotion-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emotions: summaryPayload })
+      });
+
+      const result = await res.json();
+      document.getElementById('gpt-summary').innerText = result.summary || 'GPT 분석 결과가 없습니다.';
+    }
+
+    loadDashboard();
+  </script>
+
+  <script type="module" src="./js/components/nav.js"></script>
+  <nav-bar current="dashboard"></nav-bar>
+</body>
+</html>

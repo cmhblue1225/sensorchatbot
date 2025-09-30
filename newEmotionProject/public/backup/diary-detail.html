@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>일기 상세 보기</title>
+  <style>
+    body {
+      font-family: 'Pretendard', sans-serif;
+      background: #f8f9fa;
+      padding: 2rem;
+      max-width: 700px;
+      margin: auto;
+      padding-bottom: 100px;
+    }
+
+    .back-btn {
+      display: inline-block;
+      margin-bottom: 1rem;
+      color: #339af0;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .diary-box {
+      background: #ffffff;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.05);
+      margin-bottom: 1.5rem;
+    }
+
+    .diary-box p {
+      margin: 0.5rem 0;
+      line-height: 1.5;
+    }
+
+    .label {
+      font-weight: bold;
+    }
+
+    #feedback-box {
+      background: #fff3bf;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+    }
+
+    .chat-btn {
+      padding: 0.8rem 1.2rem;
+      font-size: 1rem;
+      background: #339af0;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      display: block;
+      margin: auto;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <a href="my-diary.html" class="back-btn">← 내 일기 목록으로</a>
+
+  <h1>📘 일기 상세</h1>
+
+  <div class="diary-box">
+    <p><span class="label">🕒 작성일:</span> <span id="created-at"></span></p>
+    <p><span class="label">💬 감정:</span> <span id="emotion"></span></p>
+    <p><span class="label">📝 내용:</span></p>
+    <p id="content"></p>
+  </div>
+
+  <div id="feedback-box" style="display: none;"></div>
+
+  <button class="chat-btn" id="chat-btn">💬 이 일기로 AI 상담 시작</button>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { checkAuth } from './js/auth.js';
+
+    checkAuth();
+
+    const params = new URLSearchParams(location.search);
+    const diaryId = params.get('id');
+    const feedbackBox = document.getElementById('feedback-box');
+
+    async function loadDiary() {
+      if (!diaryId) return alert('일기를 찾을 수 없습니다.');
+
+      const { data, error } = await supabase.from('diaries').select('*').eq('id', diaryId).single();
+      if (error || !data) return alert('일기 불러오기 실패');
+
+      const utc = new Date(data.created_at);
+      const kst = new Date(utc.getTime() + 9 * 60 * 60 * 1000);
+      document.getElementById('created-at').textContent = kst.toLocaleString('ko-KR');
+
+      document.getElementById('emotion').textContent = data.emotion;
+      document.getElementById('content').textContent = data.content;
+
+      const res = await fetch('https://emotion-gpt-api.onrender.com/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: data.content })
+      });
+
+      const gpt = await res.json();
+      if (gpt.feedback || gpt.music) {
+        feedbackBox.style.display = 'block';
+        feedbackBox.innerHTML = `
+          <p><strong>GPT 피드백:</strong> ${gpt.feedback}</p>
+          <p><a href="${gpt.music}" target="_blank">🎵 음악 추천 듣기</a></p>
+        `;
+      }
+    }
+
+    document.getElementById('chat-btn').addEventListener('click', () => {
+      location.href = `chat.html?id=${diaryId}`;
+    });
+
+    loadDiary();
+  </script>
+</body>
+</html>

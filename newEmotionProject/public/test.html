@@ -1,0 +1,23 @@
+<!-- test-analyze.html -->
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>감정 분석 테스트</title></head>
+<body>
+  <textarea id="content" rows="5" cols="50" placeholder="일기를 입력하세요"></textarea>
+  <button id="analyze">분석하기</button>
+  <p>결과: <span id="result"></span></p>
+
+  <script>
+    document.getElementById('analyze').onclick = async () => {
+      const content = document.getElementById('content').value;
+      const res = await fetch('https://emotion-gpt-api.onrender.com/api/analyze-emotion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+      const data = await res.json();
+      document.getElementById('result').innerText = data.emotion || '분석 실패';
+    };
+  </script>
+</body>
+</html>

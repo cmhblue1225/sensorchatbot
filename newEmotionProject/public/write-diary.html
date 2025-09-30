@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>일기 작성 - 한 숨의 위로</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'emotion-happy': '#10B981',
+            'emotion-sad': '#3B82F6',
+            'emotion-angry': '#EF4444',
+            'emotion-anxious': '#F59E0B',
+            'emotion-neutral': '#6B7280'
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.5s ease-in-out',
+            'slide-up': 'slideUp 0.4s ease-out',
+            'bounce-in': 'bounceIn 0.6s ease-out',
+            'pulse-gentle': 'pulseGentle 2s ease-in-out infinite'
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bounceIn {
+      0% { opacity: 0; transform: scale(0.3); }
+      50% { opacity: 1; transform: scale(1.05); }
+      70% { transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes pulseGentle {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.02); opacity: 0.9; }
+    }
+
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+
+    .emotion-btn {
+      transition: all 0.3s ease;
+      border: 2px solid #e5e7eb;
+    }
+
+    .emotion-btn.selected {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border-color: #667eea;
+      transform: scale(1.05);
+    }
+
+    .upload-area {
+      transition: all 0.3s ease;
+      border: 2px dashed #d1d5db;
+    }
+
+    .upload-area.dragover {
+      border-color: #667eea;
+      background-color: #f0f4ff;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="dashboard.html" class="nav-brand">🌙 한 숨의 위로</a>
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <a href="dashboard.html" class="nav-link">대시보드</a>
+        </li>
+        <li class="nav-item">
+          <a href="write-diary.html" class="nav-link active">일기 작성</a>
+        </li>
+        <li class="nav-item">
+          <a href="my-diary.html" class="nav-link">내 일기</a>
+        </li>
+        <li class="nav-item">
+          <a href="anonymous-community.html" class="nav-link">익명 커뮤니티</a>
+        </li>
+        <li class="nav-item">
+          <a href="stats.html" class="nav-link">통계</a>
+        </li>
+        <li class="nav-item">
+          <a href="my-page.html" class="nav-link">마이페이지</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="max-w-4xl mx-auto px-4 py-6 pt-24">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="gradient-bg rounded-3xl p-8 text-white mb-6 animate-fade-in">
+        <h1 class="text-4xl font-bold mb-3">📝 오늘의 감정 일기</h1>
+        <p class="text-lg opacity-90">당신의 마음을 자유롭게 표현해보세요</p>
+        <div class="mt-4 text-sm opacity-80">
+          ✍️ 감정 분석 · 💬 AI 피드백 · 🎵 맞춤 음악 추천
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 일기 작성 -->
+    <div class="bg-white rounded-2xl p-8 shadow-lg animate-bounce-in">
+        <form id="diary-form" class="space-y-6">
+          <!-- Content Input -->
+          <div>
+            <label for="content" class="block text-sm font-medium text-gray-700 mb-3">
+              📝 오늘의 이야기를 들려주세요
+            </label>
+            <textarea
+              id="content"
+              rows="6"
+              class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-300 resize-none"
+              placeholder="오늘 하루를 자유롭게 적어보세요... 어떤 일이 있었나요? 어떤 기분이셨나요?"
+            ></textarea>
+          </div>
+
+          <!-- Emotion Selection -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-3">🎭 현재 기분을 선택해주세요</label>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <button type="button" class="emotion-btn px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105" data-emotion="happy">
+                😊 행복
+              </button>
+              <button type="button" class="emotion-btn px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105" data-emotion="sad">
+                😢 슬픔
+              </button>
+              <button type="button" class="emotion-btn px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105" data-emotion="angry">
+                😠 분노
+              </button>
+              <button type="button" class="emotion-btn px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105" data-emotion="anxious">
+                😟 불안
+              </button>
+              <button type="button" class="emotion-btn px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105" data-emotion="neutral">
+                😐 보통
+              </button>
+            </div>
+            <input type="hidden" id="emotion" name="emotion">
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="grid md:grid-cols-3 gap-4">
+            <button type="button" id="analyze-btn"
+                    class="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+              ✍️ 감정 자동 분석
+            </button>
+            <button type="button" id="feedback-btn"
+                    class="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+              💬 GPT 피드백
+            </button>
+            <button type="button" id="capture-btn"
+                    class="px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+              📸 이미지 저장
+            </button>
+          </div>
+
+          <!-- Share Option -->
+          <div class="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-100">
+            <div class="flex items-center space-x-3">
+              <input type="checkbox" id="share-checkbox"
+                     class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300">
+              <label for="share-checkbox" class="text-sm font-medium text-gray-700">
+                🌍 익명으로 커뮤니티에 공유하기
+              </label>
+            </div>
+            <p class="text-xs text-gray-500 mt-2 ml-8">
+              다른 사람들과 감정을 나누고 위로를 받을 수 있습니다
+            </p>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" id="submit-btn"
+                  class="w-full px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-pulse-gentle">
+            📌 일기 저장하기
+          </button>
+        </form>
+
+        <!-- GPT Feedback Area -->
+        <div id="gpt-feedback" class="mt-8" style="display: none;">
+          <!-- Feedback will be displayed here -->
+        </div>
+
+        <!-- Music Recommendation Area -->
+        <div id="music-recommendation" class="mt-8" style="display: none;">
+          <!-- Music recommendation will be displayed here -->
+        </div>
+      </form>
+    </div>
+
+
+
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { checkAuth } from './js/auth.js';
+
+    // DOM 상태 확인 후 초기화
+    function initializePage() {
+      console.log('페이지 초기화 시작');
+      checkAuth();
+
+
+    // 감정 선택 버튼 이벤트 핸들러
+    const emotionBtns = document.querySelectorAll('.emotion-btn');
+    emotionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // 모든 감정 버튼에서 selected 클래스 제거
+        emotionBtns.forEach(b => b.classList.remove('selected'));
+
+        // 클릭된 버튼에 selected 클래스 추가
+        btn.classList.add('selected');
+
+        // hidden input에 감정 값 설정
+        const emotion = btn.dataset.emotion;
+        document.getElementById('emotion').value = emotion;
+      });
+    });
+
+    const form = document.getElementById('diary-form');
+    const emotionSelect = document.getElementById('emotion');
+    const contentInput = document.getElementById('content');
+    const feedbackBox = document.getElementById('gpt-feedback');
+    document.getElementById('analyze-btn').addEventListener('click', async () => {
+      console.log('감정 분석 버튼 클릭됨');
+      const content = contentInput.value.trim();
+      console.log('입력된 내용:', content);
+
+      if (!content) return alert('일기를 먼저 입력해주세요.');
+
+      // 로딩 상태 시작
+      const analyzeBtn = document.getElementById('analyze-btn');
+      const originalText = analyzeBtn.innerHTML;
+      analyzeBtn.innerHTML = '🔄 분석 중...';
+      analyzeBtn.disabled = true;
+
+      try {
+        console.log('API 요청 시작...');
+        const res = await fetch('/.netlify/functions/analyze-emotion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+
+        console.log('응답 상태:', res.status);
+        const data = await res.json();
+        console.log('응답 데이터:', data);
+
+        if (data.emotion) {
+          emotionSelect.value = data.emotion;
+          feedbackBox.innerHTML = `<div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded"><strong>GPT 감정 분석:</strong> ${data.emotion}</div>`;
+          feedbackBox.style.display = 'block';
+
+          // 해당 감정 버튼도 선택 상태로 만들기
+          const emotionBtns = document.querySelectorAll('.emotion-btn');
+          emotionBtns.forEach(btn => btn.classList.remove('selected'));
+          const selectedBtn = document.querySelector(`[data-emotion="${data.emotion}"]`);
+          if (selectedBtn) selectedBtn.classList.add('selected');
+        } else {
+          feedbackBox.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">감정 분석 실패</div>';
+          feedbackBox.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('감정 분석 오류:', error);
+        feedbackBox.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">감정 분석 중 오류가 발생했습니다.</div>';
+        feedbackBox.style.display = 'block';
+      } finally {
+        // 로딩 상태 복원
+        analyzeBtn.innerHTML = originalText;
+        analyzeBtn.disabled = false;
+      }
+    });
+
+    document.getElementById('feedback-btn').addEventListener('click', async () => {
+      console.log('GPT 피드백 버튼 클릭됨');
+      const diaryContent = contentInput.value.trim();
+      const selectedEmotion = emotionSelect.value;
+      console.log('일기 내용:', diaryContent);
+      console.log('선택된 감정:', selectedEmotion);
+
+      if (!diaryContent || !selectedEmotion) {
+        alert('내용과 감정을 모두 입력해주세요.');
+        return;
+      }
+
+      // 로딩 상태 시작
+      const feedbackBtn = document.getElementById('feedback-btn');
+      const originalFeedbackText = feedbackBtn.innerHTML;
+      feedbackBtn.innerHTML = '🤖 AI 분석 중...';
+      feedbackBtn.disabled = true;
+
+      try {
+        console.log('피드백 API 요청 시작...');
+        const res = await fetch('/.netlify/functions/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ diaryContent, selectedEmotion })
+        });
+
+        console.log('피드백 응답 상태:', res.status);
+        const data = await res.json();
+        console.log('피드백 응답 데이터:', data);
+
+        if (data.feedback) {
+          const parsed = parseFeedback(data.feedback);
+          console.log('파싱된 피드백:', parsed);
+
+          feedbackBox.innerHTML = `
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 shadow-lg">
+              <div class="space-y-4">
+                <div>
+                  <h4 class="font-semibold text-gray-800 mb-2 flex items-center space-x-2">
+                    <span>✨</span>
+                    <span>감성 피드백</span>
+                  </h4>
+                  <p class="text-gray-700 leading-relaxed">${parsed.feedback}</p>
+                </div>
+                <div class="pt-4 border-t border-blue-200">
+                  <h4 class="font-semibold text-gray-800 mb-3 flex items-center space-x-2">
+                    <span>🎵</span>
+                    <span>추천 음악</span>
+                  </h4>
+                  <div class="bg-white rounded-lg p-4 border border-blue-100">
+                    <h3 class="font-bold text-lg text-gray-800 mb-1">${parsed.song}</h3>
+                    <p class="text-gray-600 mb-2">🎤 ${parsed.artist}</p>
+                    <p class="text-sm text-gray-500 mb-3">📝 ${parsed.reason}</p>
+                    <a href="${parsed.youtube}" target="_blank"
+                       class="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                      <span>▶️</span>
+                      <span>유튜브에서 듣기</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          feedbackBox.style.display = 'block';
+        } else {
+          feedbackBox.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">GPT 피드백을 가져오지 못했습니다.</div>';
+          feedbackBox.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('피드백 오류:', error);
+        feedbackBox.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">피드백 처리 중 오류가 발생했습니다.</div>';
+        feedbackBox.style.display = 'block';
+      } finally {
+        // 로딩 상태 복원
+        feedbackBtn.innerHTML = originalFeedbackText;
+        feedbackBtn.disabled = false;
+      }
+    });
+
+    function parseFeedback(text) {
+      const feedbackMatch = text.match(/✨ 감성 피드백:\s*(.*)/);
+      const songMatch = text.match(/🎵 추천곡 제목:\s*(.*)/);
+      const artistMatch = text.match(/🎤 가수:\s*(.*)/);
+      const reasonMatch = text.match(/📝 추천 이유:\s*(.*)/);
+      const youtubeMatch = text.match(/▶️ 유튜브 링크:\s*(.*)/);
+
+      let youtubeLink = youtubeMatch ? youtubeMatch[1].trim() : '#';
+      const markdownLinkMatch = youtubeLink.match(/\((https?:\/\/[^\s)]+)\)/);
+      if (markdownLinkMatch) {
+        youtubeLink = markdownLinkMatch[1];
+      } else if (!youtubeLink.startsWith('http')) {
+        youtubeLink = '#';
+      }
+
+      return {
+        feedback: feedbackMatch ? feedbackMatch[1].trim() : '없음',
+        song: songMatch ? songMatch[1].trim() : '제목 없음',
+        artist: artistMatch ? artistMatch[1].trim() : '가수 없음',
+        reason: reasonMatch ? reasonMatch[1].trim() : '추천 이유 없음',
+        youtube: youtubeLink,
+      };
+    }
+
+    document.getElementById('capture-btn').addEventListener('click', () => {
+      html2canvas(document.getElementById('capture-area')).then(canvas => {
+        const link = document.createElement('a');
+        link.download = '감성일기.png';
+        link.href = canvas.toDataURL();
+        link.click();
+      });
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const content = contentInput.value.trim();
+      const emotion = emotionSelect.value;
+      const share = document.getElementById('share-checkbox').checked;
+
+      if (!content || !emotion) {
+        alert('내용과 감정을 모두 입력해주세요.');
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: diaryData, error: diaryError } = await supabase
+        .from('diaries')
+        .insert({ user_id: user.id, content, emotion })
+        .select()
+        .single();
+
+      if (diaryError) {
+        alert('일기 저장 실패: ' + diaryError.message);
+        return;
+      }
+
+      if (share) {
+        const feedbackText = feedbackBox.innerText || '';
+        await supabase.from('shared_diaries').insert({
+          diary_id: diaryData.id,
+          user_id: user.id,
+          emotion,
+          content,
+          feedback: feedbackText,
+        });
+      }
+
+      alert('일기가 저장되었습니다!');
+      location.href = 'my-diary.html';
+    });
+
+    } // initializePage() 함수 종료
+
+    // DOM이 준비되면 즉시 초기화 실행
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializePage);
+    } else {
+      initializePage();
+    }
+  </script>
+
+  <script type="module" src="./js/components/nav.js"></script>
+</body>
+</html>

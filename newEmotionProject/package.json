@@ -1,0 +1,31 @@
+{
+  "name": "ai-emotion-diary",
+  "version": "1.0.0",
+  "description": "AI 기반 감정 분석 일기 서비스",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build process needed for static site'",
+    "deploy": "netlify deploy --prod"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "openai": "^4.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "keywords": [
+    "ai",
+    "emotion",
+    "diary",
+    "netlify",
+    "supabase"
+  ],
+  "author": "cmhblue1225",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cmhblue1225/AI-Diary.git"
+  }
+}

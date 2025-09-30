@@ -1,0 +1,20 @@
+{
+	"geolocation": {
+		"data": {
+			"city": "Gangbuk-gu",
+			"country": {
+				"code": "KR",
+				"name": "South Korea"
+			},
+			"subdivision": {
+				"code": "11",
+				"name": "Seoul"
+			},
+			"timezone": "Asia/Seoul",
+			"latitude": 37.628,
+			"longitude": 127.0268,
+			"postalCode": "011"
+		},
+		"timestamp": 1759162886582
+	}
+}

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI 감정 상담 - 한 숨의 위로</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'emotion-happy': '#10B981',
+            'emotion-sad': '#3B82F6',
+            'emotion-angry': '#EF4444',
+            'emotion-anxious': '#F59E0B',
+            'emotion-neutral': '#6B7280'
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.5s ease-in-out',
+            'slide-up': 'slideUp 0.4s ease-out',
+            'bounce-in': 'bounceIn 0.6s ease-out',
+            'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bounceIn {
+      0% { opacity: 0; transform: scale(0.3); }
+      50% { opacity: 1; transform: scale(1.05); }
+      70% { transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .chat-container {
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e0 #f7fafc;
+    }
+
+    .chat-container::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-container::-webkit-scrollbar-track {
+      background: #f7fafc;
+      border-radius: 3px;
+    }
+
+    .chat-container::-webkit-scrollbar-thumb {
+      background: #cbd5e0;
+      border-radius: 3px;
+    }
+
+    .chat-container::-webkit-scrollbar-thumb:hover {
+      background: #a0aec0;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="dashboard.html" class="nav-brand">🌙 한 숨의 위로</a>
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <a href="dashboard.html" class="nav-link">대시보드</a>
+        </li>
+        <li class="nav-item">
+          <a href="write-diary.html" class="nav-link">일기 작성</a>
+        </li>
+        <li class="nav-item">
+          <a href="my-diary.html" class="nav-link">내 일기</a>
+        </li>
+        <li class="nav-item">
+          <a href="anonymous-community.html" class="nav-link">익명 커뮤니티</a>
+        </li>
+        <li class="nav-item">
+          <a href="stats.html" class="nav-link">통계</a>
+        </li>
+        <li class="nav-item">
+          <a href="my-page.html" class="nav-link">마이페이지</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="max-w-4xl mx-auto px-4 py-6 pt-24 h-screen flex flex-col">
+    <!-- Header -->
+    <div class="mb-6 animate-fade-in">
+      <a onclick="history.back()"
+         class="inline-flex items-center space-x-2 text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer transition-all duration-300 hover:scale-105 mb-4">
+        <span>←</span>
+        <span>이전으로 돌아가기</span>
+      </a>
+
+      <div class="gradient-bg rounded-2xl p-6 text-white text-center">
+        <div class="flex items-center justify-center space-x-3 mb-3">
+          <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center text-2xl animate-pulse-slow">
+            🧠
+          </div>
+          <h1 class="text-2xl font-bold">AI 감정 상담</h1>
+        </div>
+        <p class="text-lg opacity-90">마음 깊은 곳의 이야기를 들려주세요</p>
+        <div class="mt-3 text-sm opacity-80">
+          💬 24시간 상담 · 🤖 전문 AI 분석 · 💝 따뜻한 위로
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Container -->
+    <div class="flex-1 mb-6 animate-slide-up">
+      <div class="glass-effect rounded-2xl shadow-2xl h-full flex flex-col">
+        <!-- Chat Messages -->
+        <div id="chat-box" class="chat-container flex-1 p-6 overflow-y-auto space-y-4 min-h-[400px]">
+          <!-- Welcome Message -->
+          <div class="flex items-start space-x-3 animate-bounce-in">
+            <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
+              🤖
+            </div>
+            <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl rounded-tl-none p-4 max-w-xs lg:max-w-md border border-blue-100">
+              <p class="text-gray-800">안녕하세요! 저는 AI 상담사입니다. 💙<br>
+              어떤 감정이나 고민이든 편하게 이야기해주세요. 함께 해결책을 찾아보아요.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div id="typing" class="px-6 py-2 text-center text-gray-500 text-sm italic hidden animate-pulse">
+          <div class="flex items-center justify-center space-x-2">
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s;"></div>
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>
+            <span class="ml-2">AI가 답변을 작성 중입니다...</span>
+          </div>
+        </div>
+
+        <!-- Input Form -->
+        <div class="p-6 border-t border-gray-200">
+          <form id="chat-form" class="flex space-x-4">
+            <input type="text" id="chat-input"
+                   class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-300 placeholder-gray-500"
+                   placeholder="마음속 이야기를 들려주세요..." autocomplete="off" />
+            <button type="submit"
+                    class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+              <span>💌</span>
+              <span>전송</span>
+            </button>
+          </form>
+          <div class="mt-3 text-center text-xs text-gray-500">
+            💡 팁: 구체적인 감정이나 상황을 설명해주시면 더 정확한 조언을 드릴 수 있어요
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { checkAuth } from './js/auth.js';
+    import { SafetyFilter, renderSafetyResponse } from './js/safety-filter.js';
+
+    checkAuth();
+
+    const params = new URLSearchParams(location.search);
+    const diaryId = params.get('id');
+    const chatBox = document.getElementById("chat-box");
+    const input = document.getElementById("chat-input");
+    const form = document.getElementById("chat-form");
+    const typingIndicator = document.getElementById("typing");
+
+    const renderUrl = "https://emotion-gpt-api.onrender.com";
+    let conversation = [];
+    let typingInterval = null;
+
+    function showTyping() {
+      typingIndicator.classList.remove("hidden");
+    }
+
+    function hideTyping() {
+      clearInterval(typingInterval);
+      typingIndicator.classList.add("hidden");
+    }
+
+    function addMessage(sender, text) {
+      // Remove welcome message if it exists
+      const welcomeMessage = chatBox.querySelector('.animate-bounce-in');
+      if (welcomeMessage) {
+        welcomeMessage.remove();
+      }
+
+      if (sender === "gpt") {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = "flex items-start space-x-3 animate-fade-in";
+        messageDiv.innerHTML = `
+          <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
+            🤖
+          </div>
+          <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl rounded-tl-none p-4 max-w-xs lg:max-w-md border border-blue-100">
+            <p class="text-gray-800 leading-relaxed">${text}</p>
+          </div>
+        `;
+        chatBox.appendChild(messageDiv);
+      } else {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = "flex items-start space-x-3 justify-end animate-fade-in";
+        messageDiv.innerHTML = `
+          <div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl rounded-tr-none p-4 max-w-xs lg:max-w-md">
+            <p class="leading-relaxed">${text}</p>
+          </div>
+          <div class="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
+            👤
+          </div>
+        `;
+        chatBox.appendChild(messageDiv);
+      }
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function addMessageToDB(role, content) {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("chat_history").insert({
+        user_id: user.id,
+        diary_id: diaryId,
+        role,
+        content
+      });
+    }
+
+    async function loadPreviousMessages() {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { data } = await supabase
+        .from("chat_history")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("diary_id", diaryId)
+        .order("created_at", { ascending: true });
+
+      if (data) {
+        data.forEach((msg) => {
+          addMessage(msg.role === "assistant" ? "gpt" : "user", msg.content);
+          conversation.push({ role: msg.role, content: msg.content });
+        });
+      }
+    }
+
+    async function startChat() {
+      const { data, error } = await supabase
+        .from("diaries")
+        .select("*")
+        .eq("id", diaryId)
+        .single();
+
+      if (error || !data) return alert("일기를 불러올 수 없습니다.");
+
+      // 🚨 일기 내용 안전 필터 체크
+      const safetyCheck = SafetyFilter.preCheckMessage(data.content);
+      if (safetyCheck) {
+        console.warn('⚠️ 일기 내용에서 위험 메시지 감지:', data.content);
+
+        // 안전 응답을 즉시 표시
+        renderSafetyResponse(safetyCheck, chatBox);
+
+        // 일기 내용을 위험 메시지로 분류하여 DB에 저장
+        await addMessageToDB("user", `일기 내용: ${data.content}`);
+        await addMessageToDB("assistant", safetyCheck.message);
+
+        return; // 일반 상담 시작 중단
+      }
+
+      const prompt = `사용자의 일기 내용은 다음과 같습니다:\n\n"${data.content}"\n\n이 내용을 바탕으로 부드럽게 상담을 시작해주세요.`;
+
+      showTyping();
+
+      const res = await fetch(`${renderUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }] })
+      });
+
+      const dataJson = await res.json();
+      hideTyping();
+
+      if (dataJson.reply) {
+        addMessage("gpt", dataJson.reply);
+        await addMessageToDB("user", prompt);
+        await addMessageToDB("assistant", dataJson.reply);
+        conversation.push({ role: "user", content: prompt });
+        conversation.push({ role: "assistant", content: dataJson.reply });
+      }
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+
+      // 🚨 1단계: 클라이언트 측 안전 필터 체크
+      const safetyCheck = SafetyFilter.preCheckMessage(message);
+      if (safetyCheck) {
+        console.warn('⚠️ 위험 메시지 감지, 안전 응답 표시');
+        input.value = ""; // 입력창 즉시 초기화
+        renderSafetyResponse(safetyCheck, chatBox);
+        return; // 일반 채팅 처리 중단
+      }
+
+      addMessage("user", message);
+      await addMessageToDB("user", message);
+      conversation.push({ role: "user", content: message });
+      input.value = "";
+      showTyping();
+
+      const res = await fetch(`${renderUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: conversation })
+      });
+
+      const data = await res.json();
+      hideTyping();
+
+      addMessage("gpt", data.reply);
+      await addMessageToDB("assistant", data.reply);
+      conversation.push({ role: "assistant", content: data.reply });
+    });
+
+    await loadPreviousMessages();
+    await startChat();
+  </script>
+
+</body>
+</html>

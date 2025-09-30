@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>구독한 익명 유저 일기</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 800px;
+      margin: auto;
+      background-color: #f8f9fa;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .diary-card {
+      background-color: white;
+      border: 1px solid #ced4da;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .emotion-tag {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .music-btn {
+      margin-top: 0.5rem;
+      display: inline-block;
+      background: #74c0fc;
+      padding: 0.4rem 0.7rem;
+      border-radius: 6px;
+      color: white;
+      text-decoration: none;
+    }
+
+    .music-btn:hover {
+      background: #339af0;
+    }
+
+    .like-btn {
+      margin-left: 10px;
+      background: #ffa8a8;
+      border: none;
+      border-radius: 4px;
+      padding: 0.3rem 0.6rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>📩 구독한 익명 유저들의 공유 일기</h1>
+
+  <div id="diary-list"></div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { checkAuth } from './js/auth.js';
+
+    checkAuth();
+
+    const diaryList = document.getElementById('diary-list');
+    let currentUserId = null;
+
+    async function loadSubscribedDiaries() {
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUserId = user.id;
+
+      const { data: subs } = await supabase
+        .from('subscriptions')
+        .select('following_id')
+        .eq('follower_id', currentUserId);
+
+      const followingIds = subs.map(s => s.following_id);
+
+      if (followingIds.length === 0) {
+        diaryList.innerHTML = '<p>아직 구독한 유저가 없습니다.</p>';
+        return;
+      }
+
+      const { data: diaries, error } = await supabase
+        .from('shared_diaries')
+        .select('*')
+        .in('user_id', followingIds)
+        .order('created_at', { ascending: false });
+
+      if (error || diaries.length === 0) {
+        diaryList.innerHTML = '<p>구독한 유저의 공유 일기가 없습니다.</p>';
+        return;
+      }
+
+      diaries.forEach(entry => {
+        const card = document.createElement('div');
+        card.className = 'diary-card';
+
+        const anonId = `anon-${entry.user_id.slice(0, 4)}`;
+
+        card.innerHTML = `
+          <div class="emotion-tag">감정: ${entry.emotion}</div>
+          <p>${entry.content}</p>
+          <p><strong>GPT 피드백:</strong> ${entry.feedback}</p>
+          <a href="${entry.music}" target="_blank" class="music-btn">🎵 음악 듣기</a>
+          <p>익명 유저: <strong>${anonId}</strong></p>
+          <p>❤️ 좋아요: <span id="likes-${entry.id}">${entry.likes}</span>
+            <button class="like-btn" data-id="${entry.id}">+ 공감</button>
+          </p>
+        `;
+        diaryList.appendChild(card);
+      });
+
+      attachLikeHandlers();
+    }
+
+    function attachLikeHandlers() {
+      diaryList.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          btn.disabled = true;
+
+          const countEl = document.getElementById(`likes-${id}`);
+          const currentLikes = parseInt(countEl.textContent);
+
+          const { error } = await supabase
+            .from('shared_diaries')
+            .update({ likes: currentLikes + 1 })
+            .eq('id', id);
+
+          if (!error) {
+            countEl.textContent = currentLikes + 1;
+          } else {
+            alert('좋아요 처리 중 오류 발생');
+          }
+        });
+      });
+    }
+
+    loadSubscribedDiaries();
+  </script>
+</body>
+</html>

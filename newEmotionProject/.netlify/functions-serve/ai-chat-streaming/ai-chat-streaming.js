@@ -1,0 +1,1 @@
+module.exports = require('./netlify/functions/ai-chat-streaming.js')

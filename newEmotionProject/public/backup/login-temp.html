@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>로그인 - Emotion Journal</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      background: linear-gradient(145deg, #d0ebff, #e6fcf5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Noto Sans KR', sans-serif;
+      margin: 0;
+    }
+
+    .login-box {
+      background-color: white;
+      padding: 2.5rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .login-box h2 {
+      margin-bottom: 2rem;
+      font-size: 1.8rem;
+      color: #228be6;
+    }
+
+    .login-box input {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      margin-bottom: 1.2rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      transition: border-color 0.2s ease;
+    }
+
+    .login-box input:focus {
+      border-color: #228be6;
+      outline: none;
+    }
+
+    .login-box button {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1.1rem;
+      background-color: #228be6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background-color 0.2s ease;
+    }
+
+    .login-box button:hover {
+      background-color: #1864ab;
+    }
+
+    .login-links {
+      margin-top: 1.2rem;
+      font-size: 0.95rem;
+    }
+
+    .login-links a {
+      color: #228be6;
+      text-decoration: none;
+      margin: 0 0.5rem;
+    }
+
+    .login-links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>Emotion Journal 로그인</h2>
+    <form id="login-form">
+      <input type="email" id="email" placeholder="이메일" required />
+      <input type="password" id="password" placeholder="비밀번호" required />
+      <button type="submit">로그인</button>
+    </form>
+    <div class="login-links">
+      <a href="signup.html">회원가입</a> |
+      <a href="findidpw.html">ID/PW 찾기</a>
+    </div>
+  </div>
+
+  <script type="module" src="./js/login.js"></script>
+</body>
+</html>

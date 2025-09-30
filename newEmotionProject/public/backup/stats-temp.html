@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>감정 통계</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      padding-bottom: 100px;
+      max-width: 800px;
+      margin: auto;
+      font-family: sans-serif;
+      background-color: #f8f9fa;
+    }
+
+    h1, h2 {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    #gpt-summary {
+      background: #fff3bf;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-top: 1.5rem;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: auto !important;
+      max-height: 400px;
+      margin: 1.5rem 0;
+    }
+
+    #no-data {
+      text-align: center;
+      margin-top: 2rem;
+      color: gray;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 내 감정 통계</h1>
+
+  <div id="no-data" style="display: none;">일기 데이터가 없습니다.</div>
+  <canvas id="emotionChart" style="display: none;"></canvas>
+
+  <h2>📈 날짜별 감정 흐름</h2>
+  <canvas id="emotionTrendChart"></canvas>
+
+  <h2>📅 요일별 감정 추이</h2>
+  <canvas id="weeklyEmotionChart"></canvas>
+
+  <h2>🧠 GPT 감정 주간 분석</h2>
+  <div id="gpt-summary"></div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { checkAuth } from './js/auth.js';
+    import { insertBottomNav } from './js/components/nav.js';
+
+    checkAuth();
+    insertBottomNav();
+
+    const emotionScores = {
+      happy: 2,
+      neutral: 1,
+      anxious: 0,
+      sad: -1,
+      angry: -2
+    };
+
+    const weekDays = ['월', '화', '수', '목', '금', '토', '일'];
+
+    async function loadStats() {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { data, error } = await supabase
+        .from('diaries')
+        .select('emotion, created_at')
+        .eq('user_id', user.id);
+
+      if (error || !data || data.length === 0) {
+        document.getElementById('no-data').style.display = 'block';
+        return;
+      }
+
+      const emotionCounts = { happy: 0, sad: 0, angry: 0, anxious: 0, neutral: 0 };
+      data.forEach(entry => {
+        if (emotionCounts[entry.emotion] !== undefined) {
+          emotionCounts[entry.emotion]++;
+        }
+      });
+
+      const chartLabels = Object.keys(emotionCounts).map(e => ({
+        happy: '😊 행복',
+        sad: '😢 슬픔',
+        angry: '😠 분노',
+        anxious: '😟 불안',
+        neutral: '😐 보통'
+      }[e]));
+
+      const chartData = Object.values(emotionCounts);
+
+      document.getElementById('emotionChart').style.display = 'block';
+      new Chart(document.getElementById('emotionChart'), {
+        type: 'pie',
+        data: {
+          labels: chartLabels,
+          datasets: [{
+            data: chartData,
+            backgroundColor: ['#74c0fc','#ff8787','#ffa94d','#ffd43b','#ced4da'],
+            borderColor: '#fff',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'bottom' },
+            title: { display: true, text: '감정별 비율' }
+          }
+        }
+      });
+
+      const dateMap = {};
+      const weekMap = { 월: [], 화: [], 수: [], 목: [], 금: [], 토: [], 일: [] };
+
+      data.forEach(entry => {
+        const date = new Date(entry.created_at);
+        const dateStr = date.toISOString().split('T')[0];
+        const weekday = weekDays[date.getDay() === 0 ? 6 : date.getDay() - 1];
+        const score = emotionScores[entry.emotion];
+        if (score !== undefined) {
+          if (!dateMap[dateStr]) dateMap[dateStr] = [];
+          dateMap[dateStr].push(score);
+          weekMap[weekday].push(score);
+        }
+      });
+
+      const sortedDates = Object.keys(dateMap).sort();
+      const dateLabels = [], dateData = [];
+      sortedDates.forEach(date => {
+        const avg = dateMap[date].reduce((a, b) => a + b, 0) / dateMap[date].length;
+        dateLabels.push(date);
+        dateData.push(avg.toFixed(2));
+      });
+
+      new Chart(document.getElementById('emotionTrendChart'), {
+        type: 'line',
+        data: {
+          labels: dateLabels,
+          datasets: [{
+            label: '날짜별 감정 점수 (2 ~ -2)',
+            data: dateData,
+            borderColor: '#4dabf7',
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { suggestedMin: -2, suggestedMax: 2 }
+          }
+        }
+      });
+
+      const weekLabels = weekDays;
+      const weekData = weekDays.map(day => {
+        const scores = weekMap[day];
+        return scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : null;
+      });
+
+      new Chart(document.getElementById('weeklyEmotionChart'), {
+        type: 'line',
+        data: {
+          labels: weekLabels,
+          datasets: [{
+            label: '요일별 감정 점수',
+            data: weekData,
+            borderColor: '#20c997',
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { suggestedMin: -2, suggestedMax: 2 }
+          }
+        }
+      });
+
+      await requestWeeklySummary(weekLabels, weekData);
+    }
+
+    async function requestWeeklySummary(labels, data) {
+      const res = await fetch('https://emotion-gpt-api.onrender.com/api/emotion-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emotions: labels.map((day, i) => ({ date: day, score: data[i] }))
+        })
+      });
+
+      const result = await res.json();
+      document.getElementById('gpt-summary').innerText = result.summary || 'GPT 분석 실패';
+    }
+
+    loadStats();
+  </script>
+
+  <script type="module" src="./js/components/nav.js"></script>
+  <nav-bar current="stats"></nav-bar>
+</body>
+</html>

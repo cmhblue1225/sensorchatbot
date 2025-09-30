@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>마이페이지</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: var(--bg-color, #ffffff);
+      color: var(--text-color, #000000);
+      padding: 2rem;
+      padding-bottom: 80px;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .section {
+      margin-bottom: 2rem;
+    }
+
+    .section label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+
+    .toggle-group {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    button {
+      padding: 0.6rem 1rem;
+      background-color: #228be6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1864ab;
+    }
+
+    #subscriptions {
+      background: #f1f3f5;
+      border-radius: 10px;
+      padding: 1rem;
+    }
+
+    .user-id {
+      background: #dee2e6;
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+      margin: 0.3rem 0;
+      display: inline-block;
+      text-decoration: none;
+      color: #000;
+    }
+
+    .user-id:hover {
+      background: #ced4da;
+    }
+
+    .danger {
+      background-color: #ff6b6b;
+    }
+  </style>
+</head>
+<body>
+  <h1>🙋 마이페이지</h1>
+
+  <div class="section">
+    <label>이메일:</label>
+    <p id="user-email">불러오는 중...</p>
+  </div>
+
+  <div class="section">
+    <label>알림 설정:</label>
+    <div class="toggle-group">
+      <input type="checkbox" id="notification-toggle" />
+      <span id="notif-status">Off</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <label>테마 설정:</label>
+    <div class="toggle-group">
+      <input type="checkbox" id="theme-toggle" />
+      <span id="theme-status">Light</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <label>구독한 익명 유저:</label>
+    <div id="subscriptions">불러오는 중...</div>
+  </div>
+
+  <div class="section">
+    <button id="logout-btn">로그아웃</button>
+    <button class="danger" id="withdraw-btn">회원 탈퇴</button>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js';
+    import { checkAuth } from './js/auth.js';
+    import { insertBottomNav } from './js/components/nav.js';
+
+    checkAuth();
+    insertBottomNav();
+
+    const emailEl = document.getElementById('user-email');
+    const notifToggle = document.getElementById('notification-toggle');
+    const notifStatus = document.getElementById('notif-status');
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeStatus = document.getElementById('theme-status');
+    const subscriptionsBox = document.getElementById('subscriptions');
+
+    let currentUserId = null;
+
+    async function loadUserInfo() {
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUserId = user.id;
+      emailEl.textContent = user.email;
+
+      const { data: subs } = await supabase
+        .from('subscriptions')
+        .select('following_id')
+        .eq('follower_id', currentUserId);
+
+      if (!subs || subs.length === 0) {
+        subscriptionsBox.textContent = '구독한 유저가 없습니다.';
+      } else {
+        subscriptionsBox.innerHTML = subs.map(s => `
+          <a class="user-id" href="subscription.html?uid=${s.following_id}">anon-${s.following_id.slice(0, 4)}</a>
+        `).join('');
+      }
+    }
+
+    notifToggle.addEventListener('change', () => {
+      const enabled = notifToggle.checked;
+      localStorage.setItem('notifications', enabled ? 'on' : 'off');
+      notifStatus.textContent = enabled ? 'On' : 'Off';
+    });
+
+    themeToggle.addEventListener('change', () => {
+      const dark = themeToggle.checked;
+      document.documentElement.style.setProperty('--bg-color', dark ? '#212529' : '#ffffff');
+      document.documentElement.style.setProperty('--text-color', dark ? '#f8f9fa' : '#000000');
+      localStorage.setItem('theme', dark ? 'dark' : 'light');
+      themeStatus.textContent = dark ? 'Dark' : 'Light';
+    });
+
+    function loadSettings() {
+      const notif = localStorage.getItem('notifications') || 'off';
+      const theme = localStorage.getItem('theme') || 'light';
+
+      notifToggle.checked = notif === 'on';
+      notifStatus.textContent = notif === 'on' ? 'On' : 'Off';
+
+      themeToggle.checked = theme === 'dark';
+      themeStatus.textContent = theme === 'dark' ? 'Dark' : 'Light';
+
+      if (theme === 'dark') {
+        document.documentElement.style.setProperty('--bg-color', '#212529');
+        document.documentElement.style.setProperty('--text-color', '#f8f9fa');
+      }
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      location.href = 'login.html';
+    });
+
+    document.getElementById('withdraw-btn').addEventListener('click', async () => {
+      const confirm = window.confirm('정말로 회원 탈퇴하시겠습니까? 모든 데이터가 삭제됩니다.');
+      if (!confirm) return;
+
+      await supabase.from('diaries').delete().eq('user_id', currentUserId);
+      await supabase.from('shared_diaries').delete().eq('user_id', currentUserId);
+      await supabase.from('chat_history').delete().eq('user_id', currentUserId);
+      await supabase.from('subscriptions').delete().or(`follower_id.eq.${currentUserId},following_id.eq.${currentUserId}`);
+      await supabase.from('notifications').delete().eq('user_id', currentUserId);
+
+      await fetch('https://emotion-gpt-api.onrender.com/api/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUserId })
+      });
+
+      alert('회원 탈퇴가 완료되었습니다.');
+      location.href = 'login.html';
+    });
+
+    loadUserInfo();
+    loadSettings();
+  </script>
+
+  <script type="module" src="./js/components/nav.js"></script>
+  <nav-bar current="my"></nav-bar>
+</body>
+</html>
