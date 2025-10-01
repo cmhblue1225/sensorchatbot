@@ -28,7 +28,8 @@ class InteractiveGameGenerator {
             supabaseUrl: process.env.SUPABASE_URL,
             supabaseKey: process.env.SUPABASE_ANON_KEY,
             claudeModel: 'claude-3-5-sonnet-20241022',
-            maxTokens: 8000
+            maxTokens: 16000,  // 2배 증가: 더 긴 고품질 게임 생성 가능
+            temperature: 0.7   // 일관성과 창의성의 균형
         };
 
         // 컴포넌트 초기화
@@ -113,7 +114,7 @@ class InteractiveGameGenerator {
                 anthropicApiKey: this.config.claudeApiKey,
                 modelName: this.config.claudeModel,
                 maxTokens: this.config.maxTokens,
-                temperature: 0.7, // 창의적이지만 일관된 답변
+                temperature: this.config.temperature, // 일관성과 창의성의 균형
             });
 
             // Supabase 벡터 저장소 초기화
@@ -828,7 +829,106 @@ sdk.on('session-created', (event) => {
 - session.code (❌ 틀림) → session.sessionCode (✅ 올바름)
 - session.qrCodeUrl (❌ 존재하지 않음) → URL 직접 생성 (✅ 올바름)
 
-**반드시 위의 검증된 패턴을 정확히 따라 즉시 플레이 가능한 완전한 게임을 생성하세요!**`;
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🐛 **자주 발생하는 버그 패턴 (반드시 피할 것!):**
+
+**1. 벽돌깨기/퐁 게임 버그:**
+\`\`\`javascript
+// ❌ 잘못된 패턴 - 공이 패들에서 떨어지지 않음
+} else {
+    ball.x = paddle.x + paddle.width/2;  // 매 프레임 강제 위치 지정
+    ball.y = paddle.y - ball.radius;
+}
+
+// ✅ 올바른 패턴 - 게임 시작 전에만 위치 설정
+if (!gameStarted) {
+    ball.x = paddle.x + paddle.width/2;
+    ball.y = paddle.y - ball.radius;
+    ball.dx = 0;  // 속도를 0으로!
+    ball.dy = 0;
+} else {
+    ball.x += ball.dx;  // 게임 시작 후 정상 이동
+    ball.y += ball.dy;
+}
+
+// 게임 시작 이벤트
+document.addEventListener('click', () => {
+    if (!gameStarted) {
+        gameStarted = true;
+        ball.dx = 4;   // 클릭 시 속도 부여
+        ball.dy = -4;
+    }
+});
+\`\`\`
+
+**2. 충돌 감지 버그:**
+\`\`\`javascript
+// ❌ 잘못된 패턴 - 불완전한 충돌 감지
+if (ball.y + ball.radius >= paddle.y &&
+    ball.x >= paddle.x &&
+    ball.x <= paddle.x + paddle.width) {
+    ball.dy = -Math.abs(ball.dy);  // 중복 충돌 발생 가능
+}
+
+// ✅ 올바른 패턴 - 완전한 충돌 감지
+if (ball.y + ball.radius >= paddle.y &&
+    ball.y + ball.radius <= paddle.y + paddle.height &&  // Y축 범위 체크
+    ball.x >= paddle.x &&
+    ball.x <= paddle.x + paddle.width &&
+    ball.dy > 0) {  // 아래로 이동 중일 때만
+    ball.dy = -Math.abs(ball.dy);
+}
+\`\`\`
+
+**3. 게임 상태 관리 버그:**
+\`\`\`javascript
+// ❌ 잘못된 패턴 - 게임 오버 후 계속 진행
+if (lives <= 0) {
+    alert('Game Over!');
+    // 게임이 계속 실행됨!
+}
+
+// ✅ 올바른 패턴 - 게임 완전 중지
+if (lives <= 0) {
+    gameStarted = false;
+    alert('Game Over! Score: ' + score);
+    resetGame();  // 게임 리셋
+    return;       // 게임 루프 중단
+}
+\`\`\`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ **게임 퀄리티 체크리스트 (모두 구현 필수!):**
+
+**기본 요구사항:**
+1. ✅ 게임이 센서 연결 즉시 플레이 가능해야 함
+2. ✅ 게임 시작 조건이 명확해야 함 (클릭/흔들기 등)
+3. ✅ 게임 로직에 버그가 없어야 함 (위 버그 패턴 확인!)
+4. ✅ 게임 오버/승리 조건이 명확해야 함
+5. ✅ 게임 오버 후 재시작 가능해야 함
+
+**UI/UX 요구사항:**
+6. ✅ 점수/시간/목표 등 게임 정보가 화면에 표시되어야 함
+7. ✅ 현재 게임 상태가 명확히 표시되어야 함 (대기중/플레이중/종료)
+8. ✅ 센서 조작에 대한 시각적 피드백이 있어야 함
+9. ✅ 색상/크기 등이 구분 가능해야 함 (너무 작거나 비슷하면 안됨)
+10. ✅ 모바일 화면에서 잘 보여야 함 (반응형)
+
+**게임 플레이 요구사항:**
+11. ✅ 센서 조작이 직관적이어야 함 (기울기 = 이동, 흔들기 = 동작)
+12. ✅ 난이도가 적절해야 함 (너무 쉽거나 어렵지 않게)
+13. ✅ 게임이 재미있어야 함 (목표가 명확하고 도전적)
+14. ✅ 센서 반응속도가 적절해야 함 (너무 빠르거나 느리지 않게)
+15. ✅ 게임 진행이 자연스러워야 함 (갑작스런 멈춤/튀김 없이)
+
+**코드 품질 요구사항:**
+16. ✅ 변수명이 명확해야 함 (a, b, x 같은 모호한 이름 금지)
+17. ✅ 매직 넘버 사용 금지 (상수로 정의)
+18. ✅ 주석이 필요한 부분에 적절히 추가
+19. ✅ 성능 최적화 (불필요한 계산 반복 금지)
+20. ✅ 에러 처리 완비 (센서 미지원, 연결 끊김 등)
+
+**반드시 위의 체크리스트를 모두 만족하는 고품질 게임을 생성하세요!**`;
     }
 
     /**
