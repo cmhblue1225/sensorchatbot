@@ -1812,7 +1812,10 @@ class DeveloperRoutes {
         try {
             const { initialMessage } = req.body;
 
-            if (!this.aiService || !this.aiService.interactiveGameGenerator) {
+            // aiServiceGetter로 현재 aiService 가져오기
+            const aiService = this.aiServiceGetter();
+
+            if (!aiService || !aiService.interactiveGameGenerator) {
                 return res.json({
                     success: false,
                     error: 'AI 게임 생성기가 초기화되지 않았습니다.'
@@ -1825,7 +1828,7 @@ class DeveloperRoutes {
             console.log('🎮 대화형 게임 생성 세션 시작:', sessionId);
 
             // InteractiveGameGenerator의 startNewSession 호출
-            await this.aiService.interactiveGameGenerator.startNewSession(sessionId);
+            await aiService.interactiveGameGenerator.startNewSession(sessionId);
 
             console.log('✅ 세션 생성 완료:', sessionId);
 
@@ -1858,7 +1861,10 @@ class DeveloperRoutes {
                 });
             }
 
-            if (!this.aiService || !this.aiService.interactiveGameGenerator) {
+            // aiServiceGetter로 현재 aiService 가져오기
+            const aiService = this.aiServiceGetter();
+
+            if (!aiService || !aiService.interactiveGameGenerator) {
                 return res.json({
                     success: false,
                     error: 'AI 게임 생성기가 초기화되지 않았습니다.'
@@ -1868,7 +1874,7 @@ class DeveloperRoutes {
             console.log(`💬 대화 메시지 처리 [세션: ${sessionId}]:`, message);
 
             // InteractiveGameGenerator의 processUserMessage 호출
-            const result = await this.aiService.interactiveGameGenerator.processUserMessage(
+            const result = await aiService.interactiveGameGenerator.processUserMessage(
                 sessionId,
                 message
             );
@@ -1905,7 +1911,10 @@ class DeveloperRoutes {
                 });
             }
 
-            if (!this.aiService || !this.aiService.interactiveGameGenerator) {
+            // aiServiceGetter로 현재 aiService 가져오기
+            const aiService = this.aiServiceGetter();
+
+            if (!aiService || !aiService.interactiveGameGenerator) {
                 return res.json({
                     success: false,
                     error: 'AI 게임 생성기가 초기화되지 않았습니다.'
@@ -1915,7 +1924,7 @@ class DeveloperRoutes {
             console.log(`🚀 최종 게임 생성 시작 [세션: ${sessionId}]`);
 
             // InteractiveGameGenerator의 generateFinalGame 호출
-            const result = await this.aiService.interactiveGameGenerator.generateFinalGame(sessionId);
+            const result = await aiService.interactiveGameGenerator.generateFinalGame(sessionId);
 
             console.log(`✅ 게임 생성 완료 [게임 ID: ${result.gameId}]`);
 
