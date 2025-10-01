@@ -21,7 +21,7 @@ const RequirementCollector = require('./RequirementCollector');
 const PerformanceMonitor = require('./PerformanceMonitor');
 
 class InteractiveGameGenerator {
-    constructor() {
+    constructor(gameScanner = null) {
         this.config = {
             claudeApiKey: process.env.CLAUDE_API_KEY,
             openaiApiKey: process.env.OPENAI_API_KEY,
@@ -38,22 +38,25 @@ class InteractiveGameGenerator {
         this.llm = null;
         this.mockMode = false;
 
+        // GameScanner 주입 (자동 스캔을 위해)
+        this.gameScanner = gameScanner;
+
         // 대화 세션 관리
         this.activeSessions = new Map(); // sessionId -> conversationData
-        
+
         // 게임 검증 시스템
         this.gameValidator = new GameValidator();
-        
+
         // 게임 장르 분류 시스템
         this.genreClassifier = new GameGenreClassifier();
-        
+
         // 요구사항 수집 시스템
         this.requirementCollector = new RequirementCollector();
-        
+
         // 성능 모니터링 시스템
         this.performanceMonitor = new PerformanceMonitor();
         this.setupPerformanceMonitoring();
-        
+
         this.initialize();
     }
 
@@ -586,17 +589,168 @@ ${genreSpecificInstructions}
 5. **게임 로직 완성도**
 6. **필수 스크립트 태그**
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 **SessionSDK 통합 필수 구현 패턴 (반드시 이 패턴 사용!):**
+
+\`\`\`html
+<!-- 1. 필수 스크립트 태그 (반드시 포함) -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/SessionSDK.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+<script>
+// 2. SDK 초기화 (반드시 gameId와 gameType 설정)
+const sdk = new SessionSDK({
+    gameId: '${requirements.title.toLowerCase().replace(/\\s+/g, '-')}',
+    gameType: '${requirements.gameType}'  // 'solo', 'dual', 'multi' 중 하나
+});
+
+// 3. 서버 연결 완료 후 세션 생성 (순서 중요!)
+sdk.on('connected', () => {
+    console.log('✅ 서버 연결 완료');
+    createSession();
+});
+
+// 4. 세션 생성 함수
+function createSession() {
+    sdk.createSession().then(session => {
+        console.log('✅ 세션 생성됨:', session);
+    }).catch(error => {
+        console.error('❌ 세션 생성 실패:', error);
+        alert('세션 생성에 실패했습니다: ' + error.message);
+    });
+}
+
+// 5. CustomEvent 처리 패턴 (반드시 event.detail || event 사용!)
+sdk.on('session-created', (event) => {
+    const session = event.detail || event;  // 🔥 필수 패턴!
+
+    // 세션 코드 표시
+    document.getElementById('session-code').textContent = session.code;
+
+    // QR 코드 생성 (반드시 폴백 포함)
+    generateQRCode(session.qrCodeUrl);
+});
+
+sdk.on('sensor-connected', (event) => {
+    const data = event.detail || event;  // 🔥 필수 패턴!
+    console.log('✅ 센서 연결됨:', data.sensorId);
+
+    // UI 업데이트
+    document.getElementById('sensor-status').textContent = '센서 연결됨';
+    document.getElementById('sensor-status').className = 'connected';
+});
+
+sdk.on('sensor-data', (event) => {
+    const data = event.detail || event;  // 🔥 필수 패턴!
+
+    // 센서 데이터 구조:
+    // {
+    //   sensorId: "sensor",
+    //   gameType: "solo",
+    //   data: {
+    //     orientation: { alpha, beta, gamma },  // 회전, 앞뒤 기울기, 좌우 기울기
+    //     acceleration: { x, y, z },            // 가속도
+    //     rotationRate: { alpha, beta, gamma }  // 회전 속도
+    //   },
+    //   timestamp: 1234567890
+    // }
+
+    processSensorData(data);
+});
+
+sdk.on('sensor-disconnected', (event) => {
+    const data = event.detail || event;  // 🔥 필수 패턴!
+    console.log('⚠️ 센서 연결 해제:', data.sensorId);
+
+    // UI 업데이트
+    document.getElementById('sensor-status').textContent = '센서 연결 대기 중...';
+    document.getElementById('sensor-status').className = 'disconnected';
+});
+
+// 6. QR 코드 생성 함수 (라이브러리 폴백 포함)
+function generateQRCode(url) {
+    const qrContainer = document.getElementById('qr-code');
+    qrContainer.innerHTML = ''; // 초기화
+
+    if (typeof QRCode !== 'undefined') {
+        // QRCode.js 라이브러리 사용
+        new QRCode(qrContainer, {
+            text: url,
+            width: 200,
+            height: 200,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    } else {
+        // 폴백: 외부 API 사용
+        const img = document.createElement('img');
+        img.src = \`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=\${encodeURIComponent(url)}\`;
+        img.alt = 'QR Code';
+        img.style.width = '200px';
+        img.style.height = '200px';
+        qrContainer.appendChild(img);
+    }
+}
+
+// 7. 센서 데이터 처리 함수 (게임 타입별 예시)
+function processSensorData(sensorData) {
+    const { orientation, acceleration, rotationRate } = sensorData.data;
+
+    // ${requirements.gameType} 타입 센서 처리:
+    if ('${requirements.gameType}' === 'solo') {
+        // Solo 게임: 단일 센서로 오브젝트 조작
+        // beta: 앞뒤 기울기 (-180 ~ 180)
+        // gamma: 좌우 기울기 (-90 ~ 90)
+        const tiltX = orientation.gamma / 90;  // -1 ~ 1 정규화
+        const tiltY = orientation.beta / 180;  // -1 ~ 1 정규화
+
+        // 예: 공 위치 업데이트
+        // ball.x += tiltX * speed;
+        // ball.y += tiltY * speed;
+    } else if ('${requirements.gameType}' === 'dual') {
+        // Dual 게임: 2개 센서 협력 플레이
+        // sensorId로 구분하여 각각 처리
+        if (sensorData.sensorId === 'sensor1') {
+            // 첫 번째 센서 처리
+        } else if (sensorData.sensorId === 'sensor2') {
+            // 두 번째 센서 처리
+        }
+    } else if ('${requirements.gameType}' === 'multi') {
+        // Multi 게임: 최대 10개 센서 경쟁
+        // players[sensorData.sensorId] 업데이트
+    }
+
+    // 흔들기 감지 (가속도 활용)
+    const shake = Math.sqrt(
+        acceleration.x ** 2 +
+        acceleration.y ** 2 +
+        acceleration.z ** 2
+    );
+    if (shake > 20) {
+        // 흔들기 이벤트 처리
+        console.log('🔥 흔들기 감지!');
+    }
+}
+</script>
+\`\`\`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 📚 **개발 참고자료:**
 ${context}
 
 🚨 **절대적 요구사항:**
 1. 단일 HTML 파일로 완성 (모든 CSS/JS 인라인)
-2. 완전히 작동하는 SessionSDK 통합
-3. QR 코드가 실제로 생성되고 표시됨
+2. 완전히 작동하는 SessionSDK 통합 (위 패턴 필수!)
+3. QR 코드가 실제로 생성되고 표시됨 (폴백 포함)
 4. 센서 연결 시 게임이 실제로 플레이 가능함
 5. 모든 UI 요소가 올바르게 작동함
 6. 에러 처리 및 폴백 완전 구현
 7. ${requirements.genre} 장르 특성을 완벽히 반영
+8. CustomEvent 패턴 (event.detail || event) 반드시 사용
+9. 서버 연결 완료 후 세션 생성 순서 준수
 
 **반드시 즉시 플레이 가능한 완전한 게임을 생성하세요. 템플릿이 아닌 실제 작동하는 게임이어야 합니다!**`;
     }
@@ -1025,6 +1179,20 @@ ${requirements.specialRequirements?.length > 0 ?
             console.log(`✅ 게임 생성 및 저장 완료: ${session.gameRequirements.title}`);
             console.log(`📁 게임 경로: ${saveResult.gamePath}`);
             console.log(`📊 성능 통계: 총 소요시간 ${Math.round(performanceTracking.totalDuration/1000)}초`);
+
+            // 🔄 게임 생성 성공 시 자동 스캔 실행
+            if (this.gameScanner) {
+                try {
+                    console.log('🔄 게임 자동 스캔 시작...');
+                    await this.gameScanner.scanGames();
+                    console.log(`✅ 게임 자동 스캔 완료 - ${saveResult.gameId} 등록됨`);
+                } catch (scanError) {
+                    console.error('⚠️ 게임 자동 스캔 실패:', scanError.message);
+                    // 게임은 생성되었으므로 오류로 처리하지 않음
+                }
+            } else {
+                console.log('⚠️ GameScanner가 주입되지 않아 자동 스캔을 건너뜁니다.');
+            }
 
             return {
                 success: true,

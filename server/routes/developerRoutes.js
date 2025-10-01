@@ -11,6 +11,8 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
+const fsSync = require('fs');
+const archiver = require('archiver');
 const MarkdownRenderer = require('../utils/markdownRenderer');
 
 class DeveloperRoutes {
@@ -135,6 +137,11 @@ class DeveloperRoutes {
         // 게임 다운로드
         this.router.get('/api/download-game/:gameId', async (req, res) => {
             await this.handleDownloadGame(req, res);
+        });
+
+        // 🆕 게임 미리보기
+        this.router.get('/api/preview-game/:gameId', async (req, res) => {
+            await this.handlePreviewGame(req, res);
         });
     }
 
@@ -1945,33 +1952,420 @@ class DeveloperRoutes {
 
             console.log(`📥 게임 다운로드 요청 [게임 ID: ${gameId}]`);
 
-            // 게임 파일 경로
-            const gamePath = path.join(__dirname, '../../public/games', gameId, 'index.html');
+            // 게임 폴더 경로
+            const gameFolderPath = path.join(__dirname, '../../public/games', gameId);
 
-            // 파일 존재 확인
-            if (!fs.existsSync(gamePath)) {
-                console.error(`❌ 게임 파일을 찾을 수 없음: ${gamePath}`);
+            // 폴더 존재 확인
+            if (!fsSync.existsSync(gameFolderPath)) {
+                console.error(`❌ 게임 폴더를 찾을 수 없음: ${gameFolderPath}`);
                 return res.status(404).json({
                     success: false,
-                    error: '게임 파일을 찾을 수 없습니다.'
+                    error: '게임 폴더를 찾을 수 없습니다.'
                 });
             }
 
-            console.log(`✅ 게임 파일 전송 시작: ${gamePath}`);
+            console.log(`✅ 게임 폴더 발견: ${gameFolderPath}`);
+            console.log(`📦 ZIP 압축 시작...`);
 
-            // 파일 다운로드 헤더 설정
-            res.setHeader('Content-Type', 'text/html');
-            res.setHeader('Content-Disposition', `attachment; filename="${gameId}.html"`);
+            // ZIP 다운로드 헤더 설정
+            res.setHeader('Content-Type', 'application/zip');
+            res.setHeader('Content-Disposition', `attachment; filename="${gameId}.zip"`);
 
-            // 파일 전송
-            res.sendFile(gamePath);
+            // archiver 인스턴스 생성
+            const archive = archiver('zip', {
+                zlib: { level: 9 }  // 최대 압축
+            });
+
+            // 오류 처리
+            archive.on('error', (err) => {
+                console.error('❌ ZIP 압축 오류:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({
+                        success: false,
+                        error: 'ZIP 압축 중 오류 발생'
+                    });
+                }
+            });
+
+            // 진행 상황 로깅
+            archive.on('progress', (progress) => {
+                console.log(`📦 압축 진행: ${progress.entries.processed}개 파일 처리됨`);
+            });
+
+            // 완료 로깅
+            archive.on('end', () => {
+                console.log(`✅ ZIP 압축 완료 [${gameId}.zip] - ${archive.pointer()} bytes`);
+            });
+
+            // 스트림 연결 (파일 → archive → response)
+            archive.pipe(res);
+
+            // 게임 폴더 전체를 ZIP에 추가 (폴더명 포함)
+            // 결과: {gameId}/index.html, {gameId}/game.json 등의 구조
+            archive.directory(gameFolderPath, gameId);
+
+            // ZIP 생성 완료
+            await archive.finalize();
 
         } catch (error) {
             console.error('❌ 게임 다운로드 오류:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message
-            });
+            if (!res.headersSent) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        }
+    }
+
+    /**
+     * 🆕 게임 미리보기 핸들러
+     * 생성된 게임을 iframe으로 미리볼 수 있는 HTML 페이지 제공
+     */
+    async handlePreviewGame(req, res) {
+        try {
+            const { gameId } = req.params;
+            const gameFolderPath = path.join(__dirname, '../../public/games', gameId);
+            const gameIndexPath = path.join(gameFolderPath, 'index.html');
+
+            console.log(`🔍 게임 미리보기 요청: ${gameId}`);
+
+            // 게임 파일 존재 확인
+            if (!fsSync.existsSync(gameIndexPath)) {
+                return res.status(404).send(`
+                    <!DOCTYPE html>
+                    <html lang="ko">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>게임을 찾을 수 없습니다</title>
+                        <style>
+                            body {
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                height: 100vh;
+                                margin: 0;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            }
+                            .error-box {
+                                background: white;
+                                padding: 40px;
+                                border-radius: 12px;
+                                box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+                                text-align: center;
+                                max-width: 500px;
+                            }
+                            .error-icon { font-size: 64px; margin-bottom: 20px; }
+                            h1 { color: #333; margin: 0 0 10px 0; }
+                            p { color: #666; margin-bottom: 20px; }
+                            .btn {
+                                display: inline-block;
+                                padding: 12px 24px;
+                                background: #667eea;
+                                color: white;
+                                text-decoration: none;
+                                border-radius: 6px;
+                                transition: background 0.3s;
+                            }
+                            .btn:hover { background: #5568d3; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="error-box">
+                            <div class="error-icon">🎮❌</div>
+                            <h1>게임을 찾을 수 없습니다</h1>
+                            <p>게임 ID: <strong>${gameId}</strong></p>
+                            <p>해당 게임이 존재하지 않거나 아직 생성되지 않았습니다.</p>
+                            <a href="/developer" class="btn">개발자 센터로 돌아가기</a>
+                        </div>
+                    </body>
+                    </html>
+                `);
+            }
+
+            // 미리보기 HTML 페이지 생성
+            const previewHtml = `
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 게임 미리보기 - ${gameId}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 상단 헤더 */
+        .preview-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .game-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .preview-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        /* 게임 프레임 컨테이너 */
+        .game-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .game-frame-wrapper {
+            width: 100%;
+            max-width: 1400px;
+            height: 100%;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+
+        /* 로딩 상태 */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .preview-header {
+                flex-direction: column;
+                gap: 10px;
+                padding: 15px;
+            }
+
+            .header-buttons {
+                width: 100%;
+                justify-content: stretch;
+            }
+
+            .btn {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .game-title {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 상단 헤더 -->
+    <div class="preview-header">
+        <div class="header-left">
+            <span class="game-title">🎮 ${gameId}</span>
+            <span class="preview-badge">미리보기 모드</span>
+        </div>
+        <div class="header-buttons">
+            <a href="/developer" class="btn btn-secondary">
+                ← 개발자 센터
+            </a>
+            <button onclick="refreshGame()" class="btn btn-primary">
+                🔄 새로고침
+            </button>
+            <a href="/developer/api/download-game/${gameId}" class="btn btn-success">
+                ⬇️ 다운로드
+            </a>
+        </div>
+    </div>
+
+    <!-- 게임 프레임 -->
+    <div class="game-container">
+        <div class="game-frame-wrapper">
+            <div class="loading-overlay" id="loading">
+                <div class="loading-spinner"></div>
+            </div>
+            <iframe
+                id="game-iframe"
+                class="game-iframe"
+                src="/games/${gameId}/index.html"
+                allow="accelerometer; gyroscope"
+                sandbox="allow-scripts allow-same-origin allow-forms"
+            ></iframe>
+        </div>
+    </div>
+
+    <script>
+        // 로딩 완료 처리
+        const iframe = document.getElementById('game-iframe');
+        const loading = document.getElementById('loading');
+
+        iframe.addEventListener('load', () => {
+            setTimeout(() => {
+                loading.style.display = 'none';
+            }, 500);
+        });
+
+        // 새로고침 기능
+        function refreshGame() {
+            loading.style.display = 'flex';
+            iframe.src = iframe.src;
+        }
+
+        // 단축키 지원
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + R: 새로고침
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+                refreshGame();
+            }
+            // ESC: 개발자 센터로 돌아가기
+            if (e.key === 'Escape') {
+                window.location.href = '/developer';
+            }
+        });
+
+        console.log('🎮 게임 미리보기 모드');
+        console.log('단축키: Ctrl+R (새로고침), ESC (나가기)');
+    </script>
+</body>
+</html>
+            `;
+
+            console.log(`✅ 게임 미리보기 페이지 생성: ${gameId}`);
+            res.send(previewHtml);
+
+        } catch (error) {
+            console.error('❌ 게임 미리보기 오류:', error);
+            res.status(500).send(`
+                <!DOCTYPE html>
+                <html lang="ko">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>오류 발생</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 40px; text-align: center; }
+                        .error { color: #e53e3e; }
+                    </style>
+                </head>
+                <body>
+                    <h1 class="error">⚠️ 미리보기 생성 오류</h1>
+                    <p>${error.message}</p>
+                    <a href="/developer">개발자 센터로 돌아가기</a>
+                </body>
+                </html>
+            `);
         }
     }
 

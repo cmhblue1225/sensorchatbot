@@ -1023,9 +1023,10 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
     async initializeAI() {
         try {
             console.log('🤖 AI Assistant 초기화 중...');
-            
+
             // Interactive Game Generator는 항상 초기화 (더미 모드 지원)
-            this.interactiveGameGenerator = new InteractiveGameGenerator();
+            // GameScanner 주입으로 자동 스캔 기능 활성화
+            this.interactiveGameGenerator = new InteractiveGameGenerator(this.gameScanner);
             await this.interactiveGameGenerator.initialize();
             
             // 환경변수 확인
