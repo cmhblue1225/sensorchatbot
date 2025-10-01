@@ -21,7 +21,7 @@ const RequirementCollector = require('./RequirementCollector');
 const PerformanceMonitor = require('./PerformanceMonitor');
 
 class InteractiveGameGenerator {
-    constructor(gameScanner = null) {
+    constructor(gameScanner = null, io = null) {
         this.config = {
             claudeApiKey: process.env.CLAUDE_API_KEY,
             openaiApiKey: process.env.OPENAI_API_KEY,
@@ -40,6 +40,9 @@ class InteractiveGameGenerator {
 
         // GameScanner 주입 (자동 스캔을 위해)
         this.gameScanner = gameScanner;
+
+        // Socket.IO 주입 (진행률 트래킹을 위해)
+        this.io = io;
 
         // 대화 세션 관리
         this.activeSessions = new Map(); // sessionId -> conversationData
@@ -1349,19 +1352,27 @@ ${requirements.specialRequirements?.length > 0 ?
 
             const contexts = [];
             for (const query of queries) {
-                const retriever = this.vectorStore.asRetriever({
-                    k: 2,
-                    searchType: 'similarity'
-                });
-                const docs = await retriever.getRelevantDocuments(query);
-                contexts.push(...docs.map(doc => doc.pageContent));
+                try {
+                    // Vector Store가 match_documents 함수를 찾지 못하므로
+                    // 임시로 fallback 처리 - 향후 Supabase RPC 함수 생성 필요
+                    console.log('⚠️ Vector Store 검색 실패 - 기본 컨텍스트 사용');
+                    // const retriever = this.vectorStore.asRetriever({
+                    //     k: 2,
+                    //     searchType: 'similarity'
+                    // });
+                    // const docs = await retriever.getRelevantDocuments(query);
+                    // contexts.push(...docs.map(doc => doc.pageContent));
+                } catch (err) {
+                    console.log('검색 건너뜀:', err.message);
+                }
             }
 
-            return contexts.slice(0, 8).join('\n\n---\n\n');
+            // Vector DB가 작동하지 않으므로 기본 컨텍스트 반환
+            return this.getDefaultGameContext();
 
         } catch (error) {
             console.error('컨텍스트 수집 실패:', error);
-            return '기본 개발 가이드를 참조하세요.';
+            return this.getDefaultGameContext();
         }
     }
 
@@ -1495,6 +1506,13 @@ ${requirements.specialRequirements?.length > 0 ?
 - 서버 연결 완료 후 세션 생성
 - event.detail || event 패턴으로 이벤트 처리
 - HTML5 Canvas 기반 렌더링`;
+    }
+
+    /**
+     * 기본 게임 개발 컨텍스트 (getGameDevelopmentContext fallback)
+     */
+    getDefaultGameContext() {
+        return this.getDefaultContext();
     }
 
     /**
