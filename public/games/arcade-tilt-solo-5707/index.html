@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>틸트 아케이드 게임</title>
+    <link rel="stylesheet" href="/css/theme.css">
+    <script src="/js/SessionSDK.js"></script>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div class="game-ui">
+            <div class="session-panel">
+                <div class="session-code">세션 코드: <span id="sessionCode"></span></div>
+                <div class="qr-code">
+                    <img id="qrCode" alt="QR 코드">
+                </div>
+            </div>
+            <div class="score-panel">
+                <div class="score">점수: <span id="score">0</span></div>
+                <div class="timer">시간: <span id="timer">0</span>s</div>
+            </div>
+            <div class="control-panel">
+                <button id="restartBtn">재시작</button>
+                <button id="pauseBtn">일시정지</button>
+                <a href="/" id="homeBtn">허브로 돌아가기</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SessionSDK 초기화
+        const sessionSDK = new SessionSDK();
+        sessionSDK.on('connected', () => {
+            // 세션 생성
+            sessionSDK.createSession();
+            // 세션 정보 UI 업데이트
+            updateSessionUI();
+        });
+
+        // 게임 상태 변수
+        let player, obstacles, score = 0, timer = 0, isGameOver = false;
+
+        // 게임 초기화
+        function initGame() {
+            // 플레이어 초기화
+            player = {
+                x: 50,
+                y: canvas.height / 2,
+                width: 50,
+                height: 50,
+                speed: 5,
+                tilt: 0
+            };
+
+            // 장애물 초기화
+            obstacles = [];
+            for (let i = 0; i < 10; i++) {
+                obstacles.push({
+                    x: canvas.width + i * 200,
+                    y: Math.random() * (canvas.height - 100) + 50,
+                    width: 50,
+                    height: 50
+                });
+            }
+
+            // 게임 상태 초기화
+            score = 0;
+            timer = 0;
+            isGameOver = false;
+        }
+
+        // 센서 데이터 처리
+        function processSensorData(event) {
+            const { beta, gamma } = event.detail || event;
+            player.tilt = beta * 0.5 + gamma * 0.5;
+        }
+
+        // 게임 로직 업데이트
+        function update() {
+            if (isGameOver) return;
+
+            // 플레이어 이동
+            player.y += player.tilt;
+            player.y = Math.max(50, Math.min(canvas.height - 50, player.y));
+
+            // 장애물 이동
+            obstacles.forEach(obstacle => {
+                obstacle.x -= 5;
+                if (obstacle.x < -50) {
+                    obstacle.x = canvas.width + 50;
+                    obstacle.y = Math.random() * (canvas.height - 100) + 50;
+                }
+
+                // 충돌 감지
+                if (
+                    player.x < obstacle.x + obstacle.width &&
+                    player.x + player.width > obstacle.x &&
+                    player.y < obstacle.y + obstacle.height &&
+                    player.y + player.height > obstacle.y
+                ) {
+                    isGameOver = true;
+                }
+            });
+
+            // 점수 및 시간 업데이트
+            score++;
+            timer++;
+        }
+
+        // 게임 화면 렌더링
+        function render() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // 배경 그리기
+            ctx.fillStyle = 'linear-gradient(45deg, #1e293b, #334155)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 플레이어 그리기
+            ctx.fillStyle = 'var(--primary)';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            // 장애물 그리기
+            ctx.fillStyle = 'var(--error)';
+            obstacles.forEach(obstacle => {
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+
+            // UI 업데이트
+            updateScoreUI();
+            updateTimerUI();
+        }
+
+        // UI 업데이트 함수
+        function updateSessionUI() {
+            document.getElementById('sessionCode').textContent = sessionSDK.sessionCode;
+            const qrCodeImg = document.getElementById('qrCode');
+            qrCodeImg.src = sessionSDK.qrCodeDataUrl;
+        }
+
+        function updateScoreUI() {
+            document.getElementById('score').textContent = score;
+        }
+
+        function updateTimerUI() {
+            document.getElementById('timer').textContent = Math.floor(timer / 60);
+        }
+
+        // 게임 루프
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 게임 시작
+        initGame();
+        sessionSDK.on('sensordata', processSensorData);
+        gameLoop();
+    </script>
+</body>
+</html>

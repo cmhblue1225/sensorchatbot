@@ -1,0 +1,19 @@
+{
+  "title": "Tilt Breaker",
+  "description": "벽돌 깨기 게임을 제작하고 싶어.",
+  "gameType": "solo",
+  "genre": "arcade",
+  "difficulty": "medium",
+  "sensorMechanics": [
+    "tilt",
+    "shake"
+  ],
+  "generatedAt": "2025-10-01T18:16:15.253Z",
+  "sessionId": "session_1759342438850_bagvbdmqi",
+  "gameId": "tilt-breaker-575254",
+  "filePaths": {
+    "index": "index.html"
+  },
+  "createdAt": "2025-10-01T18:16:15.256Z",
+  "version": "1.0.0"
+}

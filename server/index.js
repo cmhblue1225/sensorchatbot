@@ -24,6 +24,7 @@ const AIAssistant = require('./AIAssistant');
 const DocumentEmbedder = require('./DocumentEmbedder');
 const AIGameGenerator = require('./AIGameGenerator');
 const InteractiveGameGenerator = require('./InteractiveGameGenerator');
+const GameMaintenanceManager = require('./GameMaintenanceManager');
 const LandingRoutes = require('./routes/landingRoutes');
 const DeveloperRoutes = require('./routes/developerRoutes');
 
@@ -45,6 +46,7 @@ class GameServer {
         this.documentEmbedder = null; // 지연 초기화
         this.aiGameGenerator = null; // 지연 초기화
         this.interactiveGameGenerator = null; // 지연 초기화
+        this.gameMaintenanceManager = null; // 지연 초기화
         this.port = process.env.PORT || 3000;
         
         this.setupMiddleware();
@@ -995,7 +997,184 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                 });
             }
         });
-        
+
+        // ================================
+        // 🔧 게임 유지보수 API (Phase 4)
+        // ================================
+
+        // 버그 리포트 처리
+        this.app.post('/api/maintenance/report-bug', async (req, res) => {
+            try {
+                if (!this.gameMaintenanceManager) {
+                    return res.json({
+                        success: false,
+                        error: '유지보수 시스템이 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { gameId, bugDescription, userContext } = req.body;
+
+                if (!gameId || !bugDescription) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'gameId와 bugDescription이 필요합니다.'
+                    });
+                }
+
+                const result = await this.gameMaintenanceManager.handleBugReport(
+                    gameId,
+                    bugDescription,
+                    userContext || ''
+                );
+
+                res.json(result);
+
+            } catch (error) {
+                console.error('버그 리포트 처리 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // 기능 추가 요청 처리
+        this.app.post('/api/maintenance/add-feature', async (req, res) => {
+            try {
+                if (!this.gameMaintenanceManager) {
+                    return res.json({
+                        success: false,
+                        error: '유지보수 시스템이 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { gameId, featureDescription, userContext } = req.body;
+
+                if (!gameId || !featureDescription) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'gameId와 featureDescription이 필요합니다.'
+                    });
+                }
+
+                const result = await this.gameMaintenanceManager.handleFeatureRequest(
+                    gameId,
+                    featureDescription,
+                    userContext || ''
+                );
+
+                res.json(result);
+
+            } catch (error) {
+                console.error('기능 추가 요청 처리 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // 게임 세션 정보 조회
+        this.app.get('/api/maintenance/session/:gameId', async (req, res) => {
+            try {
+                if (!this.gameMaintenanceManager) {
+                    return res.json({
+                        success: false,
+                        error: '유지보수 시스템이 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { gameId } = req.params;
+                const session = this.gameMaintenanceManager.getSession(gameId);
+
+                if (!session) {
+                    return res.json({
+                        success: false,
+                        error: '세션을 찾을 수 없습니다. 게임이 생성된 지 30분이 지났거나 서버가 재시작되었을 수 있습니다.'
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    session: {
+                        gameId: session.gameId,
+                        version: session.version,
+                        createdAt: new Date(session.createdAt).toISOString(),
+                        lastAccessedAt: new Date(session.lastAccessedAt).toISOString(),
+                        modifications: session.modifications
+                    }
+                });
+
+            } catch (error) {
+                console.error('세션 정보 조회 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // 수정 이력 조회
+        this.app.get('/api/maintenance/history/:gameId', async (req, res) => {
+            try {
+                if (!this.gameMaintenanceManager) {
+                    return res.json({
+                        success: false,
+                        error: '유지보수 시스템이 초기화되지 않았습니다.'
+                    });
+                }
+
+                const { gameId } = req.params;
+                const history = this.gameMaintenanceManager.getModificationHistory(gameId);
+
+                if (!history) {
+                    return res.json({
+                        success: false,
+                        error: '수정 이력을 찾을 수 없습니다.'
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    history
+                });
+
+            } catch (error) {
+                console.error('수정 이력 조회 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // 모든 활성 세션 조회 (디버깅용)
+        this.app.get('/api/maintenance/sessions', async (req, res) => {
+            try {
+                if (!this.gameMaintenanceManager) {
+                    return res.json({
+                        success: false,
+                        error: '유지보수 시스템이 초기화되지 않았습니다.'
+                    });
+                }
+
+                const sessions = this.gameMaintenanceManager.getAllSessions();
+
+                res.json({
+                    success: true,
+                    sessions,
+                    count: sessions.length
+                });
+
+            } catch (error) {
+                console.error('세션 목록 조회 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
         // 404 핸들러
         this.app.use((req, res) => {
             res.status(404).send(`
@@ -1051,6 +1230,14 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             // AI Game Generator 초기화
             this.aiGameGenerator = new AIGameGenerator();
             await this.aiGameGenerator.initialize();
+
+            // GameMaintenanceManager 초기화
+            const maintenanceConfig = {
+                claudeApiKey: process.env.CLAUDE_API_KEY,
+                claudeModel: 'claude-3-5-sonnet-20241022'
+            };
+            this.gameMaintenanceManager = new GameMaintenanceManager(maintenanceConfig);
+            console.log('✅ GameMaintenanceManager 초기화 완료');
 
             // 자동 문서 임베딩 실행
             await this.autoEmbedDocuments();
