@@ -883,6 +883,618 @@ class HtmlGenerator {
 
         return this.getBaseTemplate('오류 - Sensor Game Hub', content + errorStyles, scripts);
     }
+
+    /**
+     * 랜딩 페이지 생성
+     * Developer Center와 일관성 있는 디자인 적용
+     */
+    generateLandingPage(options = {}) {
+        const {
+            title = 'Sensor Game Hub v6.0',
+            stats = {
+                games: 12,
+                documents: 35,
+                vectors: 616
+            }
+        } = options;
+
+        const styles = `
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, #0F172A 0%, #581C87 50%, #0F172A 100%);
+                    color: #F8FAFC;
+                    min-height: 100vh;
+                    overflow-x: hidden;
+                }
+
+                .landing-container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 2rem;
+                    min-height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                }
+
+                .hero {
+                    text-align: center;
+                    margin-bottom: 4rem;
+                    animation: fadeInUp 0.8s ease;
+                }
+
+                @keyframes fadeInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(30px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                .hero-title {
+                    font-size: 4rem;
+                    font-weight: 900;
+                    background: linear-gradient(135deg, #6366F1, #A855F7, #EC4899);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    margin-bottom: 1rem;
+                    letter-spacing: -0.02em;
+                }
+
+                .hero-subtitle {
+                    font-size: 1.5rem;
+                    color: #CBD5E1;
+                    margin-bottom: 2rem;
+                }
+
+                .stats-container {
+                    display: flex;
+                    justify-content: center;
+                    gap: 3rem;
+                    margin-bottom: 4rem;
+                    flex-wrap: wrap;
+                }
+
+                .stat-item {
+                    text-align: center;
+                    padding: 1.5rem;
+                    background: rgba(30, 41, 59, 0.6);
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
+                    border: 1px solid rgba(99, 102, 241, 0.3);
+                    border-radius: 16px;
+                    min-width: 150px;
+                    transition: all 0.3s;
+                }
+
+                .stat-item:hover {
+                    transform: translateY(-5px);
+                    border-color: #6366F1;
+                    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+                }
+
+                .stat-number {
+                    font-size: 3rem;
+                    font-weight: bold;
+                    background: linear-gradient(135deg, #6366F1, #8B5CF6);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    display: block;
+                    margin-bottom: 0.5rem;
+                }
+
+                .stat-label {
+                    font-size: 0.875rem;
+                    color: #94A3B8;
+                    text-transform: uppercase;
+                    letter-spacing: 0.1em;
+                }
+
+                .nav-cards {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 2rem;
+                    margin-bottom: 3rem;
+                }
+
+                .nav-card {
+                    background: rgba(30, 41, 59, 0.6);
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
+                    border: 2px solid rgba(99, 102, 241, 0.3);
+                    border-radius: 24px;
+                    padding: 2.5rem;
+                    text-align: center;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    text-decoration: none;
+                    color: #F8FAFC;
+                    display: block;
+                }
+
+                .nav-card:hover {
+                    transform: translateY(-10px);
+                    border-color: #6366F1;
+                    box-shadow: 0 20px 60px rgba(99, 102, 241, 0.4);
+                    background: rgba(30, 41, 59, 0.8);
+                }
+
+                .nav-card-icon {
+                    font-size: 4rem;
+                    margin-bottom: 1.5rem;
+                    display: block;
+                }
+
+                .nav-card-title {
+                    font-size: 1.8rem;
+                    font-weight: 700;
+                    margin-bottom: 1rem;
+                    color: #F8FAFC;
+                }
+
+                .nav-card-description {
+                    font-size: 1rem;
+                    color: #CBD5E1;
+                    line-height: 1.6;
+                    margin-bottom: 1.5rem;
+                }
+
+                .nav-card-badge {
+                    display: inline-block;
+                    padding: 0.5rem 1rem;
+                    background: rgba(99, 102, 241, 0.2);
+                    border: 1px solid #6366F1;
+                    border-radius: 12px;
+                    font-size: 0.875rem;
+                    color: #A5B4FC;
+                    font-weight: 600;
+                }
+
+                .features {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 1.5rem;
+                    margin-top: 4rem;
+                }
+
+                .feature-item {
+                    background: rgba(30, 41, 59, 0.4);
+                    border: 1px solid rgba(100, 116, 139, 0.3);
+                    border-radius: 16px;
+                    padding: 2rem;
+                    text-align: center;
+                    transition: all 0.3s;
+                }
+
+                .feature-item:hover {
+                    border-color: rgba(139, 92, 246, 0.5);
+                    background: rgba(30, 41, 59, 0.6);
+                }
+
+                .feature-icon {
+                    font-size: 2.5rem;
+                    margin-bottom: 1rem;
+                    display: block;
+                }
+
+                .feature-title {
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    color: #E2E8F0;
+                    margin-bottom: 0.5rem;
+                }
+
+                .feature-text {
+                    font-size: 0.875rem;
+                    color: #94A3B8;
+                    line-height: 1.5;
+                }
+
+                @media (max-width: 768px) {
+                    .hero-title {
+                        font-size: 2.5rem;
+                    }
+
+                    .hero-subtitle {
+                        font-size: 1.2rem;
+                    }
+
+                    .stats-container {
+                        gap: 1rem;
+                    }
+
+                    .nav-cards {
+                        grid-template-columns: 1fr;
+                    }
+                }
+            </style>
+        `;
+
+        const content = `
+            <div class="landing-container">
+                <!-- Hero Section -->
+                <div class="hero">
+                    <h1 class="hero-title">${title}</h1>
+                    <p class="hero-subtitle">🎮 모바일 센서로 새로운 게임 경험을</p>
+
+                    <!-- Stats -->
+                    <div class="stats-container">
+                        <div class="stat-item">
+                            <span class="stat-number">${stats.games}</span>
+                            <span class="stat-label">게임</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">${stats.documents}</span>
+                            <span class="stat-label">문서</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">${stats.vectors}</span>
+                            <span class="stat-label">AI 벡터</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Cards -->
+                <div class="nav-cards">
+                    <a href="/games" class="nav-card">
+                        <span class="nav-card-icon">🎮</span>
+                        <h2 class="nav-card-title">게임 목록</h2>
+                        <p class="nav-card-description">
+                            ${stats.games}개의 센서 게임을 즐겨보세요
+                        </p>
+                        <span class="nav-card-badge">${stats.games} Games Available</span>
+                    </a>
+
+                    <a href="/sensor.html" class="nav-card">
+                        <span class="nav-card-icon">📱</span>
+                        <h2 class="nav-card-title">센서 클라이언트</h2>
+                        <p class="nav-card-description">
+                            핸드폰을 컨트롤러로 사용하세요
+                        </p>
+                        <span class="nav-card-badge">Mobile Controller</span>
+                    </a>
+
+                    <a href="/developer" class="nav-card">
+                        <span class="nav-card-icon">👨‍💻</span>
+                        <h2 class="nav-card-title">개발자 센터</h2>
+                        <p class="nav-card-description">
+                            문서, AI 챗봇, 게임 생성기 제공
+                        </p>
+                        <span class="nav-card-badge">${stats.documents} Docs + AI Tools</span>
+                    </a>
+                </div>
+
+                <!-- Platform Features -->
+                <div class="features">
+                    <div class="feature-item">
+                        <span class="feature-icon">⚡</span>
+                        <h3 class="feature-title">실시간 센서</h3>
+                        <p class="feature-text">50ms 간격 고속 센서 데이터 전송</p>
+                    </div>
+
+                    <div class="feature-item">
+                        <span class="feature-icon">🔗</span>
+                        <h3 class="feature-title">즉시 연결</h3>
+                        <p class="feature-text">QR 코드로 빠른 세션 연결</p>
+                    </div>
+
+                    <div class="feature-item">
+                        <span class="feature-icon">🤖</span>
+                        <h3 class="feature-title">AI 지원</h3>
+                        <p class="feature-text">${stats.vectors}개 벡터 기반 챗봇</p>
+                    </div>
+
+                    <div class="feature-item">
+                        <span class="feature-icon">🎨</span>
+                        <h3 class="feature-title">게임 생성기</h3>
+                        <p class="feature-text">대화형 AI 게임 개발 도구</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const scripts = `
+            console.log('🎮 Sensor Game Hub v6.0 - Landing Page');
+            console.log('📊 Stats:', ${JSON.stringify(stats)});
+
+            // 페이지 로드 애니메이션
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('✅ Landing page loaded successfully');
+            });
+        `;
+
+        return this.getBaseTemplate(title, content + styles, scripts);
+    }
+
+    /**
+     * 게임 목록 페이지 생성
+     */
+    generateGamesListPage(options = {}) {
+        const {
+            title = '게임 목록 - Sensor Game Hub',
+            games = []
+        } = options;
+
+        const styles = `
+            <style>
+                body {
+                    background: linear-gradient(135deg, #0F172A 0%, #581C87 50%, #0F172A 100%);
+                    min-height: 100vh;
+                    margin: 0;
+                    padding: 0;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                }
+
+                .games-container {
+                    max-width: 1400px;
+                    margin: 0 auto;
+                    padding: 3rem 2rem;
+                }
+
+                .header {
+                    text-align: center;
+                    margin-bottom: 4rem;
+                }
+
+                .header h1 {
+                    font-size: 3.5rem;
+                    font-weight: 800;
+                    background: linear-gradient(135deg, #60A5FA 0%, #A78BFA 50%, #F472B6 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    margin-bottom: 1rem;
+                }
+
+                .header p {
+                    font-size: 1.25rem;
+                    color: rgba(255, 255, 255, 0.7);
+                }
+
+                .back-button {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.75rem 1.5rem;
+                    background: rgba(255, 255, 255, 0.1);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 12px;
+                    color: white;
+                    text-decoration: none;
+                    font-weight: 600;
+                    transition: all 0.3s;
+                    margin-bottom: 2rem;
+                }
+
+                .back-button:hover {
+                    background: rgba(255, 255, 255, 0.2);
+                    transform: translateY(-2px);
+                }
+
+                .games-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                    gap: 2rem;
+                    margin-top: 2rem;
+                }
+
+                .game-card {
+                    background: rgba(255, 255, 255, 0.1);
+                    backdrop-filter: blur(20px);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 20px;
+                    padding: 2rem;
+                    transition: all 0.3s;
+                    cursor: pointer;
+                    text-decoration: none;
+                    color: white;
+                    display: block;
+                }
+
+                .game-card:hover {
+                    transform: translateY(-5px);
+                    background: rgba(255, 255, 255, 0.15);
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                }
+
+                .game-icon {
+                    font-size: 4rem;
+                    margin-bottom: 1rem;
+                    display: block;
+                }
+
+                .game-title {
+                    font-size: 1.75rem;
+                    font-weight: 700;
+                    margin-bottom: 0.5rem;
+                    color: white;
+                }
+
+                .game-id {
+                    font-size: 0.9rem;
+                    color: rgba(255, 255, 255, 0.5);
+                    font-family: 'Courier New', monospace;
+                    margin-bottom: 1rem;
+                }
+
+                .game-type {
+                    display: inline-block;
+                    padding: 0.5rem 1rem;
+                    background: rgba(96, 165, 250, 0.2);
+                    border: 1px solid rgba(96, 165, 250, 0.4);
+                    border-radius: 8px;
+                    font-size: 0.875rem;
+                    font-weight: 600;
+                    color: #60A5FA;
+                    margin-bottom: 1rem;
+                }
+
+                .game-description {
+                    color: rgba(255, 255, 255, 0.7);
+                    line-height: 1.6;
+                    margin-bottom: 1.5rem;
+                }
+
+                .play-button {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.75rem 1.5rem;
+                    background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+                    border-radius: 12px;
+                    color: white;
+                    font-weight: 600;
+                    border: none;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                }
+
+                .play-button:hover {
+                    transform: scale(1.05);
+                    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+                }
+
+                .stats-bar {
+                    display: flex;
+                    justify-content: center;
+                    gap: 3rem;
+                    margin: 3rem 0;
+                    padding: 2rem;
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 16px;
+                }
+
+                .stat-item {
+                    text-align: center;
+                    padding: 1.5rem 2rem;
+                    background: rgba(59, 130, 246, 0.1);
+                    border: 1px solid rgba(96, 165, 250, 0.3);
+                    border-radius: 12px;
+                    min-width: 150px;
+                    transition: all 0.3s;
+                }
+
+                .stat-item:hover {
+                    background: rgba(59, 130, 246, 0.2);
+                    border-color: rgba(96, 165, 250, 0.5);
+                    transform: translateY(-3px);
+                }
+
+                .stat-value {
+                    font-size: 2.5rem;
+                    font-weight: 800;
+                    color: #60A5FA;
+                    text-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
+                }
+
+                .stat-label {
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                    margin-top: 0.5rem;
+                }
+
+                @media (max-width: 768px) {
+                    .games-grid {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .header h1 {
+                        font-size: 2.5rem;
+                    }
+
+                    .stats-bar {
+                        flex-direction: column;
+                        gap: 1.5rem;
+                    }
+                }
+            </style>
+        `;
+
+        const content = `
+            <div class="games-container">
+                <a href="/" class="back-button">
+                    ← 홈으로 돌아가기
+                </a>
+
+                <div class="header">
+                    <h1>🎮 게임 목록</h1>
+                    <p>모바일 센서로 즐기는 다양한 게임을 만나보세요</p>
+                </div>
+
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <div class="stat-value">${games.length}</div>
+                        <div class="stat-label">전체 게임</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${games.filter(g => g.type === 'solo').length}</div>
+                        <div class="stat-label">솔로 게임</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${games.filter(g => g.type === 'dual').length}</div>
+                        <div class="stat-label">듀얼 게임</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${games.filter(g => g.type === 'multi').length}</div>
+                        <div class="stat-label">멀티 게임</div>
+                    </div>
+                </div>
+
+                <div class="games-grid">
+                    ${games.map(game => `
+                        <a href="/games/${game.id}/" class="game-card">
+                            <span class="game-icon">${game.icon || '🎮'}</span>
+                            <h2 class="game-title">${game.name || game.id}</h2>
+                            <div class="game-id">${game.id}</div>
+                            <div class="game-type">${this.getGameTypeLabel(game.type)}</div>
+                            <p class="game-description">
+                                ${game.description || '센서를 이용한 재미있는 게임입니다.'}
+                            </p>
+                            <button class="play-button">
+                                ▶ 게임 시작
+                            </button>
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        const scripts = `
+            console.log('🎮 게임 목록 페이지 로드 완료');
+            console.log('📊 총 게임 수:', ${games.length});
+        `;
+
+        return this.getBaseTemplate(title, content + styles, scripts);
+    }
+
+    /**
+     * 게임 타입 라벨 반환
+     */
+    getGameTypeLabel(type) {
+        const labels = {
+            'solo': '솔로 게임 (1인)',
+            'dual': '듀얼 게임 (2인)',
+            'multi': '멀티 게임 (다인)',
+            'cooperative': '협동 게임',
+            'competitive': '경쟁 게임'
+        };
+        return labels[type] || type || '일반 게임';
+    }
 }
 
 module.exports = HtmlGenerator;

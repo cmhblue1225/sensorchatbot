@@ -1,11 +1,14 @@
 /**
  * 🚀 Sensor Game Hub v6.0 Server
- * 
+ *
  * 완벽한 게임별 독립 세션 시스템
  * - Express + Socket.IO 기반
  * - 실시간 센서 데이터 처리
  * - 자동 세션 관리 및 정리
  */
+
+// 환경 변수 로드 (가장 먼저!)
+require('dotenv').config();
 
 const express = require('express');
 const http = require('http');
@@ -21,6 +24,8 @@ const AIAssistant = require('./AIAssistant');
 const DocumentEmbedder = require('./DocumentEmbedder');
 const AIGameGenerator = require('./AIGameGenerator');
 const InteractiveGameGenerator = require('./InteractiveGameGenerator');
+const LandingRoutes = require('./routes/landingRoutes');
+const DeveloperRoutes = require('./routes/developerRoutes');
 
 class GameServer {
     constructor() {
@@ -82,8 +87,16 @@ class GameServer {
      * HTTP 라우트 설정
      */
     setupRoutes() {
-        // 기본 루트 - 동적 게임 허브 페이지
-        this.app.get('/', (req, res) => {
+        // LandingRoutes 등록 (랜딩 페이지)
+        const landingRoutes = new LandingRoutes(this.gameScanner, () => this.aiAssistant);
+        this.app.use('/', landingRoutes.getRouter());
+
+        // DeveloperRoutes 등록 (개발자 센터)
+        const developerRoutes = new DeveloperRoutes(this.gameScanner, () => this.aiAssistant);
+        this.app.use('/developer', developerRoutes.getRouter());
+
+        // 기본 루트 - 동적 게임 허브 페이지 (폴백)
+        this.app.get('/old-home', (req, res) => {
             const games = this.gameScanner.getActiveGames();
             res.send(this.generateHomePage(games));
         });

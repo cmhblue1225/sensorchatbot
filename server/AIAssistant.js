@@ -325,6 +325,49 @@ ${codeSnippet ? `관련 코드:\n${codeSnippet}` : ''}
             };
         }
     }
+
+    /**
+     * 챗봇 대화 처리 메서드
+     * developerRoutes.js의 /api/chat 엔드포인트와 연동
+     */
+    async processChat(message, conversationHistory = []) {
+        try {
+            console.log(`💬 챗봇 메시지 처리 중: "${message}"`);
+
+            if (!message || message.trim().length === 0) {
+                return {
+                    success: false,
+                    error: '메시지를 입력해주세요.',
+                    timestamp: new Date().toISOString()
+                };
+            }
+
+            // RAG 기반 답변 생성
+            const result = await this.query(message, {
+                conversationHistory
+            });
+
+            if (!result.success) {
+                return result;
+            }
+
+            return {
+                success: true,
+                message: result.answer,
+                sources: result.sources || [],
+                timestamp: new Date().toISOString()
+            };
+
+        } catch (error) {
+            console.error('❌ 챗봇 처리 실패:', error);
+
+            return {
+                success: false,
+                error: error.message || '챗봇 응답 중 오류가 발생했습니다.',
+                timestamp: new Date().toISOString()
+            };
+        }
+    }
 }
 
 module.exports = AIAssistant;

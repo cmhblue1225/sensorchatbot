@@ -28,6 +28,11 @@ class LandingRoutes {
         this.router.get('/', (req, res) => {
             this.getLandingPage(req, res);
         });
+
+        // 게임 목록 페이지
+        this.router.get('/games/', (req, res) => {
+            this.getGamesPage(req, res);
+        });
     }
 
     /**
@@ -47,6 +52,26 @@ class LandingRoutes {
         } catch (error) {
             console.error('랜딩 페이지 생성 실패:', error);
             res.status(500).send('랜딩 페이지 로딩 중 오류가 발생했습니다.');
+        }
+    }
+
+    /**
+     * 게임 목록 페이지
+     */
+    async getGamesPage(req, res) {
+        try {
+            // GameScanner에서 게임 목록 가져오기
+            const games = this.gameService.getGames() || [];
+
+            const html = this.htmlGenerator.generateGamesListPage({
+                title: '게임 목록 - Sensor Game Hub',
+                games: games
+            });
+
+            res.send(html);
+        } catch (error) {
+            console.error('게임 목록 페이지 생성 실패:', error);
+            res.status(500).send('게임 목록 로딩 중 오류가 발생했습니다.');
         }
     }
 

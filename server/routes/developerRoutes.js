@@ -14,8 +14,9 @@ const fs = require('fs').promises;
 const MarkdownRenderer = require('../utils/markdownRenderer');
 
 class DeveloperRoutes {
-    constructor(aiService) {
-        this.aiService = aiService;
+    constructor(gameScanner, aiServiceGetter) {
+        this.gameScanner = gameScanner;
+        this.aiServiceGetter = aiServiceGetter;
         this.router = express.Router();
         this.markdownRenderer = new MarkdownRenderer();
         this.docsBasePath = path.join(__dirname, '../../docs');
@@ -1736,18 +1737,21 @@ class DeveloperRoutes {
         try {
             const { message } = req.body;
 
-            if (!this.aiService) {
+            // aiServiceGetter를 호출하여 현재 aiService 가져오기
+            const aiService = this.aiServiceGetter();
+
+            if (!aiService) {
                 return res.json({
-                    response: '❌ AI 서비스가 초기화되지 않았습니다.'
+                    response: '❌ AI 서비스가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.'
                 });
             }
 
             // AI 서비스 호출 (processChat 메서드 사용)
-            const sessionId = req.sessionID || `web-${Date.now()}`;
-            const result = await this.aiService.processChat(message, sessionId);
+            // conversationHistory는 빈 배열로 전달 (필요시 세션 관리 구현 가능)
+            const result = await aiService.processChat(message, []);
 
             if (result.success) {
-                res.json({ response: result.response });
+                res.json({ response: result.message });
             } else {
                 res.json({ response: '❌ ' + result.error });
             }
