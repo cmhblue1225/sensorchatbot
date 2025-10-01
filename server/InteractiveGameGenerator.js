@@ -337,7 +337,20 @@ class InteractiveGameGenerator {
      */
     generateSpecializedPrompt(userMessage, genreAnalysis, context) {
         const basePrompt = `당신은 Sensor Game Hub의 전문 게임 개발 컨설턴트입니다.`;
-        
+
+        // sensorMechanics를 문자열로 변환하는 헬퍼 함수
+        const formatSensorMechanics = (mechanics) => {
+            if (Array.isArray(mechanics)) {
+                return mechanics.join(', ');
+            } else if (typeof mechanics === 'object' && mechanics !== null) {
+                return mechanics.primary || 'tilt';
+            } else {
+                return 'tilt';
+            }
+        };
+
+        const sensorMechanicsStr = formatSensorMechanics(genreAnalysis.sensorMechanics);
+
         if (genreAnalysis.confidence < 0.3) {
             // 장르 확신도가 낮을 때는 기본 프롬프트 사용
             return `${basePrompt} 
@@ -373,7 +386,7 @@ ${context}
 사용자 입력: "${userMessage}"
 예상 장르: ${genreAnalysis.primaryGenre}
 추천 게임 타입: ${genreAnalysis.gameType}
-핵심 센서: ${genreAnalysis.sensorMechanics.join(', ')}
+핵심 센서: ${sensorMechanicsStr}
 
 특별히 다음 사항들을 확인해보세요:
 1. 어떤 물체(공, 블록, 캐릭터)를 조작하고 싶은가요?
@@ -394,7 +407,7 @@ JSON 형식: {"readyForNext": true, "gameType": "${genreAnalysis.gameType}", "ge
 사용자 입력: "${userMessage}"
 예상 장르: ${genreAnalysis.primaryGenre}
 추천 게임 타입: ${genreAnalysis.gameType}
-핵심 센서: ${genreAnalysis.sensorMechanics.join(', ')}
+핵심 센서: ${sensorMechanicsStr}
 
 특별히 다음 사항들을 확인해보세요:
 1. 어떤 요리나 음식을 만들고 싶나요?
@@ -415,7 +428,7 @@ JSON 형식: {"readyForNext": true, "gameType": "${genreAnalysis.gameType}", "ge
 사용자 입력: "${userMessage}"
 예상 장르: ${genreAnalysis.primaryGenre}
 추천 게임 타입: ${genreAnalysis.gameType}
-핵심 센서: ${genreAnalysis.sensorMechanics.join(', ')}
+핵심 센서: ${sensorMechanicsStr}
 
 특별히 다음 사항들을 확인해보세요:
 1. 어떤 캐릭터나 오브젝트를 조작하나요?
@@ -436,7 +449,7 @@ JSON 형식: {"readyForNext": true, "gameType": "${genreAnalysis.gameType}", "ge
 사용자 입력: "${userMessage}"
 예상 장르: ${genreAnalysis.primaryGenre}
 추천 게임 타입: ${genreAnalysis.gameType}
-핵심 센서: ${genreAnalysis.sensorMechanics.join(', ')}
+핵심 센서: ${sensorMechanicsStr}
 
 특별히 다음 사항들을 확인해보세요:
 1. 어떤 종류의 퍼즐이나 문제를 풀고 싶나요?
@@ -457,7 +470,7 @@ JSON 형식: {"readyForNext": true, "gameType": "${genreAnalysis.gameType}", "ge
 사용자 입력: "${userMessage}"
 예상 장르: ${genreAnalysis.primaryGenre}
 추천 게임 타입: ${genreAnalysis.gameType}
-핵심 센서: ${genreAnalysis.sensorMechanics.join(', ')}
+핵심 센서: ${sensorMechanicsStr}
 
 특별히 다음 사항들을 확인해보세요:
 1. 어떤 종류의 탈것(자동차, 비행기, 우주선)인가요?
@@ -485,7 +498,7 @@ JSON 형식: {"readyForNext": true, "gameType": "${genreAnalysis.gameType}", "ge
 🎮 **분석 결과:**
 - **장르**: ${genreAnalysis.primaryGenre} (확신도: ${Math.round(genreAnalysis.confidence * 100)}%)
 - **게임 타입**: ${genreAnalysis.gameType}
-- **추천 센서**: ${genreAnalysis.sensorMechanics.join(', ')}
+- **추천 센서**: ${sensorMechanicsStr}
 - **핵심 키워드**: ${genreAnalysis.detectedKeywords.join(', ')}
 
 사용자 입력: "${userMessage}"
