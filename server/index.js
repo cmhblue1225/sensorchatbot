@@ -1175,6 +1175,46 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             }
         });
 
+        // 게임 버전 조회 API (Supabase DB 연동)
+        this.app.get('/api/maintenance/version/:gameId', async (req, res) => {
+            try {
+                const { gameId } = req.params;
+
+                if (!this.gameMaintenanceManager) {
+                    return res.json({
+                        success: true,
+                        version: '1.0' // 기본값
+                    });
+                }
+
+                // 1. 메모리 세션에서 확인
+                let session = this.gameMaintenanceManager.getSession(gameId);
+
+                // 2. 세션 없으면 DB에서 직접 조회
+                if (!session) {
+                    const dbVersion = await this.gameMaintenanceManager.getGameVersionFromDB(gameId);
+                    if (dbVersion) {
+                        return res.json({
+                            success: true,
+                            version: dbVersion.current_version
+                        });
+                    }
+                }
+
+                res.json({
+                    success: true,
+                    version: session ? session.version : '1.0'
+                });
+
+            } catch (error) {
+                console.error('버전 조회 실패:', error);
+                res.json({
+                    success: true,
+                    version: '1.0' // 에러 시 기본값
+                });
+            }
+        });
+
         // 404 핸들러
         this.app.use((req, res) => {
             res.status(404).send(`

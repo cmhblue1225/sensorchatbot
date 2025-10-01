@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: newemotion-server
-    env: node
-    rootDir: server
-    buildCommand: npm install
-    startCommand: npm start

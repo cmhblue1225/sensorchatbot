@@ -1166,11 +1166,29 @@ class HtmlGenerator {
                         <span class="nav-card-badge">Mobile Controller</span>
                     </a>
 
+                    <a href="/interactive-game-generator" class="nav-card" style="border-color: rgba(139, 92, 246, 0.5); background: rgba(139, 92, 246, 0.1);">
+                        <span class="nav-card-icon">🤖</span>
+                        <h2 class="nav-card-title">AI 게임 생성기</h2>
+                        <p class="nav-card-description">
+                            Multi-Stage Generation으로 A+ 게임 자동 생성
+                        </p>
+                        <span class="nav-card-badge" style="background: rgba(139, 92, 246, 0.3); border-color: #8B5CF6;">95% Quality Guaranteed</span>
+                    </a>
+
+                    <a href="/game-manager" class="nav-card">
+                        <span class="nav-card-icon">🛠️</span>
+                        <h2 class="nav-card-title">게임 관리</h2>
+                        <p class="nav-card-description">
+                            버그 리포트, 기능 추가, 수정 이력 관리
+                        </p>
+                        <span class="nav-card-badge">Game Maintenance</span>
+                    </a>
+
                     <a href="/developer" class="nav-card">
                         <span class="nav-card-icon">👨‍💻</span>
                         <h2 class="nav-card-title">개발자 센터</h2>
                         <p class="nav-card-description">
-                            문서, AI 챗봇, 게임 생성기 제공
+                            문서, AI 챗봇, 개발 도구 제공
                         </p>
                         <span class="nav-card-badge">${stats.documents} Docs + AI Tools</span>
                     </a>
@@ -1494,6 +1512,487 @@ class HtmlGenerator {
             'competitive': '경쟁 게임'
         };
         return labels[type] || type || '일반 게임';
+    }
+
+    /**
+     * 게임 관리 대시보드 페이지 생성
+     */
+    generateGameManagerPage(options = {}) {
+        const {
+            title = '게임 관리 - Sensor Game Hub',
+            games = []
+        } = options;
+
+        const styles = `
+            <style>
+                body {
+                    background: linear-gradient(135deg, #0F172A 0%, #581C87 50%, #0F172A 100%);
+                    min-height: 100vh;
+                    margin: 0;
+                    padding: 0;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    color: #F8FAFC;
+                }
+
+                .manager-container {
+                    max-width: 1400px;
+                    margin: 0 auto;
+                    padding: 3rem 2rem;
+                }
+
+                .header {
+                    text-align: center;
+                    margin-bottom: 3rem;
+                }
+
+                .header h1 {
+                    font-size: 2.5rem;
+                    font-weight: 700;
+                    margin-bottom: 0.5rem;
+                    background: linear-gradient(135deg, #A78BFA, #EC4899);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                }
+
+                .header p {
+                    font-size: 1.125rem;
+                    color: #94A3B8;
+                }
+
+                .search-bar {
+                    margin-bottom: 2rem;
+                    display: flex;
+                    gap: 1rem;
+                    flex-wrap: wrap;
+                }
+
+                .search-bar input {
+                    flex: 1;
+                    min-width: 250px;
+                    padding: 0.75rem 1rem;
+                    border-radius: 8px;
+                    border: 1px solid rgba(100, 116, 139, 0.3);
+                    background: rgba(30, 41, 59, 0.6);
+                    color: #F8FAFC;
+                    font-size: 1rem;
+                }
+
+                .games-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                    gap: 1.5rem;
+                }
+
+                .game-card {
+                    background: rgba(30, 41, 59, 0.6);
+                    border: 1px solid rgba(100, 116, 139, 0.3);
+                    border-radius: 16px;
+                    padding: 1.5rem;
+                    transition: all 0.3s;
+                }
+
+                .game-card:hover {
+                    border-color: rgba(139, 92, 246, 0.5);
+                    transform: translateY(-4px);
+                    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.2);
+                }
+
+                .game-card-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: start;
+                    margin-bottom: 1rem;
+                }
+
+                .game-title {
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    color: #E2E8F0;
+                    margin-bottom: 0.25rem;
+                }
+
+                .game-id {
+                    font-size: 0.875rem;
+                    color: #94A3B8;
+                }
+
+                .game-badge {
+                    padding: 0.25rem 0.75rem;
+                    border-radius: 12px;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                }
+
+                .badge-success {
+                    background: rgba(16, 185, 129, 0.2);
+                    color: #10B981;
+                    border: 1px solid #10B981;
+                }
+
+                .game-actions {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 0.5rem;
+                    margin-top: 1rem;
+                }
+
+                .btn {
+                    padding: 0.5rem 1rem;
+                    border-radius: 8px;
+                    border: none;
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    text-align: center;
+                    text-decoration: none;
+                    display: inline-block;
+                }
+
+                .btn-primary {
+                    background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+                    color: white;
+                }
+
+                .btn-secondary {
+                    background: rgba(71, 85, 105, 0.5);
+                    color: #E2E8F0;
+                    border: 1px solid rgba(100, 116, 139, 0.5);
+                }
+
+                .btn:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+                }
+
+                /* 모달 스타일 */
+                .modal {
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.7);
+                    backdrop-filter: blur(4px);
+                    z-index: 1000;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .modal.active {
+                    display: flex;
+                }
+
+                .modal-content {
+                    background: rgba(30, 41, 59, 0.95);
+                    border: 1px solid rgba(139, 92, 246, 0.5);
+                    border-radius: 16px;
+                    padding: 2rem;
+                    max-width: 500px;
+                    width: 90%;
+                    animation: slideUp 0.3s ease-out;
+                }
+
+                @keyframes slideUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                .modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 1.5rem;
+                }
+
+                .modal-title {
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                    color: #E2E8F0;
+                }
+
+                .modal-close {
+                    background: none;
+                    border: none;
+                    font-size: 1.5rem;
+                    color: #94A3B8;
+                    cursor: pointer;
+                }
+
+                textarea {
+                    width: 100%;
+                    min-height: 120px;
+                    padding: 0.75rem;
+                    border-radius: 8px;
+                    border: 1px solid rgba(100, 116, 139, 0.3);
+                    background: rgba(15, 23, 42, 0.6);
+                    color: #F8FAFC;
+                    font-family: inherit;
+                    font-size: 0.95rem;
+                    resize: vertical;
+                    margin-bottom: 1rem;
+                }
+
+                .loading {
+                    display: none;
+                    text-align: center;
+                    color: #8B5CF6;
+                    margin-top: 1rem;
+                }
+
+                .loading.active {
+                    display: block;
+                }
+
+                @media (max-width: 768px) {
+                    .games-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+            </style>
+        `;
+
+        const gamesHTML = games.map(game => `
+            <div class="game-card" data-game-id="${game.id || game.path}">
+                <div class="game-card-header">
+                    <div>
+                        <div class="game-title">${game.title || game.id}</div>
+                        <div class="game-id">${game.id || game.path}</div>
+                    </div>
+                    <span class="game-badge badge-success game-version" data-game="${game.id || game.path}">v1.0</span>
+                </div>
+                <div class="game-actions">
+                    <button class="btn btn-primary" onclick="playGame('${game.id || game.path}')">▶️ 플레이</button>
+                    <button class="btn btn-secondary" onclick="openBugModal('${game.id || game.path}')">🐛 버그 신고</button>
+                    <button class="btn btn-secondary" onclick="openFeatureModal('${game.id || game.path}')">✨ 기능 추가</button>
+                    <button class="btn btn-secondary" onclick="viewHistory('${game.id || game.path}')">📜 이력</button>
+                </div>
+            </div>
+        `).join('');
+
+        const content = `
+            <div class="manager-container">
+                <div class="header">
+                    <h1>🛠️ ${title}</h1>
+                    <p>생성된 게임을 관리하고 개선하세요</p>
+                </div>
+
+                <div class="search-bar">
+                    <input type="text" id="searchInput" placeholder="🔍 게임 검색 (제목 또는 ID)..." onkeyup="filterGames()">
+                </div>
+
+                <div class="games-grid" id="gamesGrid">
+                    ${gamesHTML || '<p style="text-align: center; color: #94A3B8;">생성된 게임이 없습니다.</p>'}
+                </div>
+            </div>
+
+            <!-- 버그 리포트 모달 -->
+            <div id="bugModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title">🐛 버그 신고</h3>
+                        <button class="modal-close" onclick="closeBugModal()">×</button>
+                    </div>
+                    <textarea id="bugDescription" placeholder="버그 설명을 입력하세요...&#10;예: 공이 패들에 붙어서 떨어지지 않습니다."></textarea>
+                    <textarea id="bugContext" placeholder="재현 방법 (선택사항)...&#10;예: 센서 연결 후 게임 시작 시 발생"></textarea>
+                    <button class="btn btn-primary" onclick="submitBugReport()" style="width: 100%;">제출</button>
+                    <div class="loading" id="bugLoading">처리 중...</div>
+                </div>
+            </div>
+
+            <!-- 기능 추가 모달 -->
+            <div id="featureModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title">✨ 기능 추가</h3>
+                        <button class="modal-close" onclick="closeFeatureModal()">×</button>
+                    </div>
+                    <textarea id="featureDescription" placeholder="추가할 기능을 설명하세요...&#10;예: 60초 타이머를 추가해주세요"></textarea>
+                    <textarea id="featureContext" placeholder="추가 요구사항 (선택사항)..."></textarea>
+                    <button class="btn btn-primary" onclick="submitFeatureRequest()" style="width: 100%;">제출</button>
+                    <div class="loading" id="featureLoading">처리 중...</div>
+                </div>
+            </div>
+        `;
+
+        const scripts = `
+            let currentGameId = null;
+
+            function playGame(gameId) {
+                window.open('/games/' + gameId, '_blank');
+            }
+
+            function openBugModal(gameId) {
+                currentGameId = gameId;
+                document.getElementById('bugModal').classList.add('active');
+            }
+
+            function closeBugModal() {
+                document.getElementById('bugModal').classList.remove('active');
+                document.getElementById('bugDescription').value = '';
+                document.getElementById('bugContext').value = '';
+            }
+
+            function openFeatureModal(gameId) {
+                currentGameId = gameId;
+                document.getElementById('featureModal').classList.add('active');
+            }
+
+            function closeFeatureModal() {
+                document.getElementById('featureModal').classList.remove('active');
+                document.getElementById('featureDescription').value = '';
+                document.getElementById('featureContext').value = '';
+            }
+
+            async function submitBugReport() {
+                const description = document.getElementById('bugDescription').value;
+                const context = document.getElementById('bugContext').value;
+
+                if (!description.trim()) {
+                    alert('버그 설명을 입력해주세요.');
+                    return;
+                }
+
+                document.getElementById('bugLoading').classList.add('active');
+
+                try {
+                    const response = await fetch('/api/maintenance/report-bug', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            gameId: currentGameId,
+                            bugDescription: description,
+                            userContext: context
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('✅ 버그가 수정되었습니다!\\n버전: ' + result.version);
+                        closeBugModal();
+                        location.reload();
+                    } else {
+                        alert('❌ 오류: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('❌ 요청 실패: ' + error.message);
+                } finally {
+                    document.getElementById('bugLoading').classList.remove('active');
+                }
+            }
+
+            async function submitFeatureRequest() {
+                const description = document.getElementById('featureDescription').value;
+                const context = document.getElementById('featureContext').value;
+
+                if (!description.trim()) {
+                    alert('기능 설명을 입력해주세요.');
+                    return;
+                }
+
+                document.getElementById('featureLoading').classList.add('active');
+
+                try {
+                    const response = await fetch('/api/maintenance/add-feature', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            gameId: currentGameId,
+                            featureDescription: description,
+                            userContext: context
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('✅ 기능이 추가되었습니다!\\n버전: ' + result.version);
+                        closeFeatureModal();
+                        location.reload();
+                    } else {
+                        alert('❌ 오류: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('❌ 요청 실패: ' + error.message);
+                } finally {
+                    document.getElementById('featureLoading').classList.remove('active');
+                }
+            }
+
+            async function viewHistory(gameId) {
+                try {
+                    const response = await fetch('/api/maintenance/history/' + gameId);
+                    const result = await response.json();
+
+                    if (result.success && result.history.length > 0) {
+                        const historyText = result.history.map(h =>
+                            h.type + '\\n' + h.description + '\\n버전: ' + h.version + '\\n시간: ' + new Date(h.timestamp).toLocaleString()
+                        ).join('\\n\\n---\\n\\n');
+                        alert('📜 수정 이력:\\n\\n' + historyText);
+                    } else {
+                        alert('수정 이력이 없습니다.');
+                    }
+                } catch (error) {
+                    alert('이력 조회 실패: ' + error.message);
+                }
+            }
+
+            function filterGames() {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const cards = document.querySelectorAll('.game-card');
+
+                cards.forEach(card => {
+                    const title = card.querySelector('.game-title').textContent.toLowerCase();
+                    const id = card.querySelector('.game-id').textContent.toLowerCase();
+
+                    if (title.includes(searchTerm) || id.includes(searchTerm)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+
+            // ESC 키로 모달 닫기
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeBugModal();
+                    closeFeatureModal();
+                }
+            });
+
+            // 페이지 로드 시 실시간 버전 업데이트
+            async function loadGameVersions() {
+                const versionBadges = document.querySelectorAll('.game-version');
+                for (const badge of versionBadges) {
+                    const gameId = badge.getAttribute('data-game');
+                    try {
+                        const response = await fetch('/api/maintenance/version/' + gameId);
+                        const result = await response.json();
+                        if (result.success && result.version) {
+                            badge.textContent = 'v' + result.version;
+                        }
+                    } catch (e) {
+                        // 기본값 v1.0 유지
+                    }
+                }
+            }
+
+            // 페이지 로드 시 버전 업데이트 실행
+            window.addEventListener('DOMContentLoaded', loadGameVersions);
+
+            console.log('🛠️ Game Manager loaded. Total games: ${games.length}');
+        `;
+
+        return this.getBaseTemplate(title, content + styles, scripts);
     }
 }
 

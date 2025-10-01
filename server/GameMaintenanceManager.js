@@ -13,6 +13,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { ChatAnthropic } = require('@langchain/anthropic');
+const { createClient } = require('@supabase/supabase-js');
 
 class GameMaintenanceManager {
     constructor(config) {
@@ -20,9 +21,15 @@ class GameMaintenanceManager {
         this.llm = new ChatAnthropic({
             anthropicApiKey: config.claudeApiKey,
             model: config.claudeModel,
-            maxTokens: 4096,
+            maxTokens: 8192,  // 긴 게임 코드 처리 가능하도록 증가
             temperature: 0.2  // 유지보수는 정확성 최우선
         });
+
+        // Supabase 클라이언트 초기화
+        this.supabase = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_ANON_KEY
+        );
 
         // 활성 게임 세션 (gameId → 게임 정보)
         this.activeSessions = new Map();
@@ -74,8 +81,10 @@ class GameMaintenanceManager {
         console.log(`🐛 버그 리포트 받음: ${gameId}`);
         console.log(`설명: ${bugDescription}`);
 
+        // 세션이 없으면 자동으로 생성 (기존 게임도 지원)
         if (!this.hasSession(gameId)) {
-            throw new Error('게임 세션을 찾을 수 없습니다. 게임이 생성된 지 30분이 지났거나 서버가 재시작되었을 수 있습니다.');
+            console.log(`⚠️ 세션 없음. 자동 생성: ${gameId}`);
+            await this.createSessionFromExistingGame(gameId);
         }
 
         const session = this.getSession(gameId);
@@ -111,6 +120,9 @@ class GameMaintenanceManager {
                 version: session.version
             });
 
+            // 6. DB에 버전 정보 저장
+            await this.saveGameVersionToDB(gameId, session);
+
             console.log(`✅ 버그 수정 완료: ${gameId} (v${session.version})`);
 
             return {
@@ -133,30 +145,45 @@ class GameMaintenanceManager {
      * 버그 분석 및 수정 코드 생성
      */
     async analyzeBugAndFix(currentCode, bugDescription, userContext) {
-        const prompt = `당신은 게임 버그를 분석하고 수정하는 전문가입니다.
+        const prompt = `당신은 HTML5 Canvas 게임 버그를 분석하고 수정하는 전문 개발자입니다.
 
 **사용자 버그 리포트:**
-${bugDescription}
+"${bugDescription}"
 
-${userContext ? `**추가 컨텍스트:**\n${userContext}\n` : ''}
+${userContext ? `**추가 정보:**\n${userContext}\n` : ''}
 
 **현재 게임 코드:**
 \`\`\`html
-${currentCode}
+${currentCode.substring(0, 15000)}
 \`\`\`
 
-**작업:**
-1. 버그의 원인을 분석하세요
-2. 버그를 수정한 완전한 HTML 코드를 생성하세요
-3. 수정 사항을 간단히 설명하세요
+**분석 및 수정 작업:**
+1. 버그의 정확한 원인을 JavaScript 코드에서 찾으세요
+2. 버그를 수정한 완전한 HTML 파일을 생성하세요
+3. 변경사항을 명확히 표시하세요
 
-**주의사항:**
-- 버그와 관련된 부분만 수정하고 나머지는 그대로 유지
-- SessionSDK 통합은 절대 건드리지 말 것
-- 기존 게임 로직을 최대한 보존
+**중요 규칙:**
+- SessionSDK, QR코드, 센서 연결 로직은 절대 변경하지 마세요
+- <!DOCTYPE html>부터 </html>까지 전체 코드를 반환하세요
+- 버그 수정에 필요한 최소한의 변경만 하세요
+- gameStarted 플래그가 있으면 활용하세요
+
+**일반적인 버그 패턴:**
+- "공이 움직이지 않아요" → gameStarted 플래그 확인, 속도 초기화 확인
+- "타이머가 작동 안해요" → setInterval/requestAnimationFrame 확인
+- "센서 반응 없어요" → sensor-data 이벤트 핸들러 확인
 
 **출력 형식:**
-반드시 \`\`\`html 코드 블록으로 전체 HTML을 감싸주세요.`;
+반드시 아래 형식으로 응답하세요:
+
+\`\`\`html
+<!DOCTYPE html>
+<html>
+... 전체 수정된 HTML 코드 ...
+</html>
+\`\`\`
+
+지금 버그를 수정한 전체 HTML 코드를 생성하세요.`;
 
         try {
             const response = await this.llm.invoke(prompt);
@@ -188,8 +215,10 @@ ${currentCode}
         console.log(`✨ 기능 추가 요청 받음: ${gameId}`);
         console.log(`설명: ${featureDescription}`);
 
+        // 세션이 없으면 자동으로 생성 (기존 게임도 지원)
         if (!this.hasSession(gameId)) {
-            throw new Error('게임 세션을 찾을 수 없습니다.');
+            console.log(`⚠️ 세션 없음. 자동 생성: ${gameId}`);
+            await this.createSessionFromExistingGame(gameId);
         }
 
         const session = this.getSession(gameId);
@@ -224,6 +253,9 @@ ${currentCode}
                 timestamp: Date.now(),
                 version: session.version
             });
+
+            // 6. DB에 버전 정보 저장
+            await this.saveGameVersionToDB(gameId, session);
 
             console.log(`✅ 기능 추가 완료: ${gameId} (v${session.version})`);
 
@@ -395,6 +427,47 @@ ${currentCode}
     }
 
     /**
+     * 기존 게임에서 세션 생성 (세션 없이도 유지보수 가능)
+     */
+    async createSessionFromExistingGame(gameId) {
+        try {
+            const gamePath = path.join(__dirname, '../public/games', gameId, 'index.html');
+
+            // 게임 파일 존재 확인
+            await fs.access(gamePath);
+
+            // 1. DB에서 버전 정보 로드 시도
+            const dbSession = await this.loadSessionFromDB(gameId);
+
+            // 2. game.json에서 메타데이터 읽기 (있으면)
+            let gameInfo = { title: gameId };
+            try {
+                const gameJsonPath = path.join(__dirname, '../public/games', gameId, 'game.json');
+                const gameJsonContent = await fs.readFile(gameJsonPath, 'utf-8');
+                gameInfo = JSON.parse(gameJsonContent);
+            } catch (e) {
+                // game.json 없으면 기본값 사용
+            }
+
+            // 3. 세션 등록 (DB 정보 우선, 없으면 기본값)
+            this.registerGameSession(gameId, {
+                title: (dbSession && dbSession.title) || gameInfo.title || gameId,
+                description: (dbSession && dbSession.description) || gameInfo.description || '기존 게임',
+                gameType: (dbSession && dbSession.gameType) || gameInfo.gameType || 'solo',
+                path: `games/${gameId}`,
+                version: (dbSession && dbSession.version) || '1.0',
+                modifications: (dbSession && dbSession.modifications) || []
+            });
+
+            console.log(`✅ 기존 게임 세션 생성: ${gameId} (v${(dbSession && dbSession.version) || '1.0'})`);
+            return true;
+        } catch (error) {
+            console.error(`❌ 세션 생성 실패: ${gameId}`, error.message);
+            throw new Error(`게임을 찾을 수 없습니다: ${gameId}`);
+        }
+    }
+
+    /**
      * 세션 정보 조회 (디버깅용)
      */
     getAllSessions() {
@@ -426,6 +499,86 @@ ${currentCode}
             timestamp: new Date(mod.timestamp).toISOString(),
             version: mod.version
         }));
+    }
+
+    /**
+     * ===== Supabase DB 연동 메서드 =====
+     */
+
+    /**
+     * DB에서 게임 버전 정보 가져오기
+     */
+    async getGameVersionFromDB(gameId) {
+        try {
+            const { data, error } = await this.supabase
+                .from('game_versions')
+                .select('*')
+                .eq('game_id', gameId)
+                .single();
+
+            if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+                throw error;
+            }
+
+            return data;
+        } catch (error) {
+            console.error(`❌ DB 조회 실패: ${gameId}`, error.message);
+            return null;
+        }
+    }
+
+    /**
+     * DB에 게임 버전 정보 저장
+     */
+    async saveGameVersionToDB(gameId, session) {
+        try {
+            const versionData = {
+                game_id: gameId,
+                current_version: session.version,
+                title: session.title,
+                description: session.description,
+                game_type: session.gameType,
+                modifications: session.modifications
+            };
+
+            const { data, error } = await this.supabase
+                .from('game_versions')
+                .upsert(versionData, {
+                    onConflict: 'game_id'
+                })
+                .select()
+                .single();
+
+            if (error) {
+                throw error;
+            }
+
+            console.log(`✅ DB 저장 완료: ${gameId} v${session.version}`);
+            return data;
+        } catch (error) {
+            console.error(`❌ DB 저장 실패: ${gameId}`, error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * 세션 로드 시 DB에서 버전 정보 복원
+     */
+    async loadSessionFromDB(gameId) {
+        const dbVersion = await this.getGameVersionFromDB(gameId);
+
+        if (dbVersion) {
+            // DB에 저장된 정보로 세션 복원
+            return {
+                version: dbVersion.current_version,
+                title: dbVersion.title,
+                description: dbVersion.description,
+                gameType: dbVersion.game_type,
+                modifications: dbVersion.modifications || []
+            };
+        }
+
+        return null;
     }
 }
 
