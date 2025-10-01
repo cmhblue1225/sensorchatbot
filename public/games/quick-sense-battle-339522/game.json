@@ -1,0 +1,19 @@
+{
+  "title": "Quick Sense Battle",
+  "description": "여러 명이 경쟁하는 반응속도 테스트 게임",
+  "gameType": "multi",
+  "genre": "casual_action",
+  "difficulty": "medium",
+  "sensorMechanics": [
+    "shake",
+    "tilt"
+  ],
+  "generatedAt": "2025-10-01T16:15:39.521Z",
+  "sessionId": "game-session-1759335244935-2uyzckxsb",
+  "gameId": "quick-sense-battle-339522",
+  "filePaths": {
+    "index": "index.html"
+  },
+  "createdAt": "2025-10-01T16:15:39.524Z",
+  "version": "1.0.0"
+}

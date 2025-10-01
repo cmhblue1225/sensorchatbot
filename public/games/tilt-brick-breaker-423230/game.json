@@ -1,0 +1,19 @@
+{
+  "title": "Tilt Brick Breaker",
+  "description": "벽돌 깨기 게임",
+  "gameType": "solo",
+  "genre": "arcade",
+  "difficulty": "medium",
+  "sensorMechanics": [
+    "tilt",
+    "shake"
+  ],
+  "generatedAt": "2025-10-01T17:07:03.230Z",
+  "sessionId": "game-session-1759338320477-d1rmd5z4j",
+  "gameId": "tilt-brick-breaker-423230",
+  "filePaths": {
+    "index": "index.html"
+  },
+  "createdAt": "2025-10-01T17:07:03.232Z",
+  "version": "1.0.0"
+}

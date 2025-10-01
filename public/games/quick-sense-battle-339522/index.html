@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Quick Sense Battle - Racing</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        #game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        #game-canvas {
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+            background: #333;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        #session-info {
+            background: #333;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        #qr-code {
+            background: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .connected { background: #4CAF50; }
+        .disconnected { background: #f44336; }
+
+        #players-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .player-card {
+            background: #444;
+            padding: 10px;
+            border-radius: 5px;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Quick Sense Battle</h1>
+        <div id="session-info">
+            <h2>세션 코드: <span id="session-code">대기중...</span></h2>
+            <div id="qr-code"></div>
+            <div id="sensor-status" class="status disconnected">센서 연결 대기중...</div>
+        </div>
+        <div class="timer" id="timer">30</div>
+        <canvas id="game-canvas"></canvas>
+        <div id="players-list"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+    <script>
+    class RaceGame {
+        constructor(canvas) {
+            this.canvas = canvas;
+            this.ctx = canvas.getContext('2d');
+            this.players = new Map();
+            this.track = this.createTrack();
+            this.gameStarted = false;
+            this.timeLeft = 30;
+
+            // 캔버스 크기 설정
+            this.resizeCanvas();
+            window.addEventListener('resize', () => this.resizeCanvas());
+        }
+
+        resizeCanvas() {
+            this.canvas.width = this.canvas.clientWidth;
+            this.canvas.height = this.canvas.clientHeight;
+        }
+
+        createTrack() {
+            return {
+                checkpoints: [
+                    {x: 100, y: 100},
+                    {x: 700, y: 100},
+                    {x: 700, y: 300},
+                    {x: 100, y: 300}
+                ],
+                width: 60
+            };
+        }
+
+        addPlayer(sensorId) {
+            this.players.set(sensorId, {
+                x: 100,
+                y: 100,
+                angle: 0,
+                speed: 0,
+                lap: 0,
+                checkpoint: 0,
+                color: `hsl(${Math.random() * 360}, 70%, 50%)`
+            });
+        }
+
+        removePlayer(sensorId) {
+            this.players.delete(sensorId);
+        }
+
+        updatePlayer(sensorId, sensorData) {
+            const player = this.players.get(sensorId);
+            if (!player || !this.gameStarted) return;
+
+            // 기울기로 조향
+            const steering = sensorData.data.orientation.gamma / 90;
+            player.angle += steering * 0.1;
+
+            // 흔들기로 가속
+            const shake = Math.sqrt(
+                sensorData.data.acceleration.x ** 2 +
+                sensorData.data.acceleration.y ** 2 +
+                sensorData.data.acceleration.z ** 2
+            );
+            if (shake > 20) {
+                player.speed = Math.min(player.speed + 0.5, 5);
+            } else {
+                player.speed *= 0.98; // 감속
+            }
+
+            // 위치 업데이트
+            player.x += Math.cos(player.angle) * player.speed;
+            player.y += Math.sin(player.angle) * player.speed;
+
+            // 경계 체크
+            player.x = Math.max(0, Math.min(this.canvas.width, player.x));
+            player.y = Math.max(0, Math.min(this.canvas.height, player.y));
+
+            // 체크포인트 확인
+            this.checkCheckpoint(player);
+        }
+
+        checkCheckpoint(player) {
+            const checkpoint = this.track.checkpoints[player.checkpoint];
+            const dx = player.x - checkpoint.x;
+            const dy = player.y - checkpoint.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < this.track.width) {
+                player.checkpoint++;
+                if (player.checkpoint >= this.track.checkpoints.length) {
+                    player.checkpoint = 0;
+                    player.lap++;
+                }
+            }
+        }
+
+        render() {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // 트랙 그리기
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = '#fff';
+            this.ctx.lineWidth = this.track.width;
+            this.ctx.moveTo(this.track.checkpoints[0].x, this.track.checkpoints[0].y);
+            for (let i = 1; i < this.track.checkpoints.length; i++) {
+                this.ctx.lineTo(this.track.checkpoints[i].x, this.track.checkpoints[i].y);
+            }
+            this.ctx.closePath();
+            this.ctx.stroke();
+
+            // 플레이어 그리기
+            for (const [sensorId, player] of this.players) {
+                this.ctx.save();
+                this.ctx.translate(player.x, player.y);
+                this.ctx.rotate(player.angle);
+
+                this.ctx.fillStyle = player.color;
+                this.ctx.fillRect(-15, -10, 30, 20);
+
+                this.ctx.restore();
+            }
+        }
+
+        startGame() {
+            this.gameStarted = true;
+            this.timeLeft = 30;
+
+            const timerElement = document.getElementById('timer');
+            const timerInterval = setInterval(() => {
+                this.timeLeft--;
+                timerElement.textContent = this.timeLeft;
+
+                if (this.timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    this.endGame();
+                }
+            }, 1000);
+        }
+
+        endGame() {
+            this.gameStarted = false;
+            let winner = null;
+            let maxLaps = -1;
+
+            for (const [sensorId, player] of this.players) {
+                if (player.lap > maxLaps) {
+                    maxLaps = player.lap;
+                    winner = sensorId;
+                }
+            }
+
+            alert(`게임 종료! 승자: Player ${winner} (${maxLaps} 바퀴)`);
+        }
+    }
+
+    // 게임 초기화
+    const canvas = document.getElementById('game-canvas');
+    const game = new RaceGame(canvas);
+
+    // SessionSDK 초기화
+    const sdk = new SessionSDK({
+        gameId: 'quick sense battle',
+        gameType: 'multi'
+    });
+
+    sdk.on('connected', () => {
+        console.log('✅ 서버 연결 완료');
+        createSession();
+    });
+
+    function createSession() {
+        sdk.createSession().then(session => {
+            console.log('✅ 세션 생성됨:', session);
+        }).catch(error => {
+            console.error('❌ 세션 생성 실패:', error);
+            alert('세션 생성에 실패했습니다: ' + error.message);
+        });
+    }
+
+    sdk.on('session-created', (event) => {
+        const session = event.detail || event;
+        document.getElementById('session-code').textContent = session.code;
+        generateQRCode(session.qrCodeUrl);
+    });
+
+    sdk.on('sensor-connected', (event) => {
+        const data = event.detail || event;
+        console.log('✅ 센서 연결됨:', data.sensorId);
+        
+        document.getElementById('sensor-status').textContent = '센서 연결됨';
+        document.getElementById('sensor-status').className = 'status connected';
+        
+        game.addPlayer(data.sensorId);
+        updatePlayersList();
+
+        // 2명 이상이면 게임 시작
+        if (game.players.size >= 2 && !game.gameStarted) {
+            game.startGame();
+        }
+    });
+
+    sdk.on('sensor-data', (event) => {
+        const data = event.detail || event;
+        game.updatePlayer(data.sensorId, data);
+    });
+
+    sdk.on('sensor-disconnected', (event) => {
+        const data = event.detail || event;
+        console.log('⚠️ 센서 연결 해제:', data.sensorId);
+        
+        document.getElementById('sensor-status').textContent = '센서 연결 대기중...';
+        document.getElementById('sensor-status').className = 'status disconnected';
+        
+        game.removePlayer(data.sensorId);
+        updatePlayersList();
+    });
+
+    function generateQRCode(url) {
+        const qrContainer = document.getElementById('qr-code');
+        qrContainer.innerHTML = '';
+
+        if (typeof QRCode !== 'undefined') {
+            new QRCode(qrContainer, {
+                text: url,
+                width: 200,
+                height: 200,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        } else {
+            const img = document.createElement('img');
+            img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+            img.alt = 'QR Code';
+            img.style.width = '200px';
+            img.style.height = '200px';
+            qrContainer.appendChild(img);
+        }
+    }
+
+    function updatePlayersList() {
+        const container = document.getElementById('players-list');
+        container.innerHTML = '';
+
+        for (const [sensorId, player] of game.players) {
+            const card = document.createElement('div');
+            card.className = 'player-card';
+            card.style.borderColor = player.color;
+            card.innerHTML = `
+                <h3>Player ${sensorId}</h3>
+                <p>Lap: ${player.lap}</p>
+            `;
+            container.appendChild(card);
+        }
+    }
+
+    // 게임 루프
+    function gameLoop() {
+        game.render();
+        requestAnimationFrame(gameLoop);
+    }
+    gameLoop();
+    </script>
+</body>
+</html>
