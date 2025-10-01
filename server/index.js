@@ -1114,7 +1114,7 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             }
         });
 
-        // 수정 이력 조회
+        // 수정 이력 조회 (Supabase DB 연동)
         this.app.get('/api/maintenance/history/:gameId', async (req, res) => {
             try {
                 if (!this.gameMaintenanceManager) {
@@ -1125,9 +1125,10 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                 }
 
                 const { gameId } = req.params;
-                const history = this.gameMaintenanceManager.getModificationHistory(gameId);
+                // await 추가: DB 조회를 기다림
+                const history = await this.gameMaintenanceManager.getModificationHistory(gameId);
 
-                if (!history) {
+                if (!history || history.length === 0) {
                     return res.json({
                         success: false,
                         error: '수정 이력을 찾을 수 없습니다.'

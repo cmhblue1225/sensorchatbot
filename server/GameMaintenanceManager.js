@@ -485,20 +485,36 @@ ${currentCode}
     }
 
     /**
-     * 특정 세션의 수정 이력 조회
+     * 특정 세션의 수정 이력 조회 (메모리 + DB)
      */
-    getModificationHistory(gameId) {
+    async getModificationHistory(gameId) {
+        // 1. 메모리 세션에서 확인
         const session = this.getSession(gameId);
-        if (!session) {
-            return null;
+        if (session && session.modifications && session.modifications.length > 0) {
+            return session.modifications.map(mod => ({
+                type: mod.type === 'bug_fix' ? '🐛 버그 수정' : '✨ 기능 추가',
+                description: mod.description,
+                timestamp: new Date(mod.timestamp).toISOString(),
+                version: mod.version
+            }));
         }
 
-        return session.modifications.map(mod => ({
-            type: mod.type === 'bug_fix' ? '🐛 버그 수정' : '✨ 기능 추가',
-            description: mod.description,
-            timestamp: new Date(mod.timestamp).toISOString(),
-            version: mod.version
-        }));
+        // 2. 세션 없거나 이력 없으면 DB에서 조회
+        try {
+            const dbVersion = await this.getGameVersionFromDB(gameId);
+            if (dbVersion && dbVersion.modifications && dbVersion.modifications.length > 0) {
+                return dbVersion.modifications.map(mod => ({
+                    type: mod.type === 'bug_fix' ? '🐛 버그 수정' : '✨ 기능 추가',
+                    description: mod.description,
+                    timestamp: new Date(mod.timestamp).toISOString(),
+                    version: mod.version
+                }));
+            }
+        } catch (error) {
+            console.error(`❌ DB에서 이력 조회 실패: ${gameId}`, error.message);
+        }
+
+        return null;
     }
 
     /**

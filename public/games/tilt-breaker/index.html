@@ -155,15 +155,15 @@
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         drawBricks();
-        
+
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
         ctx.fillStyle = "#0095DD";
         ctx.fill();
         ctx.closePath();
-        
+
         ctx.beginPath();
         ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
         ctx.fillStyle = "#0095DD";
@@ -174,6 +174,12 @@
 
         if (!gameStarted) {
             resetBall();
+
+            // 게임 시작 안내 메시지 표시
+            ctx.fillStyle = "white";
+            ctx.font = "24px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("📱 휴대폰을 흔들어서 게임 시작!", canvas.width / 2, canvas.height / 2);
         } else {
             ball.x += ball.dx;
             ball.y += ball.dy;
@@ -335,10 +341,12 @@
                 data.data.acceleration.y ** 2 +
                 data.data.acceleration.z ** 2
             );
-            if (shake > 20) {
+            // 임계값을 낮춰서 더 쉽게 게임 시작 (20 → 15)
+            if (shake > 15) {
                 gameStarted = true;
                 ball.dx = 4;
                 ball.dy = -4;
+                console.log('🎮 게임 시작! shake=' + shake);
             }
         }
         
