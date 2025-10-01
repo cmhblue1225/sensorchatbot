@@ -1005,7 +1005,7 @@ class SensorGame {
     }
 
     onSessionCreated(session) {
-        console.log('세션 생성:', session.code);
+        console.log('세션 생성:', session.sessionCode);
         this.eventBus.emit('session:ready', session);
     }
 

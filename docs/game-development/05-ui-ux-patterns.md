@@ -358,7 +358,9 @@ const sessionUI = new SessionUI();
 
 sdk.on('session-created', (event) => {
     const session = event.detail || event;
-    sessionUI.showSessionCode(session.code, session.qrCode);
+    // QR URL 직접 생성
+    const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+    sessionUI.showSessionCode(session.sessionCode, qrUrl);
 });
 
 sdk.on('sensor-connected', () => {

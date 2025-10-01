@@ -75,7 +75,7 @@ class PerformanceMonitor {
         this.performanceHistory = {
             generationTimes: [],
             validationScores: [],
-            responsesTimes: [],
+            responseTimes: [],
             memorySnapshots: [],
             timestamps: []
         };

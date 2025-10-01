@@ -644,11 +644,12 @@ function createSession() {
 sdk.on('session-created', (event) => {
     const session = event.detail || event;  // 🔥 필수 패턴!
 
-    // 세션 코드 표시
-    document.getElementById('session-code').textContent = session.code;
+    // 세션 코드 표시 (반드시 sessionCode 속성 사용!)
+    document.getElementById('session-code').textContent = session.sessionCode;
 
-    // QR 코드 생성 (반드시 폴백 포함)
-    generateQRCode(session.qrCodeUrl);
+    // QR 코드 URL 생성 (qrCodeUrl 속성은 존재하지 않음!)
+    const qrUrl = \`\${window.location.origin}/sensor.html?session=\${session.sessionCode}\`;
+    generateQRCode(qrUrl);
 });
 
 sdk.on('sensor-connected', (event) => {
@@ -760,18 +761,74 @@ function processSensorData(sensorData) {
 📚 **개발 참고자료:**
 ${context}
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏆 **검증된 실제 작동하는 게임 패턴 (shot-target, cake-delivery 기반):**
+
+\`\`\`javascript
+// ✅ 완벽한 세션 생성 및 QR 코드 생성 패턴
+sdk.on('session-created', (event) => {
+    const session = event.detail || event;
+    console.info('세션 생성 완료:', session);
+
+    // 세션 코드 표시 (sessionCode 속성 필수!)
+    const sessionCodeEl = document.getElementById('session-code');
+    if (sessionCodeEl && session.sessionCode) {
+        sessionCodeEl.textContent = session.sessionCode;
+        console.info('세션 코드 표시:', session.sessionCode);
+    }
+
+    // QR 코드 생성 (URL 직접 생성 필수!)
+    setTimeout(() => {
+        const qrUrl = \`\${window.location.origin}/sensor.html?session=\${session.sessionCode}\`;
+        console.info('QR URL 생성:', qrUrl);
+
+        const qrContainer = document.getElementById('qr-code');
+        if (qrContainer) {
+            qrContainer.innerHTML = '';
+
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(qrContainer, {
+                    text: qrUrl,
+                    width: 200,
+                    height: 200,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } else {
+                // 폴백: 외부 API 사용
+                const img = document.createElement('img');
+                img.src = \`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=\${encodeURIComponent(qrUrl)}\`;
+                img.alt = 'QR Code';
+                img.style.width = '200px';
+                img.style.height = '200px';
+                qrContainer.appendChild(img);
+            }
+        }
+    }, 100);
+});
+\`\`\`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 🚨 **절대적 요구사항:**
 1. 단일 HTML 파일로 완성 (모든 CSS/JS 인라인)
 2. 완전히 작동하는 SessionSDK 통합 (위 패턴 필수!)
-3. QR 코드가 실제로 생성되고 표시됨 (폴백 포함)
-4. 센서 연결 시 게임이 실제로 플레이 가능함
-5. 모든 UI 요소가 올바르게 작동함
-6. 에러 처리 및 폴백 완전 구현
-7. ${requirements.genre} 장르 특성을 완벽히 반영
-8. CustomEvent 패턴 (event.detail || event) 반드시 사용
-9. 서버 연결 완료 후 세션 생성 순서 준수
+3. **session.sessionCode 사용 (session.code 아님!)**
+4. **QR URL 직접 생성 (session.qrCodeUrl 속성 없음!)**
+5. QR 코드가 실제로 생성되고 표시됨 (폴백 포함)
+6. 센서 연결 시 게임이 실제로 플레이 가능함
+7. 모든 UI 요소가 올바르게 작동함
+8. 에러 처리 및 폴백 완전 구현
+9. ${requirements.genre} 장르 특성을 완벽히 반영
+10. CustomEvent 패턴 (event.detail || event) 반드시 사용
+11. 서버 연결 완료 후 세션 생성 순서 준수
 
-**반드시 즉시 플레이 가능한 완전한 게임을 생성하세요. 템플릿이 아닌 실제 작동하는 게임이어야 합니다!**`;
+**⚠️ 치명적 주의사항:**
+- session.code (❌ 틀림) → session.sessionCode (✅ 올바름)
+- session.qrCodeUrl (❌ 존재하지 않음) → URL 직접 생성 (✅ 올바름)
+
+**반드시 위의 검증된 패턴을 정확히 따라 즉시 플레이 가능한 완전한 게임을 생성하세요!**`;
     }
 
     /**
