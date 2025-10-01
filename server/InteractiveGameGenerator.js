@@ -481,9 +481,10 @@ JSON 형식: {"readyForNext": true, "gameType": "${genreAnalysis.gameType}", "ge
         };
 
         // 장르에 맞는 특화 프롬프트 선택
-        const matchedGenre = Object.keys(genreSpecificPrompts).find(genre => 
+        const detectedKeywords = genreAnalysis.detectedKeywords || genreAnalysis.fullAnalysis?.themeKeywords || [];
+        const matchedGenre = Object.keys(genreSpecificPrompts).find(genre =>
             genreAnalysis.primaryGenre.toLowerCase().includes(genre) ||
-            genreAnalysis.detectedKeywords.some(keyword => genre.includes(keyword))
+            detectedKeywords.some(keyword => genre.includes(keyword))
         );
 
         if (matchedGenre) {
@@ -499,7 +500,7 @@ JSON 형식: {"readyForNext": true, "gameType": "${genreAnalysis.gameType}", "ge
 - **장르**: ${genreAnalysis.primaryGenre} (확신도: ${Math.round(genreAnalysis.confidence * 100)}%)
 - **게임 타입**: ${genreAnalysis.gameType}
 - **추천 센서**: ${sensorMechanicsStr}
-- **핵심 키워드**: ${genreAnalysis.detectedKeywords.join(', ')}
+- **핵심 키워드**: ${detectedKeywords.join(', ')}
 
 사용자 입력: "${userMessage}"
 
