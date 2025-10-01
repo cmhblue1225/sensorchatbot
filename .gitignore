@@ -82,7 +82,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+# public  # 주석 처리: 이 프로젝트는 public/ 폴더를 Git에 포함해야 함
 
 # Storybook build outputs
 .out
