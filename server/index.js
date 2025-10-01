@@ -1040,17 +1040,20 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             // AI Assistant 초기화
             this.aiAssistant = new AIAssistant();
             await this.aiAssistant.initialize();
-            
+
+            // InteractiveGameGenerator를 aiAssistant에 추가
+            this.aiAssistant.interactiveGameGenerator = this.interactiveGameGenerator;
+
             // Document Embedder 초기화
             this.documentEmbedder = new DocumentEmbedder();
-            
+
             // AI Game Generator 초기화
             this.aiGameGenerator = new AIGameGenerator();
             await this.aiGameGenerator.initialize();
-            
+
             // 자동 문서 임베딩 실행
             await this.autoEmbedDocuments();
-            
+
             console.log('✅ AI Assistant 및 게임 생성기 초기화 완료');
             
         } catch (error) {
