@@ -115,11 +115,13 @@ class InteractiveGameGenerator {
 
             // Supabase 벡터 저장소 초기화
             if (this.supabaseClient && this.embeddings) {
+                console.log('🔍 Supabase Vector Store 초기화 중...');
                 this.vectorStore = new SupabaseVectorStore(this.embeddings, {
                     client: this.supabaseClient,
                     tableName: 'game_knowledge',
-                    queryName: 'match_documents'
+                    // queryName 제거 - Supabase 기본 유사도 검색 사용
                 });
+                console.log('✅ Vector Store 초기화 완료 (game_knowledge 테이블)');
             }
 
             console.log('✅ 대화형 게임 생성기 초기화 완료');
@@ -1057,17 +1059,57 @@ ${requirements.specialRequirements?.length > 0 ?
                 difficulty: session.gameRequirements.difficulty
             });
 
+            // 🎯 Step 1: 게임 아이디어 분석 (0-20%)
+            if (this.io) {
+                this.io.emit('game-generation-progress', {
+                    sessionId,
+                    step: 1,
+                    percentage: 10,
+                    message: `게임 아이디어 분석 중: ${session.gameRequirements.title}`
+                });
+            }
+
             // Claude API 사용 가능 여부 확인
             if (!this.llm) {
                 throw new Error('Claude API가 초기화되지 않았습니다. 환경변수를 확인해주세요.');
+            }
+
+            // 🎯 Step 2: 관련 문서 검색 (20-40%)
+            if (this.io) {
+                this.io.emit('game-generation-progress', {
+                    sessionId,
+                    step: 2,
+                    percentage: 20,
+                    message: '관련 문서 검색 중... (벡터 DB 검색)'
+                });
             }
 
             // 관련 컨텍스트 수집
             console.log('📚 컨텍스트 수집 중...');
             const context = await this.getGameDevelopmentContext(session.gameRequirements);
 
+            // 🎯 Step 2 완료 - 문서 검색 완료
+            if (this.io) {
+                this.io.emit('game-generation-progress', {
+                    sessionId,
+                    step: 2,
+                    percentage: 40,
+                    message: '문서 검색 완료! Claude AI 코드 생성 준비 중...'
+                });
+            }
+
             // 장르별 특화 게임 생성 프롬프트
             const gameGenerationPrompt = this.generateGameCreationPrompt(session.gameRequirements, context);
+
+            // 🎯 Step 3: Claude AI 코드 생성 (40-80%)
+            if (this.io) {
+                this.io.emit('game-generation-progress', {
+                    sessionId,
+                    step: 3,
+                    percentage: 50,
+                    message: 'Claude AI로 게임 코드 생성 중... (약 30초 소요)'
+                });
+            }
 
             console.log('🤖 Claude API 호출 시작...');
             const aiRequestStartTime = Date.now();
@@ -1086,6 +1128,16 @@ ${requirements.specialRequirements?.length > 0 ?
             
             console.log('✅ Claude API 응답 수신 완료');
             console.log(`📝 응답 길이: ${response.content.length} 문자`);
+
+            // 🎯 Step 3 진행 중 - HTML 추출
+            if (this.io) {
+                this.io.emit('game-generation-progress', {
+                    sessionId,
+                    step: 3,
+                    percentage: 75,
+                    message: 'Claude AI 응답 완료! HTML 코드 추출 중...'
+                });
+            }
 
             // HTML 추출
             console.log('🔍 HTML 코드 추출 시도...');
@@ -1121,6 +1173,16 @@ ${requirements.specialRequirements?.length > 0 ?
                 }
             }
 
+            // 🎯 Step 4: 게임 코드 검증 (80-90%)
+            if (this.io) {
+                this.io.emit('game-generation-progress', {
+                    sessionId,
+                    step: 4,
+                    percentage: 80,
+                    message: '게임 코드 검증 중...'
+                });
+            }
+
             // 게임 검증 (성능 추적 포함)
             console.log('🔍 게임 코드 검증 중...');
             const validationStartTime = Date.now();
@@ -1154,6 +1216,16 @@ ${requirements.specialRequirements?.length > 0 ?
                 generatedAt: new Date().toISOString(),
                 sessionId: sessionId
             };
+
+            // 🎯 Step 5: 게임 파일 저장 및 등록 (90-100%)
+            if (this.io) {
+                this.io.emit('game-generation-progress', {
+                    sessionId,
+                    step: 5,
+                    percentage: 90,
+                    message: '게임 파일 저장 및 등록 중...'
+                });
+            }
 
             // 게임 파일 저장
             console.log('💾 게임 파일 저장 중...');
@@ -1193,6 +1265,16 @@ ${requirements.specialRequirements?.length > 0 ?
             console.log(`✅ 게임 생성 및 저장 완료: ${session.gameRequirements.title}`);
             console.log(`📁 게임 경로: ${saveResult.gamePath}`);
             console.log(`📊 성능 통계: 총 소요시간 ${Math.round(performanceTracking.totalDuration/1000)}초`);
+
+            // 🎯 Step 5 완료 - 100%
+            if (this.io) {
+                this.io.emit('game-generation-progress', {
+                    sessionId,
+                    step: 5,
+                    percentage: 100,
+                    message: `✅ 게임 생성 완료! (${saveResult.gameId})`
+                });
+            }
 
             // 🔄 게임 생성 성공 시 자동 스캔 실행
             if (this.gameScanner) {

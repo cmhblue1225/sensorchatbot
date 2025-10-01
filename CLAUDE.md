@@ -219,4 +219,199 @@ npm test
 
 ---
 
+## 🤖 AI 게임 생성기 시스템 (2025-10-01 업데이트)
+
+### 개요
+Developer Center에 통합된 대화형 AI 게임 생성 시스템으로, Claude AI와 RAG (Retrieval-Augmented Generation)를 활용하여 사용자의 아이디어를 실제 동작하는 센서 게임으로 변환합니다.
+
+### 핵심 기술 스택
+- **Claude AI**: Anthropic Claude 3.5 Sonnet - 게임 코드 생성
+- **OpenAI Embeddings**: text-embedding-3-small - 문서 임베딩
+- **Supabase Vector Store**: PostgreSQL + pgvector - 400개 게임 개발 문서 검색
+- **Socket.IO**: 실시간 진행률 트래킹
+- **Langchain**: RAG 파이프라인 구성
+
+### 아키텍처
+
+#### 1. 대화형 생성 플로우 (4단계)
+```
+1. Initial (초기) → 게임 아이디어 입력
+2. Details (상세) → 게임 장르, 테마 결정
+3. Mechanics (메커닉) → 센서 조작 방식 정의
+4. Confirmation (확인) → 최종 요구사항 검토
+```
+
+#### 2. RAG 시스템
+```
+사용자 입력
+    ↓
+OpenAI Embeddings (벡터화)
+    ↓
+Supabase Vector Search (game_knowledge 테이블)
+    ↓
+Top-K 관련 문서 검색 (k=3)
+    ↓
+Claude AI 프롬프트에 컨텍스트 추가
+    ↓
+게임 코드 생성
+```
+
+**임베딩 데이터**:
+- 총 400개 문서 (35개 마크다운 파일을 청크로 분할)
+- 게임 개발 가이드, API 레퍼런스, 예제 코드 포함
+- 벡터 차원: 1536 (text-embedding-3-small)
+
+#### 3. 5단계 실시간 진행률 트래킹
+
+**백엔드 (InteractiveGameGenerator.js)**:
+```javascript
+// Step 1 (0-20%): 게임 아이디어 분석
+this.io.emit('game-generation-progress', {
+    sessionId, step: 1, percentage: 10,
+    message: '게임 아이디어 분석 중...'
+});
+
+// Step 2 (20-40%): 벡터 DB 문서 검색
+this.io.emit('game-generation-progress', {
+    sessionId, step: 2, percentage: 20,
+    message: '관련 문서 검색 중... (벡터 DB)'
+});
+
+// Step 3 (40-80%): Claude AI 코드 생성
+this.io.emit('game-generation-progress', {
+    sessionId, step: 3, percentage: 50,
+    message: 'Claude AI로 게임 코드 생성 중...'
+});
+
+// Step 4 (80-90%): 코드 검증
+this.io.emit('game-generation-progress', {
+    sessionId, step: 4, percentage: 80,
+    message: '게임 코드 검증 중...'
+});
+
+// Step 5 (90-100%): 파일 저장 및 등록
+this.io.emit('game-generation-progress', {
+    sessionId, step: 5, percentage: 100,
+    message: '✅ 게임 생성 완료!'
+});
+```
+
+**프론트엔드 (developerRoutes.js)**:
+```javascript
+const socket = io();
+
+socket.on('game-generation-progress', (data) => {
+    // 진행률 바 업데이트
+    progressBar.style.width = data.percentage + '%';
+
+    // 단계 아이콘 업데이트 (⏳ → ✅)
+    updateProgressUI(data.step, data.percentage, data.message);
+});
+```
+
+### 주요 파일 위치
+
+#### 서버 코드
+- `server/InteractiveGameGenerator.js:1-1400` - 핵심 생성 로직
+  - `generateFinalGame()` (line 1027) - 5단계 진행 이벤트 발생
+  - `getGameDevelopmentContext()` (line 1374) - RAG 문서 검색
+  - `validateGameCode()` (line 1589) - 생성된 코드 검증
+
+- `server/routes/developerRoutes.js:1-2300` - API 엔드포인트 및 UI
+  - `/api/start-game-session` (line 123) - 세션 시작
+  - `/api/game-chat` (line 128) - 대화 처리
+  - `/api/finalize-game` (line 133) - 게임 생성 실행
+  - `/api/download-game/:gameId` (line 138) - ZIP 다운로드
+
+#### 프론트엔드
+- 게임 생성기 UI (developerRoutes.js:1550-1767)
+  - 대화형 채팅 인터페이스
+  - 5단계 진행 모달 (line 1711-1743)
+  - 결과 모달 및 다운로드 (line 1746-1766)
+
+### 사용 방법
+
+#### 1. 게임 생성
+```
+1. http://localhost:3000/developer 접속
+2. "AI 게임 생성기" 탭 클릭
+3. 게임 아이디어 입력 (예: "스마트폰을 기울여서 공을 굴리는 미로 게임")
+4. AI와 대화하며 요구사항 구체화
+5. "🚀 게임 생성 시작" 버튼 클릭
+6. 5단계 진행 과정 실시간 확인 (약 30-60초 소요)
+7. 생성 완료 후 "🎮 바로 플레이하기" 또는 "💾 게임 다운로드"
+```
+
+#### 2. 다운로드 및 설치
+```
+1. "💾 게임 다운로드" 클릭 → {gameId}.zip 다운로드
+2. ZIP 파일 압축 해제
+3. 압축 해제된 폴더를 `public/games/` 경로에 복사
+4. GameScanner가 자동으로 게임 감지 및 등록
+5. http://localhost:3000/games/{gameId} 접속하여 플레이
+```
+
+### 성능 및 제한사항
+
+#### 생성 시간
+- 평균: 30-60초
+- 최소: 20초 (간단한 게임)
+- 최대: 90초 (복잡한 게임)
+
+#### 제한사항
+- Claude API Rate Limit: 분당 50회 요청
+- 최대 토큰: 4096 토큰 (약 3000단어)
+- 지원 게임 타입: solo, dual, multi
+- 센서: orientation (기울기), acceleration (가속도)
+
+### 검증 시스템
+
+생성된 게임 코드는 자동으로 다음 항목을 검증합니다:
+- ✅ SessionSDK 통합 여부 (20점)
+- ✅ 센서 데이터 처리 로직 존재 (25점)
+- ✅ 게임 루프 구현 (update/render) (20점)
+- ✅ Canvas 렌더링 (15점)
+- ✅ 게임 상태 관리 (10점)
+- ✅ 코드 품질 (오류 처리, 주석) (10점)
+
+**최소 통과 점수**: 60/100
+
+### 트러블슈팅
+
+#### Vector DB 오류
+```bash
+# 증상: "match_documents 함수 없음" 오류
+# 해결: queryName 제거 (2025-10-01 수정 완료)
+this.vectorStore = new SupabaseVectorStore(this.embeddings, {
+    client: this.supabaseClient,
+    tableName: 'game_knowledge'
+    // queryName 제거됨
+});
+```
+
+#### 진행률 표시 안 됨
+```bash
+# 증상: 모달은 보이지만 진행률 업데이트 안 됨
+# 해결: Socket.IO 연결 확인 (2025-10-01 추가 완료)
+const socket = io();
+socket.on('game-generation-progress', (data) => { ... });
+```
+
+#### 다운로드 파일 형식
+```bash
+# 변경: .html → .zip (2025-10-01 수정)
+# 압축 내용: {gameId}/index.html, {gameId}/game.json
+```
+
+### 개선 이력
+
+**2025-10-01 - AI 게임 생성기 대폭 개선**:
+- ✅ Phase 1: Supabase Vector DB 수정 (`queryName` 제거)
+- ✅ Phase 2: 실시간 진행률 트래킹 구현 (WebSocket 5단계 이벤트)
+- ✅ Phase 3: ZIP 다운로드 안내 메시지 개선
+
+상세 내역: `AI_GAME_GENERATOR_IMPROVEMENT_LOG.md` 참조
+
+---
+
 **Sensor Game Hub v6.0** - 모바일 센서로 새로운 게임 경험을 만나보세요! 🎮✨

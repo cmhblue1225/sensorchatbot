@@ -1341,6 +1341,60 @@ class DeveloperRoutes {
             }
         });
 
+        // 🔗 Socket.IO 연결 및 진행률 이벤트 리스너
+        const socket = io();
+
+        socket.on('game-generation-progress', (data) => {
+            console.log('📡 진행률 이벤트 수신:', data);
+
+            // 현재 세션의 이벤트만 처리
+            if (data.sessionId !== generatorSessionId) return;
+
+            // 진행률 UI 업데이트
+            updateProgressUI(data.step, data.percentage, data.message);
+        });
+
+        // 진행률 UI 업데이트 함수
+        function updateProgressUI(step, percentage, message) {
+            // 진행률 바 업데이트
+            const progressBar = document.getElementById('generation-progress-bar');
+            const progressText = document.getElementById('generation-progress-text');
+
+            if (progressBar) {
+                progressBar.style.width = percentage + '%';
+            }
+            if (progressText) {
+                progressText.textContent = percentage + '%';
+            }
+
+            // 각 단계 아이콘 업데이트
+            for (let i = 1; i <= 5; i++) {
+                const stepEl = document.querySelector(\`[data-gen-step="\${i}"]\`);
+                if (!stepEl) continue;
+
+                const iconEl = stepEl.querySelector('.gen-step-icon');
+                const textEl = stepEl.querySelector('.gen-step-text');
+
+                if (i < step) {
+                    // 완료된 단계
+                    iconEl.textContent = '✅';
+                    stepEl.style.opacity = '0.6';
+                } else if (i === step) {
+                    // 현재 진행 중인 단계
+                    iconEl.textContent = '⏳';
+                    stepEl.style.opacity = '1';
+                    stepEl.style.fontWeight = 'bold';
+                    if (textEl && message) {
+                        textEl.textContent = message;
+                    }
+                } else {
+                    // 대기 중인 단계
+                    iconEl.textContent = '⏳';
+                    stepEl.style.opacity = '0.4';
+                }
+            }
+        }
+
         // 최종 게임 생성
         finalGenerateBtn.addEventListener('click', async () => {
             if (!generatorSessionId) {
@@ -1348,10 +1402,13 @@ class DeveloperRoutes {
                 return;
             }
 
-            // 생성 모달 표시
+            // 생성 모달 표시 및 초기화
             const generationModal = document.getElementById('generation-modal');
             generationModal.classList.remove('hidden');
             finalGenerateBtn.disabled = true;
+
+            // 진행률 초기화
+            updateProgressUI(1, 0, '게임 생성 시작...');
 
             try {
                 const response = await fetch('/developer/api/finalize-game', {
@@ -1364,14 +1421,18 @@ class DeveloperRoutes {
 
                 const data = await response.json();
 
-                generationModal.classList.add('hidden');
+                // 완료 후 잠시 대기 (사용자가 100% 확인 가능)
+                setTimeout(() => {
+                    generationModal.classList.add('hidden');
 
-                if (data.success) {
-                    // 결과 모달 표시
-                    showResultModal(data);
-                } else {
-                    addGeneratorMessage('❌ 게임 생성 실패: ' + data.error, true);
-                }
+                    if (data.success) {
+                        // 결과 모달 표시
+                        showResultModal(data);
+                    } else {
+                        addGeneratorMessage('❌ 게임 생성 실패: ' + data.error, true);
+                    }
+                }, 1000);
+
             } catch (error) {
                 generationModal.classList.add('hidden');
                 addGeneratorMessage('❌ 오류가 발생했습니다.', true);
@@ -1442,13 +1503,21 @@ class DeveloperRoutes {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = currentGameData.gameId + '.html';
+                a.download = currentGameData.gameId + '.zip';  // ZIP 파일로 다운로드
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
 
-                alert('✅ 게임이 성공적으로 다운로드되었습니다!');
+                // 안내 메시지 표시
+                alert(\`✅ 게임 ZIP 파일이 다운로드되었습니다!
+
+📦 다운로드한 ZIP 파일 사용 방법:
+1. \${currentGameData.gameId}.zip 압축 해제
+2. 압축 해제된 폴더를 'public/games/' 경로에 복사
+3. 서버가 자동으로 게임을 감지합니다
+
+💡 Tip: 게임이 자동 등록되어 바로 플레이 가능합니다!\`);
             } catch (error) {
                 console.error('다운로드 오류:', error);
                 alert('❌ 게임 다운로드 중 오류가 발생했습니다.');
