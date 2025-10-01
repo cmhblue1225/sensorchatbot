@@ -28,7 +28,7 @@ class InteractiveGameGenerator {
             supabaseUrl: process.env.SUPABASE_URL,
             supabaseKey: process.env.SUPABASE_ANON_KEY,
             claudeModel: 'claude-3-5-sonnet-20241022',
-            maxTokens: 16000,  // 2배 증가: 더 긴 고품질 게임 생성 가능
+            maxTokens: 8192,   // Claude Sonnet 최대 출력 토큰
             temperature: 0.7   // 일관성과 창의성의 균형
         };
 
