@@ -27,6 +27,7 @@ const InteractiveGameGenerator = require('./InteractiveGameGenerator');
 const GameMaintenanceManager = require('./GameMaintenanceManager');
 const LandingRoutes = require('./routes/landingRoutes');
 const DeveloperRoutes = require('./routes/developerRoutes');
+const AuthRoutes = require('./routes/authRoutes');
 
 class GameServer {
     constructor() {
@@ -89,6 +90,10 @@ class GameServer {
      * HTTP 라우트 설정
      */
     setupRoutes() {
+        // AuthRoutes 등록 (인증 API)
+        const authRoutes = new AuthRoutes();
+        this.app.use('/', authRoutes.getRouter());
+
         // LandingRoutes 등록 (랜딩 페이지)
         const landingRoutes = new LandingRoutes(this.gameScanner, () => this.aiAssistant);
         this.app.use('/', landingRoutes.getRouter());

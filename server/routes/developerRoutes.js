@@ -14,6 +14,7 @@ const fs = require('fs').promises;
 const fsSync = require('fs');
 const archiver = require('archiver');
 const MarkdownRenderer = require('../utils/markdownRenderer');
+const { checkCreatorAuth, optionalAuth } = require('../middleware/authMiddleware');
 
 class DeveloperRoutes {
     constructor(gameScanner, aiServiceGetter) {
@@ -113,29 +114,29 @@ class DeveloperRoutes {
             await this.handleChat(req, res);
         });
 
-        // AI 게임 생성 API (레거시)
-        this.router.post('/api/generate-game', async (req, res) => {
+        // AI 게임 생성 API (레거시, 인증 필요)
+        this.router.post('/api/generate-game', checkCreatorAuth, async (req, res) => {
             await this.handleGameGeneration(req, res);
         });
 
         // 🆕 대화형 게임 생성 API (Phase 2)
-        // 세션 시작
-        this.router.post('/api/start-game-session', async (req, res) => {
+        // 세션 시작 (인증 필요)
+        this.router.post('/api/start-game-session', checkCreatorAuth, async (req, res) => {
             await this.handleStartGameSession(req, res);
         });
 
-        // 대화 메시지 처리
-        this.router.post('/api/game-chat', async (req, res) => {
+        // 대화 메시지 처리 (인증 필요)
+        this.router.post('/api/game-chat', checkCreatorAuth, async (req, res) => {
             await this.handleGameChat(req, res);
         });
 
-        // 최종 게임 생성
-        this.router.post('/api/finalize-game', async (req, res) => {
+        // 최종 게임 생성 (인증 필요)
+        this.router.post('/api/finalize-game', checkCreatorAuth, async (req, res) => {
             await this.handleFinalizeGame(req, res);
         });
 
-        // 게임 다운로드
-        this.router.get('/api/download-game/:gameId', async (req, res) => {
+        // 게임 다운로드 (선택적 인증)
+        this.router.get('/api/download-game/:gameId', optionalAuth, async (req, res) => {
             await this.handleDownloadGame(req, res);
         });
 
@@ -1075,7 +1076,7 @@ class DeveloperRoutes {
                 <button class="tab active" data-tab="welcome">🏠 시작하기</button>
                 <button class="tab" data-tab="docs">📚 문서</button>
                 <button class="tab" data-tab="chat">💬 AI 챗봇</button>
-                <button class="tab" data-tab="generator">🎮 게임 생성기</button>
+                <button class="tab" data-tab="manager">🎯 게임 관리</button>
             </div>
 
             <div class="tab-content active" id="welcome-tab">
@@ -1096,6 +1097,10 @@ class DeveloperRoutes {
 
             <div class="tab-content" id="generator-tab">
                 ${this.generateGeneratorHTML()}
+            </div>
+
+            <div class="tab-content" id="manager-tab">
+                ${this.generateGameManagerHTML()}
             </div>
         </main>
     </div>
@@ -1773,6 +1778,277 @@ class DeveloperRoutes {
                 </div>
             </div>
         </div>
+        `;
+    }
+
+    /**
+     * 게임 관리 HTML 생성
+     */
+    generateGameManagerHTML() {
+        return `
+        <div class="game-manager-container">
+            <div class="manager-header">
+                <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; background: linear-gradient(135deg, #A78BFA, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    🛠️ 게임 관리
+                </h2>
+                <p style="color: #94A3B8; margin-bottom: 2rem;">생성된 게임을 관리하고 개선하세요</p>
+            </div>
+
+            <div class="search-bar" style="margin-bottom: 2rem;">
+                <input
+                    type="text"
+                    id="manager-search-input"
+                    placeholder="🔍 게임 검색 (제목 또는 ID)..."
+                    style="flex: 1; min-width: 250px; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid rgba(100, 116, 139, 0.3); background: rgba(30, 41, 59, 0.6); color: #F8FAFC; font-size: 1rem;"
+                    onkeyup="filterManagerGames()"
+                >
+            </div>
+
+            <div id="manager-games-grid" class="games-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;">
+                <p style="text-align: center; color: #94A3B8; grid-column: 1 / -1;">게임을 불러오는 중...</p>
+            </div>
+        </div>
+
+        <!-- 버그 리포트 모달 -->
+        <div id="manager-bug-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
+            <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(139, 92, 246, 0.5); border-radius: 16px; padding: 2rem; max-width: 500px; width: 90%;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.5rem; font-weight: 600; color: #E2E8F0;">🐛 버그 신고</h3>
+                    <button class="modal-close" onclick="closeManagerBugModal()" style="background: none; border: none; font-size: 1.5rem; color: #94A3B8; cursor: pointer;">×</button>
+                </div>
+                <textarea id="manager-bug-description" placeholder="버그 설명을 입력하세요...&#10;예: 공이 패들에 붙어서 떨어지지 않습니다." style="width: 100%; min-height: 120px; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(100, 116, 139, 0.3); background: rgba(15, 23, 42, 0.6); color: #F8FAFC; font-family: inherit; font-size: 0.95rem; resize: vertical; margin-bottom: 1rem;"></textarea>
+                <button onclick="submitManagerBugReport()" style="width: 100%; padding: 0.75rem 1.5rem; border-radius: 8px; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; font-weight: 500; cursor: pointer; transition: all 0.2s;">제출</button>
+                <div id="manager-bug-loading" style="display: none; text-align: center; color: #8B5CF6; margin-top: 1rem;">처리 중...</div>
+            </div>
+        </div>
+
+        <!-- 기능 추가 모달 -->
+        <div id="manager-feature-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
+            <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(139, 92, 246, 0.5); border-radius: 16px; padding: 2rem; max-width: 500px; width: 90%;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.5rem; font-weight: 600; color: #E2E8F0;">✨ 기능 추가</h3>
+                    <button class="modal-close" onclick="closeManagerFeatureModal()" style="background: none; border: none; font-size: 1.5rem; color: #94A3B8; cursor: pointer;">×</button>
+                </div>
+                <textarea id="manager-feature-description" placeholder="추가할 기능을 설명하세요...&#10;예: 60초 타이머를 추가해주세요" style="width: 100%; min-height: 120px; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(100, 116, 139, 0.3); background: rgba(15, 23, 42, 0.6); color: #F8FAFC; font-family: inherit; font-size: 0.95rem; resize: vertical; margin-bottom: 1rem;"></textarea>
+                <button onclick="submitManagerFeatureRequest()" style="width: 100%; padding: 0.75rem 1.5rem; border-radius: 8px; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; font-weight: 500; cursor: pointer; transition: all 0.2s;">제출</button>
+                <div id="manager-feature-loading" style="display: none; text-align: center; color: #8B5CF6; margin-top: 1rem;">처리 중...</div>
+            </div>
+        </div>
+
+        <!-- 이력 모달 -->
+        <div id="manager-history-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
+            <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(139, 92, 246, 0.5); border-radius: 16px; padding: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.5rem; font-weight: 600; color: #E2E8F0;">📜 수정 이력</h3>
+                    <button class="modal-close" onclick="closeManagerHistoryModal()" style="background: none; border: none; font-size: 1.5rem; color: #94A3B8; cursor: pointer;">×</button>
+                </div>
+                <div id="manager-history-content" style="color: #CBD5E1;">
+                    로딩 중...
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let currentManagerGameId = null;
+
+            // 게임 목록 로드
+            async function loadManagerGames() {
+                try {
+                    const response = await fetch('/api/games');
+                    const data = await response.json();
+
+                    if (data.success && data.data) {
+                        const gamesGrid = document.getElementById('manager-games-grid');
+                        const games = data.data;
+
+                        if (games.length === 0) {
+                            gamesGrid.innerHTML = '<p style="text-align: center; color: #94A3B8; grid-column: 1 / -1;">생성된 게임이 없습니다.</p>';
+                            return;
+                        }
+
+                        gamesGrid.innerHTML = games.map(game => \`
+                            <div class="game-card" data-game-id="\${game.id}" style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 16px; padding: 1.5rem; transition: all 0.3s;">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                    <div>
+                                        <div style="font-size: 1.25rem; font-weight: 600; color: #E2E8F0; margin-bottom: 0.25rem;">\${game.title || game.id}</div>
+                                        <div style="font-size: 0.875rem; color: #94A3B8;">\${game.id}</div>
+                                    </div>
+                                    <span style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid #10B981;">활성</span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-top: 1rem;">
+                                    <button onclick="playManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">▶️ 플레이</button>
+                                    <button onclick="openManagerBugModal('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">🐛 버그 신고</button>
+                                    <button onclick="openManagerFeatureModal('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">✨ 기능 추가</button>
+                                    <button onclick="viewManagerHistory('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">📜 이력</button>
+                                </div>
+                            </div>
+                        \`).join('');
+                    }
+                } catch (error) {
+                    console.error('게임 목록 로드 실패:', error);
+                    document.getElementById('manager-games-grid').innerHTML = '<p style="text-align: center; color: #EF4444; grid-column: 1 / -1;">게임 목록을 불러올 수 없습니다.</p>';
+                }
+            }
+
+            function filterManagerGames() {
+                const searchValue = document.getElementById('manager-search-input').value.toLowerCase();
+                const gameCards = document.querySelectorAll('.game-card');
+
+                gameCards.forEach(card => {
+                    const gameId = card.dataset.gameId.toLowerCase();
+                    const gameTitle = card.querySelector('div > div').textContent.toLowerCase();
+
+                    if (gameId.includes(searchValue) || gameTitle.includes(searchValue)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+
+            function playManagerGame(gameId) {
+                window.open('/games/' + gameId, '_blank');
+            }
+
+            function openManagerBugModal(gameId) {
+                currentManagerGameId = gameId;
+                document.getElementById('manager-bug-modal').style.display = 'flex';
+            }
+
+            function closeManagerBugModal() {
+                document.getElementById('manager-bug-modal').style.display = 'none';
+                document.getElementById('manager-bug-description').value = '';
+            }
+
+            function openManagerFeatureModal(gameId) {
+                currentManagerGameId = gameId;
+                document.getElementById('manager-feature-modal').style.display = 'flex';
+            }
+
+            function closeManagerFeatureModal() {
+                document.getElementById('manager-feature-modal').style.display = 'none';
+                document.getElementById('manager-feature-description').value = '';
+            }
+
+            function closeManagerHistoryModal() {
+                document.getElementById('manager-history-modal').style.display = 'none';
+            }
+
+            async function submitManagerBugReport() {
+                const bugDescription = document.getElementById('manager-bug-description').value.trim();
+
+                if (!bugDescription) {
+                    alert('버그 설명을 입력해주세요.');
+                    return;
+                }
+
+                const loadingEl = document.getElementById('manager-bug-loading');
+                loadingEl.style.display = 'block';
+
+                try {
+                    const response = await fetch('/api/maintenance/report-bug', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            gameId: currentManagerGameId,
+                            userReport: bugDescription
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert('✅ 버그가 성공적으로 수정되었습니다!');
+                        closeManagerBugModal();
+                        loadManagerGames();
+                    } else {
+                        alert('❌ ' + (data.error || '버그 수정에 실패했습니다.'));
+                    }
+                } catch (error) {
+                    console.error('버그 신고 실패:', error);
+                    alert('❌ 오류가 발생했습니다.');
+                } finally {
+                    loadingEl.style.display = 'none';
+                }
+            }
+
+            async function submitManagerFeatureRequest() {
+                const featureDescription = document.getElementById('manager-feature-description').value.trim();
+
+                if (!featureDescription) {
+                    alert('추가할 기능을 입력해주세요.');
+                    return;
+                }
+
+                const loadingEl = document.getElementById('manager-feature-loading');
+                loadingEl.style.display = 'block';
+
+                try {
+                    const response = await fetch('/api/maintenance/add-feature', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            gameId: currentManagerGameId,
+                            featureRequest: featureDescription
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert('✅ 기능이 성공적으로 추가되었습니다!');
+                        closeManagerFeatureModal();
+                        loadManagerGames();
+                    } else {
+                        alert('❌ ' + (data.error || '기능 추가에 실패했습니다.'));
+                    }
+                } catch (error) {
+                    console.error('기능 추가 실패:', error);
+                    alert('❌ 오류가 발생했습니다.');
+                } finally {
+                    loadingEl.style.display = 'none';
+                }
+            }
+
+            async function viewManagerHistory(gameId) {
+                currentManagerGameId = gameId;
+                document.getElementById('manager-history-modal').style.display = 'flex';
+                document.getElementById('manager-history-content').innerHTML = '로딩 중...';
+
+                try {
+                    const response = await fetch('/api/maintenance/history/' + gameId);
+                    const data = await response.json();
+
+                    if (data.success && data.history && data.history.length > 0) {
+                        const historyHtml = data.history.map(item => \`
+                            <div style="padding: 1rem; background: rgba(15, 23, 42, 0.6); border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="color: #A5B4FC; font-weight: 600; margin-bottom: 0.5rem;">
+                                    \${item.type === 'bug' ? '🐛 버그 수정' : '✨ 기능 추가'} - v\${item.version}
+                                </div>
+                                <div style="color: #CBD5E1; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                    \${item.description}
+                                </div>
+                                <div style="color: #64748B; font-size: 0.75rem;">
+                                    \${new Date(item.timestamp).toLocaleString('ko-KR')}
+                                </div>
+                            </div>
+                        \`).join('');
+
+                        document.getElementById('manager-history-content').innerHTML = historyHtml;
+                    } else {
+                        document.getElementById('manager-history-content').innerHTML = '<p style="text-align: center; color: #94A3B8;">수정 이력이 없습니다.</p>';
+                    }
+                } catch (error) {
+                    console.error('이력 조회 실패:', error);
+                    document.getElementById('manager-history-content').innerHTML = '<p style="text-align: center; color: #EF4444;">이력을 불러올 수 없습니다.</p>';
+                }
+            }
+
+            // 게임 관리 탭이 활성화될 때 게임 목록 로드
+            document.querySelector('[data-tab="manager"]').addEventListener('click', () => {
+                setTimeout(loadManagerGames, 100);
+            });
+        </script>
         `;
     }
 
