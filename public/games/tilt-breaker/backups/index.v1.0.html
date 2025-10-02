@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tilt Breaker</title>
     <style>
+        /* 기존 스타일 유지 */
         body {
             margin: 0;
             padding: 20px;
@@ -66,6 +67,7 @@
     </style>
 </head>
 <body>
+    <!-- 기존 HTML 구조 유지 -->
     <h1>Tilt Breaker</h1>
     
     <div id="game-info">
@@ -93,7 +95,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
     <script>
-    // 게임 상수
+    // 게임 상수 (기존과 동일)
     const PADDLE_WIDTH = 100;
     const PADDLE_HEIGHT = 20;
     const BALL_RADIUS = 10;
@@ -105,7 +107,7 @@
     const BRICK_OFFSET_TOP = 30;
     const BRICK_OFFSET_LEFT = 30;
 
-    // 게임 변수
+    // 게임 변수 (기존과 동일)
     let canvas, ctx;
     let paddle = { x: 0, width: PADDLE_WIDTH, height: PADDLE_HEIGHT };
     let ball = { x: 0, y: 0, dx: 4, dy: -4, radius: BALL_RADIUS };
@@ -115,27 +117,23 @@
     let stage = 1;
     let gameStarted = false;
 
-    // SDK 초기화
+    // SDK 초기화 (기존과 동일)
     const sdk = new SessionSDK({
         gameId: 'tilt breaker',
         gameType: 'solo'
     });
 
-    // 캔버스 초기화
+    // 기존 함수들은 그대로 유지
     function initCanvas() {
         canvas = document.getElementById('gameCanvas');
         ctx = canvas.getContext('2d');
         canvas.width = 800;
         canvas.height = 600;
         
-        // 패들 초기 위치
         paddle.x = (canvas.width - paddle.width) / 2;
         paddle.y = canvas.height - paddle.height - 10;
 
-        // 공 초기 위치
         resetBall();
-
-        // 벽돌 초기화
         initBricks();
     }
 
@@ -157,32 +155,32 @@
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // 벽돌 그리기
+
         drawBricks();
-        
-        // 공 그리기
+
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
         ctx.fillStyle = "#0095DD";
         ctx.fill();
         ctx.closePath();
-        
-        // 패들 그리기
+
         ctx.beginPath();
         ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
         ctx.fillStyle = "#0095DD";
         ctx.fill();
         ctx.closePath();
 
-        // 충돌 감지
         collisionDetection();
 
-        // 게임 시작 전 공 위치 설정
         if (!gameStarted) {
             resetBall();
+
+            // 게임 시작 안내 메시지 표시
+            ctx.fillStyle = "white";
+            ctx.font = "24px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("📱 휴대폰을 흔들어서 게임 시작!", canvas.width / 2, canvas.height / 2);
         } else {
-            // 공 이동
             ball.x += ball.dx;
             ball.y += ball.dy;
 
@@ -195,14 +193,22 @@
                 ball.dy = -ball.dy;
             }
 
-            // 패들 충돌
+            // 수정된 패들 충돌 로직
             if (ball.y + ball.dy > paddle.y - ball.radius &&
                 ball.x > paddle.x && 
                 ball.x < paddle.x + paddle.width) {
-                ball.dy = -ball.dy;
+                
+                // 패들과의 충돌 위치에 따라 반사각 조정
+                const hitPoint = (ball.x - (paddle.x + paddle.width/2)) / (paddle.width/2);
+                ball.dx = hitPoint * 8; // 충돌 위치에 따라 x방향 속도 조정
+                ball.dy = -Math.abs(ball.dy); // y방향은 항상 위로
+                
+                // 최소 속도 보장
+                if (Math.abs(ball.dx) < 2) {
+                    ball.dx = ball.dx > 0 ? 2 : -2;
+                }
             }
 
-            // 바닥 충돌 (생명력 감소)
             if (ball.y + ball.dy > canvas.height - ball.radius) {
                 lives--;
                 document.getElementById('lives').textContent = lives;
@@ -220,6 +226,7 @@
         requestAnimationFrame(draw);
     }
 
+    // 나머지 함수들은 기존과 동일하게 유지
     function drawBricks() {
         for (let c = 0; c < BRICK_COLUMN_COUNT; c++) {
             for (let r = 0; r < BRICK_ROW_COUNT; r++) {
@@ -272,7 +279,7 @@
         }
     }
 
-    // SDK 이벤트 처리
+    // SDK 이벤트 핸들러들은 기존과 동일하게 유지
     sdk.on('connected', () => {
         console.log('✅ 서버 연결 완료');
         createSession();
@@ -334,18 +341,18 @@
                 data.data.acceleration.y ** 2 +
                 data.data.acceleration.z ** 2
             );
-            if (shake > 20) {
+            // 임계값을 낮춰서 더 쉽게 게임 시작 (20 → 15)
+            if (shake > 15) {
                 gameStarted = true;
                 ball.dx = 4;
                 ball.dy = -4;
+                console.log('🎮 게임 시작! shake=' + shake);
             }
         }
         
-        // 패들 이동
         const tiltX = data.data.orientation.gamma / 90;
         paddle.x += tiltX * 10;
         
-        // 패들 경계 체크
         if (paddle.x < 0) {
             paddle.x = 0;
         } else if (paddle.x + paddle.width > canvas.width) {

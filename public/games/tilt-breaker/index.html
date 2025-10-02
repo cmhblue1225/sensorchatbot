@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tilt Breaker</title>
     <style>
-        /* 기존 스타일 유지 */
         body {
             margin: 0;
             padding: 20px;
@@ -67,7 +66,6 @@
     </style>
 </head>
 <body>
-    <!-- 기존 HTML 구조 유지 -->
     <h1>Tilt Breaker</h1>
     
     <div id="game-info">
@@ -89,13 +87,11 @@
         <div id="qr-code"></div>
     </div>
 
-    <!-- 필수 스크립트 -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/SessionSDK.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
     <script>
-    // 게임 상수 (기존과 동일)
     const PADDLE_WIDTH = 100;
     const PADDLE_HEIGHT = 20;
     const BALL_RADIUS = 10;
@@ -107,7 +103,6 @@
     const BRICK_OFFSET_TOP = 30;
     const BRICK_OFFSET_LEFT = 30;
 
-    // 게임 변수 (기존과 동일)
     let canvas, ctx;
     let paddle = { x: 0, width: PADDLE_WIDTH, height: PADDLE_HEIGHT };
     let ball = { x: 0, y: 0, dx: 4, dy: -4, radius: BALL_RADIUS };
@@ -117,13 +112,11 @@
     let stage = 1;
     let gameStarted = false;
 
-    // SDK 초기화 (기존과 동일)
     const sdk = new SessionSDK({
         gameId: 'tilt breaker',
         gameType: 'solo'
     });
 
-    // 기존 함수들은 그대로 유지
     function initCanvas() {
         canvas = document.getElementById('gameCanvas');
         ctx = canvas.getContext('2d');
@@ -174,8 +167,6 @@
 
         if (!gameStarted) {
             resetBall();
-
-            // 게임 시작 안내 메시지 표시
             ctx.fillStyle = "white";
             ctx.font = "24px Arial";
             ctx.textAlign = "center";
@@ -184,7 +175,6 @@
             ball.x += ball.dx;
             ball.y += ball.dy;
 
-            // 벽 충돌
             if (ball.x + ball.dx > canvas.width - ball.radius || 
                 ball.x + ball.dx < ball.radius) {
                 ball.dx = -ball.dx;
@@ -193,20 +183,17 @@
                 ball.dy = -ball.dy;
             }
 
-            // 수정된 패들 충돌 로직
             if (ball.y + ball.dy > paddle.y - ball.radius &&
-                ball.x > paddle.x && 
-                ball.x < paddle.x + paddle.width) {
+                ball.y + ball.dy < paddle.y + paddle.height &&
+                ball.x > paddle.x - ball.radius && 
+                ball.x < paddle.x + paddle.width + ball.radius) {
                 
-                // 패들과의 충돌 위치에 따라 반사각 조정
                 const hitPoint = (ball.x - (paddle.x + paddle.width/2)) / (paddle.width/2);
-                ball.dx = hitPoint * 8; // 충돌 위치에 따라 x방향 속도 조정
-                ball.dy = -Math.abs(ball.dy); // y방향은 항상 위로
+                const angle = hitPoint * Math.PI/3;
+                const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
                 
-                // 최소 속도 보장
-                if (Math.abs(ball.dx) < 2) {
-                    ball.dx = ball.dx > 0 ? 2 : -2;
-                }
+                ball.dx = speed * Math.sin(angle);
+                ball.dy = -speed * Math.cos(angle);
             }
 
             if (ball.y + ball.dy > canvas.height - ball.radius) {
@@ -226,7 +213,6 @@
         requestAnimationFrame(draw);
     }
 
-    // 나머지 함수들은 기존과 동일하게 유지
     function drawBricks() {
         for (let c = 0; c < BRICK_COLUMN_COUNT; c++) {
             for (let r = 0; r < BRICK_ROW_COUNT; r++) {
@@ -279,7 +265,6 @@
         }
     }
 
-    // SDK 이벤트 핸들러들은 기존과 동일하게 유지
     sdk.on('connected', () => {
         console.log('✅ 서버 연결 완료');
         createSession();
@@ -341,7 +326,6 @@
                 data.data.acceleration.y ** 2 +
                 data.data.acceleration.z ** 2
             );
-            // 임계값을 낮춰서 더 쉽게 게임 시작 (20 → 15)
             if (shake > 15) {
                 gameStarted = true;
                 ball.dx = 4;
@@ -368,7 +352,6 @@
         document.getElementById('sensor-status').className = 'disconnected';
     });
 
-    // 게임 시작
     window.onload = function() {
         initCanvas();
         draw();

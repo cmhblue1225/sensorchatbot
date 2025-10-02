@@ -174,23 +174,37 @@ ${currentCode.substring(0, 15000)}
 - "센서 반응 없어요" → sensor-data 이벤트 핸들러 확인
 
 **출력 형식:**
-반드시 아래 형식으로 응답하세요:
+반드시 아래 형식으로 응답하세요. 설명이나 분석은 포함하지 말고, 오직 코드만 반환하세요!
 
 \`\`\`html
 <!DOCTYPE html>
 <html>
-... 전체 수정된 HTML 코드 ...
+... 전체 수정된 HTML 코드 (SessionSDK 포함) ...
 </html>
 \`\`\`
+
+**중요:**
+- 설명 없이 코드만 반환하세요
+- <!DOCTYPE html>부터 </html>까지 전체 코드를 반환하세요
+- SessionSDK 관련 코드는 절대 삭제하지 마세요
+- 버그 수정에 필요한 최소한의 변경만 하세요
 
 지금 버그를 수정한 전체 HTML 코드를 생성하세요.`;
 
         try {
+            console.log('🤖 LLM 호출 중...');
             const response = await this.llm.invoke(prompt);
+            console.log('✅ LLM 응답 받음:', response.content?.substring(0, 100) + '...');
+
             const fixedCode = this.extractHTML(response.content);
+            console.log('📝 HTML 추출 완료, 길이:', fixedCode.length);
 
             // 간단한 검증: 기본 구조가 있는지 확인
             if (!fixedCode.includes('<!DOCTYPE html>') || !fixedCode.includes('SessionSDK')) {
+                console.error('❌ 코드 검증 실패:', {
+                    hasDoctype: fixedCode.includes('<!DOCTYPE html>'),
+                    hasSessionSDK: fixedCode.includes('SessionSDK')
+                });
                 throw new Error('생성된 코드가 유효하지 않습니다');
             }
 
@@ -201,6 +215,8 @@ ${currentCode.substring(0, 15000)}
             };
 
         } catch (error) {
+            console.error('❌ 버그 수정 실패:', error.message);
+            console.error('상세 에러:', error.stack);
             return {
                 success: false,
                 analysis: `버그 분석 실패: ${error.message}`
