@@ -118,26 +118,12 @@ class InteractiveGameGenerator {
                 });
             }
 
-            // 🚀 Anthropic SDK 직접 사용 (LangChain top_p 문제 우회)
+            // 🚀 Anthropic SDK만 사용 (LangChain 완전 제거 - top_p 문제 해결)
             this.anthropicClient = new Anthropic({
                 apiKey: this.config.claudeApiKey
             });
 
-            // LangChain은 대화 단계에서만 사용 (간단한 invoke)
-            this.llm = new ChatAnthropic({
-                anthropicApiKey: this.config.claudeApiKey,
-                modelName: this.config.claudeModel,
-                maxTokens: 4096,  // 대화 단계는 적은 토큰 사용
-                temperature: this.config.temperature,
-            });
-
-            // Opus도 LangChain 사용 (대화용)
-            this.llmOpus = new ChatAnthropic({
-                anthropicApiKey: this.config.claudeApiKey,
-                modelName: this.config.claudeOpusModel,
-                maxTokens: 4096,
-                temperature: 0.2,
-            });
+            console.log('✅ Anthropic SDK 초기화 완료 (LangChain 미사용)');
 
             // Supabase 벡터 저장소 초기화
             if (this.supabaseClient && this.embeddings) {
@@ -705,6 +691,13 @@ sdk.on('sensor-connected', (event) => {
     // UI 업데이트
     document.getElementById('sensor-status').textContent = '센서 연결됨';
     document.getElementById('sensor-status').className = 'connected';
+
+    // 🚀 중요: 센서 연결 1초 후 자동 게임 시작 (플레이어블리티 필수!)
+    setTimeout(() => {
+        if (!gameStarted && !gameOver) {
+            startGame(); // ✅ 센서 연결 시 자동 시작 (필수 구현!)
+        }
+    }, 1000);
 });
 
 sdk.on('sensor-data', (event) => {
@@ -952,10 +945,173 @@ if (lives <= 0) {
 - **QR 코드**: \`<div id="qr-code">\` 또는 \`<div id="qr-container">\`
 - **센서 상태**: \`<div id="sensor-status">\` (필수)
 
+⚠️ **절대 포함하지 말아야 할 치명적 버그 패턴 (CRITICAL BUGS):**
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 **가장 중요한 플레이어블리티 버그 (반드시 해결!):**
+
+🚨 **CRITICAL BUG #0: 센서 연결해도 게임이 자동 시작 안 되는 치명적 버그**
+
+이 버그는 **사용자가 게임을 플레이할 수 없게 만드는 가장 심각한 버그**입니다!
+센서를 연결했는데 게임이 시작되지 않으면 사용자는 게임을 할 수 없습니다.
+
+❌ **절대 하지 마세요 - 잘못된 코드**:
+\`\`\`javascript
+// ❌ 치명적 실수: 센서 연결되어도 메시지만 표시하고 게임 시작 안함
+sdk.on('sensor-connected', (event) => {
+    sensorConnected = true;
+    // 메시지만 표시하고 startGame()을 호출하지 않음!
+    showOverlay('센서 연결됨! 화면을 클릭하거나 흔들어서 시작하세요');
+    // ❌ 이렇게 하면 사용자가 수동으로 클릭/흔들기를 해야만 게임 시작!
+});
+\`\`\`
+
+✅ **반드시 이렇게 하세요 - 올바른 코드**:
+\`\`\`javascript
+// ✅ 완벽한 패턴: 센서 연결되면 1초 후 자동으로 게임 시작
+sdk.on('sensor-connected', (event) => {
+    const data = event.detail || event;
+    console.log('✅ 센서 연결됨:', data.sensorId);
+
+    sensorConnected = true;
+
+    // UI 업데이트
+    document.getElementById('sensor-status').textContent = '센서 연결됨 ✓';
+
+    // 🚀 필수: 1초 후 자동 게임 시작 (플레이어블리티 핵심!)
+    setTimeout(() => {
+        if (!gameStarted && !gameOver) {
+            startGame(); // ✅ 자동으로 게임 시작!
+            console.log('🎮 게임 자동 시작됨!');
+        }
+    }, 1000);
+});
+
+function startGame() {
+    console.log('🚀 게임 시작!');
+    gameStarted = true;
+
+    // 게임 타입에 따라 초기화
+    if (ball) {
+        ball.stuck = false;
+        ball.dx = 4;   // ✅ 초기 속도 반드시 설정!
+        ball.dy = -4;
+    }
+
+    hideOverlay(); // 오버레이 숨기기
+}
+\`\`\`
+
+**왜 이게 중요한가?**
+1. 사용자가 핸드폰으로 QR 스캔 → 센서 페이지 열기 → **자동으로 게임 시작되어야 함**
+2. 추가 클릭/흔들기를 요구하면 사용자 경험이 나빠짐
+3. 이 버그가 있으면 게임이 "기술적으로는 완성"이지만 "플레이 불가능"한 상태가 됨
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 **BUG #1: 공/오브젝트가 움직이지 않는 버그**
+❌ **잘못된 코드**:
+\`\`\`javascript
+// 공이 패들에 붙어있는 상태에서 게임 시작 안됨
+if (ball.stuck) {
+    ball.x = paddle.x + paddle.width / 2;
+    return; // ❌ 게임이 영원히 stuck 상태!
+}
+\`\`\`
+✅ **올바른 코드**:
+\`\`\`javascript
+// 게임 시작 전에만 공을 패들에 고정
+if (!gameStarted) {
+    ball.x = paddle.x + paddle.width / 2;
+    ball.y = paddle.y - ball.radius;
+    ball.dx = 0;  // 시작 전에는 속도 0
+    ball.dy = 0;
+} else {
+    // 게임 시작 후에는 정상 이동
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+}
+
+function startGame() {
+    gameStarted = true;
+    ball.stuck = false;
+    ball.dx = 4;  // ✅ 초기 속도 설정 필수!
+    ball.dy = -4;
+}
+\`\`\`
+
+🚨 **BUG #2: 초기 속도가 0인 버그**
+❌ **잘못된 코드**:
+\`\`\`javascript
+ball.stuck = false; // stuck은 풀었지만
+// ball.dx = 0, ball.dy = 0 ← 속도가 0이면 안움직임!
+\`\`\`
+✅ **올바른 코드**:
+\`\`\`javascript
+ball.stuck = false;
+ball.dx = 4;  // ✅ 반드시 0이 아닌 값!
+ball.dy = -4;
+\`\`\`
+
+🚨 **BUG #3: gameStarted 플래그를 설정하지 않는 버그**
+❌ **잘못된 코드**:
+\`\`\`javascript
+function updateGame() {
+    // gameStarted 체크 없이 업데이트
+    ball.x += ball.dx; // ❌ 조건 없이 항상 실행
+}
+\`\`\`
+✅ **올바른 코드**:
+\`\`\`javascript
+function updateGame() {
+    if (!gameStarted || gamePaused) return; // ✅ 플래그 체크 필수!
+
+    if (!ball.stuck) { // ✅ stuck 체크도 필수!
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+    }
+}
+\`\`\`
+
+🚨 **BUG #4: 클릭/흔들기 시작이 작동하지 않는 버그**
+❌ **잘못된 코드**:
+\`\`\`javascript
+canvas.addEventListener('click', () => {
+    ball.stuck = false; // ❌ gameStarted를 true로 안바꿈!
+});
+\`\`\`
+✅ **올바른 코드**:
+\`\`\`javascript
+canvas.addEventListener('click', () => {
+    if (!gameStarted && !gameOver && sensorConnected) {
+        startGame(); // ✅ startGame() 함수 호출!
+    }
+});
+
+// 흔들기로도 시작 가능
+function processSensorData(data) {
+    const { acceleration } = data.data;
+    if (acceleration) {
+        const shake = Math.sqrt(
+            acceleration.x ** 2 +
+            acceleration.y ** 2 +
+            acceleration.z ** 2
+        );
+
+        // 흔들기로 게임 시작
+        if (!gameStarted && shake > 20 && sensorConnected && !gameOver) {
+            startGame(); // ✅ 흔들기로도 시작!
+        }
+    }
+}
+\`\`\`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 **기본 요구사항:**
-1. ✅ 게임이 센서 연결 즉시 플레이 가능해야 함
-2. ✅ 게임 시작 조건이 명확해야 함 (클릭/흔들기 등)
-3. ✅ 게임 로직에 버그가 없어야 함 (위 버그 패턴 확인!)
+1. 🚨 **필수!** 센서 연결 후 1초 뒤 자동으로 게임 시작 (플레이어블리티 핵심!)
+2. ✅ 게임 시작 시 반드시 gameStarted = true, ball.stuck = false, 초기 속도 설정
+3. ✅ 위의 5가지 치명적 버그 패턴 절대 포함 금지! (특히 BUG #0!)
 4. ✅ 게임 오버/승리 조건이 명확해야 함
 5. ✅ 게임 오버 후 재시작 가능해야 함
 
@@ -1308,8 +1464,8 @@ ${requirements.specialRequirements?.length > 0 ?
                 });
             }
 
-            // Claude API 사용 가능 여부 확인
-            if (!this.llm) {
+            // Claude API 사용 가능 여부 확인 (Anthropic SDK)
+            if (!this.anthropicClient) {
                 throw new Error('Claude API가 초기화되지 않았습니다. 환경변수를 확인해주세요.');
             }
 
@@ -1682,16 +1838,27 @@ ${requirements.specialRequirements?.length > 0 ?
     }
 
     /**
-     * 안전한 LLM 호출 (더미 모드 지원)
+     * 안전한 LLM 호출 (더미 모드 지원) - Anthropic SDK 사용
      */
     async safeInvokeLLM(prompt, stage = 'general', userMessage = '') {
-        if (this.mockMode || !this.llm) {
+        if (this.mockMode || !this.anthropicClient) {
             console.log('🎭 더미 모드 - 기본 응답 생성');
             return { content: this.generateMockResponse(stage, userMessage) };
         }
-        
+
         try {
-            return await this.llm.invoke([{ role: 'user', content: prompt }]);
+            // Anthropic SDK 직접 사용 (LangChain top_p 문제 완전 우회)
+            const response = await this.anthropicClient.messages.create({
+                model: this.config.claudeModel,
+                max_tokens: 4096,  // 대화 단계는 적은 토큰
+                temperature: this.config.temperature,
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }]
+            });
+
+            return { content: response.content[0].text };
         } catch (error) {
             console.error('❌ Claude API 호출 실패:', error);
             console.log('🎭 더미 모드로 대체');

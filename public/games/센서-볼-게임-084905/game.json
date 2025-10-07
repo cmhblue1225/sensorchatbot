@@ -7,12 +7,12 @@
   "sensorMechanics": [
     "tilt"
   ],
-  "generatedAt": "2025-10-07T18:01:07.465Z",
-  "sessionId": "session_1759859873090_edkuodhbo",
-  "gameId": "센서-볼-게임-067467",
+  "generatedAt": "2025-10-07T18:18:04.904Z",
+  "sessionId": "session_1759860895121_56w9qscjf",
+  "gameId": "센서-볼-게임-084905",
   "filePaths": {
     "index": "index.html"
   },
-  "createdAt": "2025-10-07T18:01:07.469Z",
+  "createdAt": "2025-10-07T18:18:04.906Z",
   "version": "1.0.0"
 }
