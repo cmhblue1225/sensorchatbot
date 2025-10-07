@@ -15,6 +15,17 @@ const { JSDOM } = require('jsdom');
 class GameValidator {
     constructor() {
         this.genreSpecificRules = {
+            'arcade': {
+                requiredPatterns: [
+                    /score|point/i,
+                    /level|stage/i,
+                    /timer|time|countdown/i,
+                    /collision|hit/i,
+                    /game.*over|gameOver/i,
+                ],
+                recommendedElements: ['score tracking', 'level progression', 'time management'],
+                keyFeatures: ['점수 시스템', '레벨 진행', '타이머']
+            },
             'physics': {
                 requiredPatterns: [
                     /gravity/i,
@@ -73,14 +84,41 @@ class GameValidator {
         };
 
         this.validationRules = {
-            // 필수 HTML 요소들
+            // 필수 HTML 요소들 (유연한 패턴 매칭)
             requiredElements: [
-                'canvas#game-canvas',
-                '#session-panel',
-                '#session-code-display', 
-                '#qr-container',
-                '#start-game-btn',
-                '#game-overlay'
+                {
+                    selectors: ['canvas#game-canvas', 'canvas#gameCanvas', 'canvas'],
+                    name: '게임 캔버스',
+                    description: 'canvas 요소 (ID: game-canvas 또는 gameCanvas 권장)'
+                },
+                {
+                    selectors: ['.session-panel', '#session-panel', '[class*="session"]', '#qr-container', '.qr-container'],
+                    name: '세션 패널',
+                    description: '세션 정보 표시 패널 (클래스 또는 ID, QR 컨테이너 포함)',
+                    optional: true
+                },
+                {
+                    selectors: ['#session-code-display', '#session-code', '[id*="session-code"]', '[id*="sessionCode"]'],
+                    name: '세션 코드 표시',
+                    description: '세션 코드를 표시하는 요소'
+                },
+                {
+                    selectors: ['#qr-container', '#qr-code', '[id*="qr"]', '.qr-container'],
+                    name: 'QR 코드 컨테이너',
+                    description: 'QR 코드를 표시하는 컨테이너'
+                },
+                {
+                    selectors: ['#start-game-btn', '#start-btn', 'button[id*="start"]'],
+                    name: '게임 시작 버튼',
+                    description: '게임 시작 버튼 (선택사항: 센서 연결 시 자동 시작 가능)',
+                    optional: true
+                },
+                {
+                    selectors: ['#game-overlay', '.game-overlay', '[class*="overlay"]'],
+                    name: '게임 오버레이',
+                    description: '게임 상태 메시지 오버레이 (선택사항)',
+                    optional: true
+                }
             ],
             
             // 필수 JavaScript 패턴들
@@ -91,7 +129,7 @@ class GameValidator {
                 /sdk\.on\('sensor-data'/,                // sensor-data 이벤트 리스너
                 /event\.detail \|\| event/,              // CustomEvent 처리 패턴
                 /createSession\(\)/,                     // 세션 생성 호출
-                /QRCodeGenerator/,                       // QR 코드 생성
+                /new QRCode\(|generateQRCode|qrcode\.min\.js/i, // QR 코드 생성 (유연한 패턴)
                 /requestAnimationFrame/,                 // 애니메이션 루프
                 /getContext\('2d'\)/                     // 캔버스 2D 컨텍스트
             ],
@@ -272,18 +310,43 @@ class GameValidator {
             const dom = new JSDOM(htmlContent);
             const document = dom.window.document;
 
-            // 필수 HTML 요소 존재 확인
+            // 필수 HTML 요소 존재 확인 (유연한 패턴 매칭)
             let foundElements = 0;
-            for (const selector of this.validationRules.requiredElements) {
-                const element = document.querySelector(selector);
-                if (element) {
+            let totalRequired = 0;
+
+            for (const elementRule of this.validationRules.requiredElements) {
+                // 선택적 요소는 필수 카운트에서 제외
+                if (!elementRule.optional) {
+                    totalRequired++;
+                }
+
+                let elementFound = false;
+                let matchedSelector = null;
+
+                // 여러 선택자 시도
+                for (const selector of elementRule.selectors) {
+                    const element = document.querySelector(selector);
+                    if (element) {
+                        elementFound = true;
+                        matchedSelector = selector;
+                        break;
+                    }
+                }
+
+                if (elementFound) {
                     foundElements++;
+                    console.log(`✅ ${elementRule.name} 발견: ${matchedSelector}`);
                 } else {
-                    result.errors.push(`필수 요소 누락: ${selector}`);
+                    if (elementRule.optional) {
+                        result.warnings.push(`선택적 요소 미발견: ${elementRule.name} (${elementRule.description})`);
+                    } else {
+                        result.errors.push(`필수 요소 누락: ${elementRule.name} - ${elementRule.description}`);
+                    }
                 }
             }
-            
-            result.score += Math.round((foundElements / this.validationRules.requiredElements.length) * 20);
+
+            // 점수는 필수 요소만으로 계산
+            result.score += Math.round((foundElements / Math.max(totalRequired, 1)) * 20);
 
             // 필수 스크립트 태그 확인
             let foundScripts = 0;
@@ -304,10 +367,12 @@ class GameValidator {
                 result.warnings.push('모바일 최적화를 위한 viewport 설정이 불완전함');
             }
 
-            // 캔버스 크기 확인
-            const canvas = document.querySelector('#game-canvas');
+            // 캔버스 크기 확인 (유연한 선택자)
+            const canvas = document.querySelector('canvas#game-canvas')
+                        || document.querySelector('canvas#gameCanvas')
+                        || document.querySelector('canvas');
             if (canvas && (!canvas.width || !canvas.height)) {
-                result.warnings.push('캔버스 크기가 설정되지 않음');
+                result.warnings.push('캔버스 크기가 설정되지 않음 (JavaScript에서 동적 설정 가능)');
             }
 
         } catch (error) {

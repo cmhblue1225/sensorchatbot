@@ -8,6 +8,7 @@
  * - 실행 가능한 고품질 게임 생성 보장
  */
 
+const Anthropic = require('@anthropic-ai/sdk');
 const { ChatAnthropic } = require('@langchain/anthropic');
 const { OpenAIEmbeddings } = require('@langchain/openai');
 const { SupabaseVectorStore } = require('@langchain/community/vectorstores/supabase');
@@ -27,9 +28,17 @@ class InteractiveGameGenerator {
             openaiApiKey: process.env.OPENAI_API_KEY,
             supabaseUrl: process.env.SUPABASE_URL,
             supabaseKey: process.env.SUPABASE_ANON_KEY,
-            claudeModel: 'claude-3-5-sonnet-20241022',
-            maxTokens: 8192,   // Claude Sonnet 최대 출력 토큰
-            temperature: 0.7   // 일관성과 창의성의 균형
+            // 🚀 V4 UPGRADE: Claude Sonnet 4.5 (최신 모델)
+            claudeModel: 'claude-sonnet-4-5-20250929',  // Claude Sonnet 4.5 (2025.09.29)
+            claudeOpusModel: 'claude-opus-4-1-20250805',  // Claude Opus 4.1 (32k max)
+            maxTokens: 64000,  // ✅ Claude Sonnet 4.5 최대 출력 토큰 (8x 증가!)
+            temperature: 0.3,  // 🎯 일관성 강화: 0.7 → 0.3 (버그 감소)
+            // RAG 설정
+            ragTopK: 5,        // 검색 문서 수 증가: 3 → 5
+            ragSimilarityThreshold: 0.7,  // 유사도 임계값
+            // 품질 보증
+            minQualityScore: 95,  // 최소 품질 점수
+            maxRetries: 3         // 실패 시 재시도 횟수
         };
 
         // 컴포넌트 초기화
@@ -109,12 +118,25 @@ class InteractiveGameGenerator {
                 });
             }
 
-            // Claude LLM 초기화
+            // 🚀 Anthropic SDK 직접 사용 (LangChain top_p 문제 우회)
+            this.anthropicClient = new Anthropic({
+                apiKey: this.config.claudeApiKey
+            });
+
+            // LangChain은 대화 단계에서만 사용 (간단한 invoke)
             this.llm = new ChatAnthropic({
                 anthropicApiKey: this.config.claudeApiKey,
                 modelName: this.config.claudeModel,
-                maxTokens: this.config.maxTokens,
-                temperature: this.config.temperature, // 일관성과 창의성의 균형
+                maxTokens: 4096,  // 대화 단계는 적은 토큰 사용
+                temperature: this.config.temperature,
+            });
+
+            // Opus도 LangChain 사용 (대화용)
+            this.llmOpus = new ChatAnthropic({
+                anthropicApiKey: this.config.claudeApiKey,
+                modelName: this.config.claudeOpusModel,
+                maxTokens: 4096,
+                temperature: 0.2,
             });
 
             // Supabase 벡터 저장소 초기화
@@ -530,7 +552,30 @@ ${context}
      */
     generateGameCreationPrompt(requirements, context) {
         const basePrompt = `당신은 Sensor Game Hub v6.0의 최고 전문 게임 개발자입니다.
-다음 상세 요구사항에 따라 **실제로 작동하는** 완벽한 HTML5 센서 게임을 생성해주세요.`;
+다음 상세 요구사항에 따라 **실제로 작동하는** 완벽한 HTML5 센서 게임을 생성해주세요.
+
+🚀 **중요: 64,000 토큰 출력 가능 - 완전한 게임 생성 필수!**
+
+⚠️ **극도로 중요한 품질 요구사항:**
+1. **완전한 코드 생성**: 모든 함수를 반드시 완성하세요. 중간에 멈추지 마세요!
+2. **검증된 패턴 사용**: 아래 제공된 예제 코드와 패턴을 정확히 따르세요!
+3. **버그 제로**: 자주 발생하는 4가지 버그 패턴을 절대 포함하지 마세요!
+4. **완벽한 동작**: 생성된 게임이 즉시 실행 가능해야 합니다!
+5. **풍부한 구현**: 64K 토큰을 활용하여 디테일하고 완성도 높은 게임을 만드세요!
+
+📝 **코드 완성도 체크리스트 (생성 전 반드시 확인!):**
+- [ ] 모든 선언된 함수가 완전히 구현되었는가?
+- [ ] 게임 루프(update, render)가 정상 작동하는가?
+- [ ] 충돌 감지 로직이 완전히 구현되었는가?
+- [ ] 게임 오버 처리가 완벽한가?
+- [ ] 리셋 기능이 제대로 작동하는가?
+- [ ] </html> 태그로 정상 종료되는가?
+
+⭐ **출력 토큰 충분함 - 절대 중간에 멈추지 마세요!**
+- 사용 가능한 출력 토큰: **64,000개** (약 48,000 단어)
+- 평균 게임 크기: 10,000-15,000 토큰 (30% 정도만 사용)
+- 복잡한 게임도 충분히 생성 가능!
+- **걱정하지 말고 완전한 코드를 모두 작성하세요!**`;
 
         // 장르 분석 정보가 있는 경우 활용
         const genreAnalysis = requirements.genreAnalysis;
@@ -900,6 +945,13 @@ if (lives <= 0) {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ **게임 퀄리티 체크리스트 (모두 구현 필수!):**
 
+**필수 HTML 구조 (반드시 지켜야 할 ID/Class 규칙!):**
+- **캔버스**: \`<canvas id="gameCanvas">\` 또는 \`<canvas id="game-canvas">\` (둘 중 하나)
+- **세션 패널**: \`<div class="session-panel">\` 또는 \`<div id="session-panel">\`
+- **세션 코드**: \`<span id="session-code">\` 또는 \`<span id="session-code-display">\`
+- **QR 코드**: \`<div id="qr-code">\` 또는 \`<div id="qr-container">\`
+- **센서 상태**: \`<div id="sensor-status">\` (필수)
+
 **기본 요구사항:**
 1. ✅ 게임이 센서 연결 즉시 플레이 가능해야 함
 2. ✅ 게임 시작 조건이 명확해야 함 (클릭/흔들기 등)
@@ -928,7 +980,34 @@ if (lives <= 0) {
 19. ✅ 성능 최적화 (불필요한 계산 반복 금지)
 20. ✅ 에러 처리 완비 (센서 미지원, 연결 끊김 등)
 
-**반드시 위의 체크리스트를 모두 만족하는 고품질 게임을 생성하세요!**`;
+**반드시 위의 체크리스트를 모두 만족하는 고품질 게임을 생성하세요!**
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 **최종 출력 지시사항 (극도로 중요!):**
+
+1. **완전한 HTML 파일 생성**: <!DOCTYPE html>부터 </html>까지 완전한 파일을 생성하세요.
+
+2. **모든 함수 완성 필수**:
+   - drawBricks(), drawPaddle(), drawBall() - 모든 렌더링 함수
+   - collisionDetection() - 완전한 충돌 감지 로직
+   - updateGame() - 게임 상태 업데이트
+   - resetGame() - 게임 리셋
+   - gameLoop() - 메인 게임 루프
+   - processSensorData() - 센서 데이터 처리
+   - initGame() - 게임 초기화
+
+3. **충분한 출력 토큰**: 64,000 토큰 사용 가능! 걱정 없이 풍부하고 완전한 코드를 작성하세요!
+
+4. **검증 완료 후 출력**: 생성된 코드가 위의 모든 체크리스트를 만족하는지 확인 후 출력하세요.
+
+5. **절대 중간에 멈추지 마세요**: 반드시 </html> 태그로 완전히 종료하세요!
+
+⚠️ **경고**: 불완전한 코드 생성 시 자동으로 낮은 점수를 받습니다!
+✅ **목표**: 100/130점 이상 (A+ 등급) 달성하기!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+이제 위의 모든 지시사항을 완벽히 따라 고품질 게임을 생성하세요! 🚀`;
     }
 
     /**
@@ -1271,11 +1350,58 @@ ${requirements.specialRequirements?.length > 0 ?
                 });
             }
 
-            console.log('🤖 Claude API 호출 시작...');
+            console.log('🤖 Anthropic SDK 스트리밍 호출 시작... (64K 토큰 생성 가능)');
             const aiRequestStartTime = Date.now();
-            const response = await this.llm.invoke([{ role: 'user', content: gameGenerationPrompt }]);
+
+            // Anthropic SDK 직접 사용 (LangChain top_p 문제 우회)
+            const stream = await this.anthropicClient.messages.stream({
+                model: this.config.claudeModel,
+                max_tokens: this.config.maxTokens,  // 64,000 토큰
+                temperature: this.config.temperature,  // 0.3
+                messages: [{
+                    role: 'user',
+                    content: gameGenerationPrompt
+                }]
+            });
+
+            let fullContent = '';
+            let lastProgressUpdate = Date.now();
+            const progressUpdateInterval = 2000; // 2초마다 진행률 업데이트
+
+            // 스트림에서 데이터 수집
+            for await (const chunk of stream) {
+                if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
+                    fullContent += chunk.delta.text;
+
+                    // 2초마다 진행률 업데이트 (실시간 피드백)
+                    const now = Date.now();
+                    if (now - lastProgressUpdate > progressUpdateInterval && this.io) {
+                        const percentage = Math.min(75, 50 + (fullContent.length / 500)); // 50-75% 범위
+                        this.io.emit('game-generation-progress', {
+                            sessionId,
+                            step: 3,
+                            percentage: Math.floor(percentage),
+                            message: `코드 생성 중... (${Math.floor(fullContent.length / 1000)}KB 생성됨)`
+                        });
+                        lastProgressUpdate = now;
+                    }
+                }
+            }
+
             const aiRequestEndTime = Date.now();
-            
+
+            // 스트림 메타데이터 추출
+            const finalMessage = await stream.finalMessage();
+            const response = {
+                content: fullContent,
+                response_metadata: {
+                    stop_reason: finalMessage.stop_reason,
+                    usage: finalMessage.usage
+                }
+            };
+
+            console.log(`✅ 스트리밍 완료 (${((aiRequestEndTime - aiRequestStartTime) / 1000).toFixed(1)}초 소요)`);
+
             // AI 요청 성능 추적
             this.performanceMonitor.trackAIRequest(
                 sessionId,
@@ -1285,9 +1411,20 @@ ${requirements.specialRequirements?.length > 0 ?
                 null, // 토큰 사용량은 Claude API에서 직접 제공되지 않음
                 true
             );
-            
+
             console.log('✅ Claude API 응답 수신 완료');
             console.log(`📝 응답 길이: ${response.content.length} 문자`);
+
+            // 🔍 V3.1: stop_reason 로깅 추가 (토큰 제한 진단용)
+            if (response.response_metadata?.stop_reason) {
+                console.log(`🛑 Stop Reason: ${response.response_metadata.stop_reason}`);
+                if (response.response_metadata.stop_reason === 'max_tokens') {
+                    console.warn('⚠️ 경고: maxTokens 제한에 도달하여 응답이 잘림! 토큰 증가 또는 멀티스테이지 생성 고려 필요');
+                }
+            }
+            if (response.response_metadata?.usage) {
+                console.log(`📊 토큰 사용량:`, response.response_metadata.usage);
+            }
 
             // 🎯 Step 3 진행 중 - HTML 추출
             if (this.io) {
@@ -1499,36 +1636,47 @@ ${requirements.specialRequirements?.length > 0 ?
      */
     async getGameDevelopmentContext(requirements) {
         try {
+            // Phase 3-3 개선: 더 구체적인 쿼리 + 증가된 검색 결과 (k=3→5)
             const queries = [
-                `${requirements.gameType} 게임 개발 방법`,
-                `${requirements.genre} 게임 구현`,
-                `센서 데이터 ${requirements.sensorMechanics?.join(' ')} 활용`,
-                'SessionSDK 기본 사용법',
-                'GAME_TEMPLATE.html 구조'
+                `${requirements.gameType} ${requirements.genre} 게임 개발 완전한 예제 코드`,
+                `센서 ${requirements.sensorMechanics?.join(', ')} 활용한 게임 구현`,
+                'SessionSDK 통합 패턴 및 세션 생성 코드',
+                '게임 루프 update render 패턴',
+                '완벽한 게임 템플릿 HTML 구조'
             ];
 
             const contexts = [];
+            console.log('🔍 RAG 검색 시작:', queries.join(' | '));
+
             for (const query of queries) {
                 try {
-                    // Vector Store가 match_documents 함수를 찾지 못하므로
-                    // 임시로 fallback 처리 - 향후 Supabase RPC 함수 생성 필요
-                    console.log('⚠️ Vector Store 검색 실패 - 기본 컨텍스트 사용');
-                    // const retriever = this.vectorStore.asRetriever({
-                    //     k: 2,
-                    //     searchType: 'similarity'
-                    // });
-                    // const docs = await retriever.getRelevantDocuments(query);
-                    // contexts.push(...docs.map(doc => doc.pageContent));
+                    // Phase 3-3 개선: k=2→5, similarity threshold 추가
+                    const retriever = this.vectorStore.asRetriever({
+                        k: 5,  // 검색 결과 증가 (기존 2 → 5)
+                        searchType: 'similarity',
+                        filter: { similarity_threshold: 0.7 }  // 유사도 70% 이상
+                    });
+
+                    const docs = await retriever.getRelevantDocuments(query);
+                    console.log(`  ✅ "${query.slice(0, 30)}..." → ${docs.length}개 문서 검색됨`);
+                    contexts.push(...docs.map(doc => doc.pageContent));
+
                 } catch (err) {
-                    console.log('검색 건너뜀:', err.message);
+                    console.log(`  ⚠️ 검색 실패 (${query.slice(0, 30)}...):`, err.message);
                 }
             }
 
-            // Vector DB가 작동하지 않으므로 기본 컨텍스트 반환
-            return this.getDefaultGameContext();
+            // 검색된 컨텍스트가 있으면 사용, 없으면 기본 컨텍스트
+            if (contexts.length > 0) {
+                console.log(`✅ 총 ${contexts.length}개 컨텍스트 검색 완료`);
+                return contexts.join('\n\n---\n\n');
+            } else {
+                console.log('⚠️ Vector DB 검색 결과 없음 - 기본 컨텍스트 사용');
+                return this.getDefaultGameContext();
+            }
 
         } catch (error) {
-            console.error('컨텍스트 수집 실패:', error);
+            console.error('❌ 컨텍스트 수집 실패:', error);
             return this.getDefaultGameContext();
         }
     }
