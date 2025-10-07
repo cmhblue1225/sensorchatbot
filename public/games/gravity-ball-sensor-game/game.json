@@ -1,0 +1,33 @@
+{
+  "id": "gravity-ball",
+  "title": "Gravity Ball",
+  "description": "중력을 활용한 공 굴리기 게임",
+  "gameType": "solo",
+  "difficulty": "medium",
+  "version": "1.0.0",
+  "author": "AI Game Generator",
+  "createdAt": "2025-10-07T19:01:31.075Z",
+  "sensors": [
+    "orientation"
+  ],
+  "controls": "sensor",
+  "category": "physics-puzzle",
+  "minPlayers": 1,
+  "maxPlayers": 1,
+  "features": [
+    "mobile-sensors",
+    "real-time-gameplay",
+    "responsive-design"
+  ],
+  "requirements": {
+    "mobile": true,
+    "gyroscope": true,
+    "accelerometer": true,
+    "orientation": true
+  },
+  "integration": {
+    "sessionSDK": true,
+    "autoSession": true,
+    "qrCode": true
+  }
+}
