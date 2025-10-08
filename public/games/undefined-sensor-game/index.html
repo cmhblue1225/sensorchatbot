@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tilt Maze Adventure - Sensor Game Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: block;
+        }
+
+        /* 세션 패널 - 좌측 상단 */
+        .session-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            max-width: 280px;
+            backdrop-filter: blur(10px);
+        }
+
+        .session-panel h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .session-info {
+            margin: 10px 0;
+        }
+
+        .session-info label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        #session-code {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 3px;
+            display: block;
+            text-align: center;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+
+        #qr-code {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+        }
+
+        #qr-code img,
+        #qr-code canvas {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 8px;
+        }
+
+        /* 게임 정보 패널 - 우측 상단 */
+        .game-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            min-width: 200px;
+            backdrop-filter: blur(10px);
+        }
+
+        .game-info h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        /* 센서 상태 - 좌측 하단 */
+        #sensor-status {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 1000;
+            background: rgba(255, 193, 7, 0.95);
+            color: #333;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        #sensor-status.connected {
+            background: rgba(76, 175, 80, 0.95);
+            color: white;
+        }
+
+        #sensor-status.disconnected {
+            background: rgba(244, 67, 54, 0.95);
+            color: white;
+        }
+
+        /* 토스트 메시지 */
+        #toast-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 25px 50px;
+            border-radius: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            z-index: 999;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            display: none;
+            opacity: 0;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 오버레이 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        .overlay-content {
+            text-align: center;
+            color: white;
+            max-width: 80%;
+        }
+
+        .overlay-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #fff;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .overlay-message {
+            font-size: 24px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            color: #ddd;
+        }
+
+        .overlay-button {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .overlay-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.6);
+        }
+
+        .overlay-button:active {
+            transform: translateY(0);
+        }
+
+        /* 레벨 표시 */
+        .level-badge {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px 60px;
+            border-radius: 25px;
+            font-size: 42px;
+            font-weight: bold;
+            z-index: 998;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .level-badge.show {
+            opacity: 1;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .session-panel {
+                max-width: 200px;
+                padding: 10px;
+            }
+
+            .session-panel h2 {
+                font-size: 14px;
+            }
+
+            #session-code {
+                font-size: 24px;
+                padding: 8px;
+            }
+
+            #qr-code img,
+            #qr-code canvas {
+                max-width: 120px;
+                max-height: 120px;
+            }
+
+            .game-info {
+                min-width: 150px;
+                padding: 15px;
+            }
+
+            .info-item {
+                padding: 6px 10px;
+            }
+
+            .info-label {
+                font-size: 12px;
+            }
+
+            .info-value {
+                font-size: 16px;
+            }
+
+            .overlay-title {
+                font-size: 36px;
+            }
+
+            .overlay-message {
+                font-size: 18px;
+            }
+
+            #toast-message {
+                font-size: 20px;
+                padding: 20px 40px;
+            }
+        }
+
+        /* 로딩 애니메이션 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 파티클 효과 */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 997;
+        }
+    </style>
+</head>
+<body>
+    <!-- 게임 캔버스 -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 세션 패널 -->
+    <div class="session-panel">
+        <h2>🎮 Tilt Maze Adventure</h2>
+        <div class="session-info">
+            <label>세션 코드</label>
+            <span id="session-code">----</span>
+        </div>
+        <div id="qr-code"></div>
+        <div style="font-size: 12px; color: #666; text-align: center; margin-top: 10px;">
+            📱 QR 코드를 스캔하여<br>센서 연결
+        </div>
+    </div>
+
+    <!-- 게임 정보 패널 -->
+    <div class="game-info">
+        <h3>🎯 게임 정보</h3>
+        <div class="info-item">
+            <span class="info-label">레벨</span>
+            <span class="info-value" id="level-display">1</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">점수</span>
+            <span class="info-value" id="score-display">0</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">별</span>
+            <span class="info-value" id="stars-display">0/3</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">시간</span>
+            <span class="info-value" id="time-display">0:00</span>
+        </div>
+    </div>
+
+    <!-- 센서 상태 -->
+    <div id="sensor-status" class="disconnected">
+        센서 연결 대기 중...
+    </div>
+
+    <!-- 토스트 메시지 -->
+    <div id="toast-message"></div>
+
+    <!-- 레벨 배지 -->
+    <div class="level-badge" id="level-badge">레벨 1</div>
+
+    <!-- 오버레이 -->
+    <div class="overlay hidden" id="overlay">
+        <div class="overlay-content">
+            <div class="overlay-title" id="overlay-title">Tilt Maze Adventure</div>
+            <div class="overlay-message" id="overlay-message">
+                📱 핸드폰으로 QR 코드를 스캔하세요<br>
+                기울여서 공을 움직이고 별을 모으세요!
+            </div>
+            <button class="overlay-button hidden" id="restart-button" onclick="restartGame()">
+                🔄 다시 시작
+            </button>
+        </div>
+    </div>
+
+    <!-- 필수 스크립트 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+    <script>
+        // ==================== 게임 상수 ====================
+        const CANVAS_WIDTH = window.innerWidth;
+        const CANVAS_HEIGHT = window.innerHeight;
+        
+        const BALL_RADIUS = 15;
+        const BALL_COLOR = '#FFD700';
+        const BALL_MAX_SPEED = 8;
+        const BALL_FRICTION = 0.98;
+        
+        const WALL_THICKNESS = 20;
+        const WALL_COLOR = '#2c3e50';
+        
+        const STAR_RADIUS = 20;
+        const STAR_COLOR = '#FFD700';
+        const STAR_GLOW_COLOR = '#FFA500';
+        
+        const GOAL_SIZE = 50;
+        const GOAL_COLOR = '#4CAF50';
+        
+        const OBSTACLE_COLOR = '#e74c3c';
+        const CHECKPOINT_COLOR = '#3498db';
+        
+        const TILT_SENSITIVITY = 0.3;
+        const GRAVITY = 0.5;
+
+        // ==================== 게임 변수 ====================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        let gameStarted = false;
+        let gameOver = false;
+        let gamePaused = false;
+        let sensorConnected = false;
+
+        let level = 1;
+        let score = 0;
+        let startTime = 0;
+        let elapsedTime = 0;
+
+        let ball = {
+            x: 100,
+            y: 100,
+            vx: 0,
+            vy: 0,
+            radius: BALL_RADIUS,
+            color: BALL_COLOR
+        };
+
+        let walls = [];
+        let stars = [];
+        let goal = null;
+        let obstacles = [];
+        let checkpoints = [];
+
+        let currentTiltX = 0;
+        let currentTiltY = 0;
+
+        let collectedStars = 0;
+        let totalStars = 0;
+
+        let lastCheckpoint = null;
+
+        // ==================== SessionSDK 초기화 ====================
+        const sdk = new SessionSDK({
+            gameId: 'tilt-maze-adventure',
+            gameType: 'solo'
+        });
+
+        // 서버 연결 완료
+        sdk.on('connected', () => {
+            console.log('✅ 서버 연결 완료');
+            createSession();
+        });
+
+        // 세션 생성 함수
+        function createSession() {
+            sdk.createSession().then(session => {
+                console.log('✅ 세션 생성됨:', session);
+            }).catch(error => {
+                console.error('❌ 세션 생성 실패:', error);
+                alert('세션 생성에 실패했습니다: ' + error.message);
+            });
+        }
+
+        // 세션 생성 완료
+        sdk.on('session-created', (event) => {
+            const session = event.detail || event;
+            console.info('✅ 세션 생성 완료:', session);
+
+            // 세션 코드 표시
+            const sessionCodeEl = document.getElementById('session-code');
+            if (sessionCodeEl && session.sessionCode) {
+                sessionCodeEl.textContent = session.sessionCode;
+                console.info('세션 코드 표시:', session.sessionCode);
+            }
+
+            // QR 코드 생성
+            setTimeout(() => {
+                const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                console.info('QR URL 생성:', qrUrl);
+                generateQRCode(qrUrl);
+            }, 100);
+        });
+
+        // 센서 연결됨
+        sdk.on('sensor-connected', (event) => {
+            const data = event.detail || event;
+            console.log('✅ 센서 연결됨:', data.sensorId);
+
+            sensorConnected = true;
+
+            // UI 업데이트
+            const statusEl = document.getElementById('sensor-status');
+            statusEl.textContent = '센서 연결됨 ✓';
+            statusEl.className = 'connected';
+
+            // 오버레이 숨기기
+            hideOverlay();
+
+            // 🚀 필수: 센서 연결 1초 후 자동 게임 시작
+            setTimeout(() => {
+                if (!gameStarted && !gameOver) {
+                    startGame();
+                    console.log('🎮 게임 자동 시작됨!');
+                }
+            }, 1000);
+        });
+
+        // 센서 데이터 수신
+        sdk.on('sensor-data', (event) => {
+            const data = event.detail || event;
+            
+            // 게임 오버가 아니면 항상 센서 데이터 처리
+            if (!gameOver) {
+                processSensorData(data);
+            }
+        });
+
+        // 센서 연결 해제
+        sdk.on('sensor-disconnected', (event) => {
+            const data = event.detail || event;
+            console.log('⚠️ 센서 연결 해제:', data.sensorId);
+
+            sensorConnected = false;
+
+            // UI 업데이트
+            const statusEl = document.getElementById('sensor-status');
+            statusEl.textContent = '센서 연결 대기 중...';
+            statusEl.className = 'disconnected';
+        });
+
+        // ==================== QR 코드 생성 ====================
+        function generateQRCode(url) {
+            const qrContainer = document.getElementById('qr-code');
+            qrContainer.innerHTML = '';
+
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(qrContainer, {
+                    text: url,
+                    width: 150,
+                    height: 150,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                console.log('✅ QR 코드 생성 완료 (QRCode.js)');
+            } else {
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
+                img.alt = 'QR Code';
+                img.style.width = '150px';
+                img.style.height = '150px';
+                qrContainer.appendChild(img);
+                console.log('✅ QR 코드 생성 완료 (API)');
+            }
+        }
+
+        // ==================== 센서 데이터 처리 ====================
+        function processSensorData(sensorData) {
+            if (!sensorData.data || !sensorData.data.orientation) return;
+
+            const { orientation, acceleration } = sensorData.data;
+
+            // 기울기 데이터 처리
+            // beta: 앞뒤 기울기 (-180 ~ 180)
+            // gamma: 좌우 기울기 (-90 ~ 90)
+            let tiltX = orientation.gamma || 0;
+            let tiltY = orientation.beta || 0;
+
+            // 각도 정규화 (-1 ~ 1)
+            tiltX = Math.max(-90, Math.min(90, tiltX)) / 90;
+            tiltY = Math.max(-90, Math.min(90, tiltY)) / 90;
+
+            // 부드러운 전환을 위한 보간
+            currentTiltX = currentTiltX * 0.7 + tiltX * 0.3;
+            currentTiltY = currentTiltY * 0.7 + tiltY * 0.3;
+
+            // 흔들기 감지
+            if (acceleration) {
+                const shake = Math.sqrt(
+                    acceleration.x ** 2 +
+                    acceleration.y ** 2 +
+                    acceleration.z ** 2
+                );
+
+                // 강한 흔들기로 체크포인트 복귀
+                if (shake > 25 && gameStarted && !gameOver) {
+                    if (lastCheckpoint) {
+                        ball.x = lastCheckpoint.x;
+                        ball.y = lastCheckpoint.y;
+                        ball.vx = 0;
+                        ball.vy = 0;
+                        showToastMessage('🔄 체크포인트로 복귀!');
+                    }
+                }
+            }
+        }
+
+        // ==================== 레벨 생성 ====================
+        function generateLevel(levelNum) {
+            walls = [];
+            stars = [];
+            obstacles = [];
+            checkpoints = [];
+            goal = null;
+            collectedStars = 0;
+
+            // 외곽 벽
+            walls.push(
+                { x: 0, y: 0, width: CANVAS_WIDTH, height: WALL_THICKNESS }, // 상단
+                { x: 0, y: CANVAS_HEIGHT - WALL_THICKNESS, width: CANVAS_WIDTH, height: WALL_THICKNESS }, // 하단
+                { x: 0, y: 0, width: WALL_THICKNESS, height: CANVAS_HEIGHT }, // 좌측
+                { x: CANVAS_WIDTH - WALL_THICKNESS, y: 0, width: WALL_THICKNESS, height: CANVAS_HEIGHT } // 우측
+            );
+
+            // 레벨별 미로 생성
+            if (levelNum === 1) {
+                // 레벨 1: 간단한 미로
+                ball.x = 80;
+                ball.y = 80;
+                ball.vx = 0;
+                ball.vy = 0;
+
+                // 미로 벽
+                walls.push(
+                    { x: 200, y: 0, width: WALL_THICKNESS, height: 400 },
+                    { x: 400, y: 200, width: WALL_THICKNESS, height: CANVAS_HEIGHT - 200 },
+                    { x: 600, y: 0, width: WALL_THICKNESS, height: 500 }
+                );
+
+                // 별 배치
+                stars.push(
+                    { x: 300, y: 150, radius: STAR_RADIUS, collected: false },
+                    { x: 500, y: 350, radius: STAR_RADIUS, collected: false },
+                    { x: 700, y: 250, radius: STAR_RADIUS, collected: false }
+                );
+
+                // 골 지점
+                goal = {
+                    x: CANVAS_WIDTH - 100,
+                    y: CANVAS_HEIGHT - 100,
+                    size: GOAL_SIZE
+                };
+
+            } else if (levelNum === 2) {
+                // 레벨 2: 중간 난이도
+                ball.x = 80;
+                ball.y = CANVAS_HEIGHT / 2;
+                ball.vx = 0;
+                ball.vy = 0;
+
+                // 복잡한 미로
+                walls.push(
+                    { x: 150, y: 100, width: WALL_THICKNESS, height: 300 },
+                    { x: 150, y: 100, width: 200, height: WALL_THICKNESS },
+                    { x: 350, y: 100, width: WALL_THICKNESS, height: 400 },
+                    { x: 150, y: 500, width: 200, height: WALL_THICKNESS },
+                    { x: 500, y: 200, width: WALL_THICKNESS, height: 300 },
+                    { x: 500, y: 200, width: 250, height: WALL_THICKNESS },
+                    { x: 750, y: 200, width: WALL_THICKNESS, height: 400 }
+                );
+
+                // 장애물 추가
+                obstacles.push(
+                    { x: 250, y: 300, radius: 30 },
+                    { x: 600, y: 350, radius: 35 }
+                );
+
+                // 별 배치
+                stars.push(
+                    { x: 250, y: 200, radius: STAR_RADIUS, collected: false },
+                    { x: 450, y: 350, radius: STAR_RADIUS, collected: false },
+                    { x: 650, y: 300, radius: STAR_RADIUS, collected: false }
+                );
+
+                // 체크포인트
+                checkpoints.push(
+                    { x: 450, y: 150, radius: 25 }
+                );
+
+                // 골 지점
+                goal = {
+                    x: CANVAS_WIDTH - 100,
+                    y: CANVAS_HEIGHT - 100,
+                    size: GOAL_SIZE
+                };
+
+            } else if (levelNum === 3) {
+                // 레벨 3: 어려운 미로
+                ball.x = 80;
+                ball.y = 80;
+                ball.vx = 0;
+                ball.vy = 0;
+
+                // 매우 복잡한 미로
+                walls.push(
+                    { x: 150, y: 0, width: WALL_THICKNESS, height: 250 },
+                    { x: 150, y: 350, width: WALL_THICKNESS, height: CANVAS_HEIGHT - 350 },
+                    { x: 150, y: 250, width: 200, height: WALL_THICKNESS },
+                    { x: 350, y: 250, width: WALL_THICKNESS, height: 200 },
+                    { x: 350, y: 450, width: 200, height: WALL_THICKNESS },
+                    { x: 550, y: 150, width: WALL_THICKNESS, height: 300 },
+                    { x: 550, y: 150, width: 200, height: WALL_THICKNESS },
+                    { x: 750, y: 150, width: WALL_THICKNESS, height: 400 },
+                    { x: 300, y: 100, width: 150, height: WALL_THICKNESS },
+                    { x: 450, y: 550, width: 200, height: WALL_THICKNESS }
+                );
+
+                // 많은 장애물
+                obstacles.push(
+                    { x: 250, y: 150, radius: 25 },
+                    { x: 450, y: 350, radius: 30 },
+                    { x: 650, y: 250, radius: 28 },
+                    { x: 300, y: 500, radius: 32 }
+                );
+
+                // 별 배치
+                stars.push(
+                    { x: 250, y: 350, radius: STAR_RADIUS, collected: false },
+                    { x: 450, y: 200, radius: STAR_RADIUS, collected: false },
+                    { x: 650, y: 400, radius: STAR_RADIUS, collected: false }
+                );
+
+                // 체크포인트
+                checkpoints.push(
+                    { x: 250, y: 500, radius: 25 },
+                    { x: 650, y: 300, radius: 25 }
+                );
+
+                // 골 지점
+                goal = {
+                    x: CANVAS_WIDTH - 100,
+                    y: CANVAS_HEIGHT - 100,
+                    size: GOAL_SIZE
+                };
+
+            } else if (levelNum === 4) {
+                // 레벨 4: 매우 어려운 미로
+                ball.x = CANVAS_WIDTH / 2;
+                ball.y = CANVAS_HEIGHT / 2;
+                ball.vx = 0;
+                ball.vy = 0;
+
+                // 나선형 미로
+                const centerX = CANVAS_WIDTH / 2;
+                const centerY = CANVAS_HEIGHT / 2;
+                const spiralWalls = [];
+
+                for (let i = 0; i < 5; i++) {
+                    const radius = 100 + i * 80;
+                    const segments = 16;
+                    
+                    for (let j = 0; j < segments; j++) {
+                        if (j === segments / 4 * (i % 4)) continue; // 출구
+                        
+                        const angle1 = (j / segments) * Math.PI * 2;
+                        const angle2 = ((j + 1) / segments) * Math.PI * 2;
+                        
+                        const x1 = centerX + Math.cos(angle1) * radius;
+                        const y1 = centerY + Math.sin(angle1) * radius;
+                        const x2 = centerX + Math.cos(angle2) * radius;
+                        const y2 = centerY + Math.sin(angle2) * radius;
+                        
+                        const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                        const angle = Math.atan2(y2 - y1, x2 - x1);
+                        
+                        walls.push({
+                            x: x1,
+                            y: y1,
+                            width: length,
+                            height: WALL_THICKNESS,
+                            rotation: angle
+                        });
+                    }
+                }
+
+                // 별 배치 (나선형)
+                stars.push(
+                    { x: centerX + 150, y: centerY, radius: STAR_RADIUS, collected: false },
+                    { x: centerX - 150, y: centerY, radius: STAR_RADIUS, collected: false },
+                    { x: centerX, y: centerY + 150, radius: STAR_RADIUS, collected: false }
+                );
+
+                // 장애물
+                obstacles.push(
+                    { x: centerX + 100, y: centerY + 100, radius: 25 },
+                    { x: centerX - 100, y: centerY - 100, radius: 25 },
+                    { x: centerX + 100, y: centerY - 100, radius: 25 },
+                    { x: centerX - 100, y: centerY + 100, radius: 25 }
+                );
+
+                // 체크포인트
+                checkpoints.push(
+                    { x: centerX + 200, y: centerY, radius: 25 },
+                    { x: centerX - 200, y: centerY, radius: 25 }
+                );
+
+                // 골 지점 (중앙)
+                goal = {
+                    x: centerX,
+                    y: centerY,
+                    size: GOAL_SIZE
+                };
+
+            } else {
+                // 레벨 5+: 랜덤 미로
+                ball.x = 80;
+                ball.y = 80;
+                ball.vx = 0;
+                ball.vy = 0;
+
+                // 랜덤 벽 생성
+                const numWalls = 10 + levelNum;
+                for (let i = 0; i < numWalls; i++) {
+                    const horizontal = Math.random() > 0.5;
+                    walls.push({
+                        x: Math.random() * (CANVAS_WIDTH - 300) + 100,
+                        y: Math.random() * (CANVAS_HEIGHT - 300) + 100,
+                        width: horizontal ? Math.random() * 200 + 100 : WALL_THICKNESS,
+                        height: horizontal ? WALL_THICKNESS : Math.random() * 200 + 100
+                    });
+                }
+
+                // 랜덤 장애물
+                const numObstacles = 3 + Math.floor(levelNum / 2);
+                for (let i = 0; i < numObstacles; i++) {
+                    obstacles.push({
+                        x: Math.random() * (CANVAS_WIDTH - 200) + 100,
+                        y: Math.random() * (CANVAS_HEIGHT - 200) + 100,
+                        radius: Math.random() * 20 + 20
+                    });
+                }
+
+                // 별 배치
+                stars.push(
+                    { x: Math.random() * (CANVAS_WIDTH - 200) + 100, y: Math.random() * (CANVAS_HEIGHT - 200) + 100, radius: STAR_RADIUS, collected: false },
+                    { x: Math.random() * (CANVAS_WIDTH - 200) + 100, y: Math.random() * (CANVAS_HEIGHT - 200) + 100, radius: STAR_RADIUS, collected: false },
+                    { x: Math.random() * (CANVAS_WIDTH - 200) + 100, y: Math.random() * (CANVAS_HEIGHT - 200) + 100, radius: STAR_RADIUS, collected: false }
+                );
+
+                // 체크포인트
+                checkpoints.push(
+                    { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, radius: 25 }
+                );
+
+                // 골 지점
+                goal = {
+                    x: CANVAS_WIDTH - 100,
+                    y: CANVAS_HEIGHT - 100,
+                    size: GOAL_SIZE
+                };
+            }
+
+            totalStars = stars.length;
+            lastCheckpoint = null;
+
+            // UI 업데이트
+            updateUI();
+        }
+
+        // ==================== 게임 시작 ====================
+        function startGame() {
+            console.log('🚀 게임 시작!');
+            
+            gameStarted = true;
+            gameOver = false;
+            gamePaused = false;
+            
+            startTime = Date.now();
+            
+            // 레벨 배지 표시
+            showLevelBadge(level);
+            
+            hideOverlay();
+        }
+
+        // ==================== 게임 업데이트 ====================
+        function updateGame() {
+            if (!gameStarted || gamePaused || gameOver) return;
+
+            // 시간 업데이트
+            elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+
+            // 기울기에 따른 가속도 적용
+            ball.vx += currentTiltX * TILT_SENSITIVITY * GRAVITY;
+            ball.vy += currentTiltY * TILT_SENSITIVITY * GRAVITY;
+
+            // 최대 속도 제한
+            const speed = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
+            if (speed > BALL_MAX_SPEED) {
+                ball.vx = (ball.vx / speed) * BALL_MAX_SPEED;
+                ball.vy = (ball.vy / speed) * BALL_MAX_SPEED;
+            }
+
+            // 마찰력 적용
+            ball.vx *= BALL_FRICTION;
+            ball.vy *= BALL_FRICTION;
+
+            // 위치 업데이트
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // 벽 충돌 감지
+            checkWallCollisions();
+
+            // 장애물 충돌 감지
+            checkObstacleCollisions();
+
+            // 별 수집 감지
+            checkStarCollection();
+
+            // 체크포인트 감지
+            checkCheckpoints();
+
+            // 골 도달 감지
+            checkGoalReached();
+
+            // UI 업데이트
+            updateUI();
+        }
+
+        // ==================== 벽 충돌 감지 ====================
+        function checkWallCollisions() {
+            for (const wall of walls) {
+                if (wall.rotation) {
+                    // 회전된 벽 (나선형 미로용)
+                    const cos = Math.cos(wall.rotation);
+                    const sin = Math.sin(wall.rotation);
+                    
+                    // 공의 위치를 벽의 로컬 좌표계로 변환
+                    const localX = (ball.x - wall.x) * cos + (ball.y - wall.y) * sin;
+                    const localY = -(ball.x - wall.x) * sin + (ball.y - wall.y) * cos;
+                    
+                    // AABB 충돌 감지
+                    if (localX > -ball.radius && localX < wall.width + ball.radius &&
+                        localY > -ball.radius && localY < wall.height + ball.radius) {
+                        
+                        // 충돌 반응
+                        if (Math.abs(localX) < Math.abs(localX - wall.width)) {
+                            ball.x -= ball.vx;
+                            ball.vx *= -0.5;
+                        } else {
+                            ball.x -= ball.vx;
+                            ball.vx *= -0.5;
+                        }
+                        
+                        if (Math.abs(localY) < Math.abs(localY - wall.height)) {
+                            ball.y -= ball.vy;
+                            ball.vy *= -0.5;
+                        } else {
+                            ball.y -= ball.vy;
+                            ball.vy *= -0.5;
+                        }
+                    }
+                } else {
+                    // 일반 벽
+                    if (ball.x + ball.radius > wall.x &&
+                        ball.x - ball.radius < wall.x + wall.width &&
+                        ball.y + ball.radius > wall.y &&
+                        ball.y - ball.radius < wall.y + wall.height) {
+                        
+                        // 충돌 방향 결정
+                        const overlapLeft = (ball.x + ball.radius) - wall.x;
+                        const overlapRight = (wall.x + wall.width) - (ball.x - ball.radius);
+                        const overlapTop = (ball.y + ball.radius) - wall.y;
+                        const overlapBottom = (wall.y + wall.height) - (ball.y - ball.radius);
+                        
+                        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+                        
+                        if (minOverlap === overlapLeft) {
+                            ball.x = wall.x - ball.radius;
+                            ball.vx = -Math.abs(ball.vx) * 0.5;
+                        } else if (minOverlap === overlapRight) {
+                            ball.x = wall.x + wall.width + ball.radius;
+                            ball.vx = Math.abs(ball.vx) * 0.5;
+                        } else if (minOverlap === overlapTop) {
+                            ball.y = wall.y - ball.radius;
+                            ball.vy = -Math.abs(ball.vy) * 0.5;
+                        } else {
+                            ball.y = wall.y + wall.height + ball.radius;
+                            ball.vy = Math.abs(ball.vy) * 0.5;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ==================== 장애물 충돌 감지 ====================
+        function checkObstacleCollisions() {
+            for (const obstacle of obstacles) {
+                const dx = ball.x - obstacle.x;
+                const dy = ball.y - obstacle.y;
+                const distance = Math.sqrt(dx ** 2 + dy ** 2);
+                
+                if (distance < ball.radius + obstacle.radius) {
+                    // 충돌 시 공을 시작 위치로 되돌림
+                    if (lastCheckpoint) {
+                        ball.x = lastCheckpoint.x;
+                        ball.y = lastCheckpoint.y;
+                    } else {
+                        // 레벨별 시작 위치
+                        if (level === 1) {
+                            ball.x = 80;
+                            ball.y = 80;
+                        } else if (level === 2) {
+                            ball.x = 80;
+                            ball.y = CANVAS_HEIGHT / 2;
+                        } else if (level === 3) {
+                            ball.x = 80;
+                            ball.y = 80;
+                        } else if (level === 4) {
+                            ball.x = CANVAS_WIDTH / 2;
+                            ball.y = CANVAS_HEIGHT / 2;
+                        } else {
+                            ball.x = 80;
+                            ball.y = 80;
+                        }
+                    }
+                    
+                    ball.vx = 0;
+                    ball.vy = 0;
+                    
+                    showToastMessage('💥 장애물에 부딪혔습니다!');
+                    
+                    // 점수 감소
+                    score = Math.max(0, score - 50);
+                }
+            }
+        }
+
+        // ==================== 별 수집 감지 ====================
+        function checkStarCollection() {
+            for (const star of stars) {
+                if (star.collected) continue;
+                
+                const dx = ball.x - star.x;
+                const dy = ball.y - star.y;
+                const distance = Math.sqrt(dx ** 2 + dy ** 2);
+                
+                if (distance < ball.radius + star.radius) {
+                    star.collected = true;
+                    collectedStars++;
+                    score += 100;
+                    
+                    showToastMessage('⭐ 별 획득! +100점');
+                    createParticles(star.x, star.y, STAR_COLOR);
+                }
+            }
+        }
+
+        // ==================== 체크포인트 감지 ====================
+        function checkCheckpoints() {
+            for (const checkpoint of checkpoints) {
+                const dx = ball.x - checkpoint.x;
+                const dy = ball.y - checkpoint.y;
+                const distance = Math.sqrt(dx ** 2 + dy ** 2);
+                
+                if (distance < ball.radius + checkpoint.radius) {
+                    if (!lastCheckpoint || lastCheckpoint.x !== checkpoint.x || lastCheckpoint.y !== checkpoint.y) {
+                        lastCheckpoint = { x: checkpoint.x, y: checkpoint.y };
+                        showToastMessage('🚩 체크포인트 저장!');
+                        createParticles(checkpoint.x, checkpoint.y, CHECKPOINT_COLOR);
+                    }
+                }
+            }
+        }
+
+        // ==================== 골 도달 감지 ====================
+        function checkGoalReached() {
+            if (!goal) return;
+            
+            const dx = ball.x - goal.x;
+            const dy = ball.y - goal.y;
+            const distance = Math.sqrt(dx ** 2 + dy ** 2);
+            
+            if (distance < ball.radius + goal.size / 2) {
+                // 모든 별을 수집했는지 확인
+                if (collectedStars >= totalStars) {
+                    levelComplete();
+                } else {
+                    showToastMessage(`⚠️ 별을 모두 모으세요! (${collectedStars}/${totalStars})`);
+                }
+            }
+        }
+
+        // ==================== 레벨 완료 ====================
+        function levelComplete() {
+            level++;
+            score += 500;
+            score += Math.max(0, 300 - elapsedTime * 10); // 시간 보너스
+            
+            // 레벨 5 이상이면 게임 클리어
+            if (level > 5) {
+                gameWin();
+                return;
+            }
+            
+            // 토스트 메시지로 레벨 클리어 표시 (오버레이 사용 안함!)
+            showToastMessage(`🎉 레벨 ${level - 1} 클리어! +500점`);
+            
+            // 다음 레벨 생성
+            setTimeout(() => {
+                generateLevel(level);
+                showLevelBadge(level);
+                startTime = Date.now(); // 시간 리셋
+            }, 1500);
+        }
+
+        // ==================== 게임 승리 ====================
+        function gameWin() {
+            gameStarted = false;
+            gameOver = true;
+            
+            showOverlay(
+                '🎊 게임 클리어! 🎊',
+                `모든 레벨을 완료했습니다!<br><br>
+                최종 점수: ${score}점<br>
+                총 플레이 시간: ${formatTime(elapsedTime)}<br><br>
+                축하합니다!`,
+                true
+            );
+        }
+
+        // ==================== 게임 재시작 ====================
+        function restartGame() {
+            level = 1;
+            score = 0;
+            elapsedTime = 0;
+            collectedStars = 0;
+            
+            gameStarted = false;
+            gameOver = false;
+            gamePaused = false;
+            
+            lastCheckpoint = null;
+            
+            generateLevel(level);
+            hideOverlay();
+            
+            if (sensorConnected) {
+                setTimeout(() => {
+                    startGame();
+                }, 500);
+            }
+        }
+
+        // ==================== UI 업데이트 ====================
+        function updateUI() {
+            document.getElementById('level-display').textContent = level;
+            document.getElementById('score-display').textContent = score;
+            document.getElementById('stars-display').textContent = `${collectedStars}/${totalStars}`;
+            document.getElementById('time-display').textContent = formatTime(elapsedTime);
+        }
+
+        // ==================== 시간 포맷 ====================
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // ==================== 토스트 메시지 표시 ====================
+        function showToastMessage(message) {
+            let toast = document.getElementById('toast-message');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast-message';
+                document.body.appendChild(toast);
+            }
+            
+            toast.textContent = message;
+            toast.style.display = 'block';
+            toast.style.opacity = '1';
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 300);
+            }, 2000);
+        }
+
+        // ==================== 레벨 배지 표시 ====================
+        function showLevelBadge(levelNum) {
+            const badge = document.getElementById('level-badge');
+            badge.textContent = `레벨 ${levelNum}`;
+            badge.classList.add('show');
+            
+            setTimeout(() => {
+                badge.classList.remove('show');
+            }, 2000);
+        }
+
+        // ==================== 파티클 효과 ====================
+        function createParticles(x, y, color) {
+            const numParticles = 20;
+            
+            for (let i = 0; i < numParticles; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.position = 'fixed';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.width = '8px';
+                particle.style.height = '8px';
+                particle.style.borderRadius = '50%';
+                particle.style.backgroundColor = color;
+                particle.style.pointerEvents = 'none';
+                particle.style.zIndex = '997';
+                
+                document.body.appendChild(particle);
+                
+                const angle = (i / numParticles) * Math.PI * 2;
+                const velocity = 3 + Math.random() * 3;
+                const vx = Math.cos(angle) * velocity;
+                const vy = Math.sin(angle) * velocity;
+                
+                let px = x;
+                let py = y;
+                let life = 1;
+                
+                const animate = () => {
+                    px += vx;
+                    py += vy;
+                    life -= 0.02;
+                    
+                    particle.style.left = px + 'px';
+                    particle.style.top = py + 'px';
+                    particle.style.opacity = life;
+                    
+                    if (life > 0) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        particle.remove();
+                    }
+                };
+                
+                animate();
+            }
+        }
+
+        // ==================== 오버레이 표시/숨김 ====================
+        function showOverlay(title, message, showRestartButton = false) {
+            const overlay = document.getElementById('overlay');
+            const overlayTitle = document.getElementById('overlay-title');
+            const overlayMessage = document.getElementById('overlay-message');
+            const restartButton = document.getElementById('restart-button');
+            
+            overlayTitle.textContent = title;
+            overlayMessage.innerHTML = message;
+            
+            if (showRestartButton) {
+                restartButton.classList.remove('hidden');
+            } else {
+                restartButton.classList.add('hidden');
+            }
+            
+            overlay.classList.remove('hidden');
+        }
+
+        function hideOverlay() {
+            const overlay = document.getElementById('overlay');
+            overlay.classList.add('hidden');
+        }
+
+        // ==================== 렌더링 ====================
+        function render() {
+            // 배경 그리기
+            ctx.fillStyle = '#1e3c72';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            // 그리드 패턴
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            
+            for (let x = 0; x < CANVAS_WIDTH; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, CANVAS_HEIGHT);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y < CANVAS_HEIGHT; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(CANVAS_WIDTH, y);
+                ctx.stroke();
+            }
+            
+            // 골 그리기
+            if (goal) {
+                // 골 애니메이션
+                const pulseSize = goal.size + Math.sin(Date.now() / 200) * 5;
+                
+                // 외곽 원
+                ctx.fillStyle = 'rgba(76, 175, 80, 0.3)';
+                ctx.beginPath();
+                ctx.arc(goal.x, goal.y, pulseSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 중간 원
+                ctx.fillStyle = 'rgba(76, 175, 80, 0.6)';
+                ctx.beginPath();
+                ctx.arc(goal.x, goal.y, goal.size * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 중심 원
+                ctx.fillStyle = GOAL_COLOR;
+                ctx.beginPath();
+                ctx.arc(goal.x, goal.y, goal.size * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 깃발 아이콘
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🏁', goal.x, goal.y);
+            }
+            
+            // 체크포인트 그리기
+            for (const checkpoint of checkpoints) {
+                const isActive = lastCheckpoint && 
+                                lastCheckpoint.x === checkpoint.x && 
+                                lastCheckpoint.y === checkpoint.y;
+                
+                // 외곽 원
+                ctx.fillStyle = isActive ? 'rgba(52, 152, 219, 0.5)' : 'rgba(52, 152, 219, 0.2)';
+                ctx.beginPath();
+                ctx.arc(checkpoint.x, checkpoint.y, checkpoint.radius + 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 중심 원
+                ctx.fillStyle = isActive ? CHECKPOINT_COLOR : 'rgba(52, 152, 219, 0.5)';
+                ctx.beginPath();
+                ctx.arc(checkpoint.x, checkpoint.y, checkpoint.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 깃발 아이콘
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🚩', checkpoint.x, checkpoint.y);
+            }
+            
+            // 벽 그리기
+            ctx.fillStyle = WALL_COLOR;
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 10;
+            
+            for (const wall of walls) {
+                if (wall.rotation) {
+                    ctx.save();
+                    ctx.translate(wall.x, wall.y);
+                    ctx.rotate(wall.rotation);
+                    ctx.fillRect(0, 0, wall.width, wall.height);
+                    ctx.restore();
+                } else {
+                    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+                }
+            }
+            
+            ctx.shadowBlur = 0;
+            
+            // 장애물 그리기
+            for (const obstacle of obstacles) {
+                // 외곽 원 (경고)
+                ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+                ctx.beginPath();
+                ctx.arc(obstacle.x, obstacle.y, obstacle.radius + 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 중심 원
+                ctx.fillStyle = OBSTACLE_COLOR;
+                ctx.beginPath();
+                ctx.arc(obstacle.x, obstacle.y, obstacle.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 위험 표시
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⚠️', obstacle.x, obstacle.y);
+            }
+            
+            // 별 그리기
+            for (const star of stars) {
+                if (star.collected) continue;
+                
+                // 반짝이는 효과
+                const glowSize = star.radius + Math.sin(Date.now() / 150) * 5;
+                
+                // 외곽 빛
+                ctx.fillStyle = STAR_GLOW_COLOR;
+                ctx.globalAlpha = 0.3;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                
+                // 별 그리기
+                drawStar(star.x, star.y, star.radius, STAR_COLOR);
+            }
+            
+            // 공 그리기
+            if (gameStarted || sensorConnected) {
+                // 공 그림자
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.arc(ball.x + 5, ball.y + 5, ball.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 공 외곽 빛
+                const gradient = ctx.createRadialGradient(
+                    ball.x - ball.radius / 3,
+                    ball.y - ball.radius / 3,
+                    0,
+                    ball.x,
+                    ball.y,
+                    ball.radius
+                );
+                gradient.addColorStop(0, '#FFF');
+                gradient.addColorStop(0.3, ball.color);
+                gradient.addColorStop(1, '#FFA500');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 공 테두리
+                ctx.strokeStyle = '#FFA500';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // 속도 표시 (디버그용 화살표)
+                if (Math.abs(ball.vx) > 0.1 || Math.abs(ball.vy) > 0.1) {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(ball.x, ball.y);
+                    ctx.lineTo(ball.x + ball.vx * 5, ball.y + ball.vy * 5);
+                    ctx.stroke();
+                }
+            }
+            
+            // 게임 시작 전 안내 메시지
+            if (!gameStarted && sensorConnected && !gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(CANVAS_WIDTH / 2 - 200, CANVAS_HEIGHT / 2 - 50, 400, 100);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('핸드폰을 기울여서', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 15);
+                ctx.fillText('공을 움직이세요!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 15);
+            }
+        }
+
+        // ==================== 별 그리기 함수 ====================
+        function drawStar(x, y, radius, color) {
+            const spikes = 5;
+            const outerRadius = radius;
+            const innerRadius = radius / 2;
+            
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(Date.now() / 1000); // 회전 애니메이션
+            
+            ctx.beginPath();
+            for (let i = 0; i < spikes * 2; i++) {
+                const angle = (i * Math.PI) / spikes - Math.PI / 2;
+                const r = i % 2 === 0 ? outerRadius : innerRadius;
+                const px = Math.cos(angle) * r;
+                const py = Math.sin(angle) * r;
+                
+                if (i === 0) {
+                    ctx.moveTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.closePath();
+            
+            ctx.fillStyle = color;
+            ctx.fill();
+            
+            ctx.strokeStyle = '#FFA500';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        // ==================== 게임 루프 ====================
+        function gameLoop() {
+            updateGame();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ==================== 게임 초기화 ====================
+        function initGame() {
+            console.log('🎮 게임 초기화 시작');
+            
+            // 캔버스 크기 설정
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+            
+            // 첫 번째 레벨 생성
+            generateLevel(level);
+            
+            // 초기 오버레이 표시
+            showOverlay(
+                'Tilt Maze Adventure',
+                '📱 핸드폰으로 QR 코드를 스캔하세요<br>기울여서 공을 움직이고 별을 모으세요!<br><br>⭐ 모든 별을 모으고 골에 도착하세요!',
+                false
+            );
+            
+            // 게임 루프 시작
+            gameLoop();
+            
+            console.log('✅ 게임 초기화 완료');
+        }
+
+        // ==================== 윈도우 리사이즈 처리 ====================
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // ==================== 게임 시작 ====================
+        window.addEventListener('load', () => {
+            console.log('🚀 페이지 로드 완료');
+            initGame();
+        });
+
+        // ==================== 키보드 컨트롤 (디버그용) ====================
+        window.addEventListener('keydown', (e) => {
+            if (!gameStarted || gameOver) return;
+            
+            const moveSpeed = 5;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    ball.vx -= moveSpeed;
+                    break;
+                case 'ArrowRight':
+                    ball.vx += moveSpeed;
+                    break;
+                case 'ArrowUp':
+                    ball.vy -= moveSpeed;
+                    break;
+                case 'ArrowDown':
+                    ball.vy += moveSpeed;
+                    break;
+                case 'r':
+                case 'R':
+                    restartGame();
+                    break;
+            }
+        });
+
+        // ==================== 클릭으로 게임 시작 (디버그용) ====================
+        canvas.addEventListener('click', () => {
+            if (!gameStarted && !gameOver && sensorConnected) {
+                startGame();
+            }
+        });
+
+    </script>
+</body>
+</html>

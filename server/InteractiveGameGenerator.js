@@ -945,6 +945,83 @@ if (lives <= 0) {
 - **QR 코드**: \`<div id="qr-code">\` 또는 \`<div id="qr-container">\`
 - **센서 상태**: \`<div id="sensor-status">\` (필수)
 
+🎨 **UI 레이아웃 필수 규칙 (게임 화면 가림 방지!):**
+
+**중요**: QR 코드와 세션 정보가 게임 화면 중앙을 가리면 안 됩니다!
+
+✅ **올바른 레이아웃 패턴**:
+\`\`\`html
+<style>
+/* 세션 정보는 좌측 상단 모서리에 배치 (게임 화면 안 가림) */
+.session-panel {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    max-width: 250px;
+}
+
+/* 게임 정보 (점수, 레벨)는 우측 상단에 배치 */
+.game-info {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    min-width: 150px;
+}
+
+/* 센서 상태는 좌측 하단에 배치 */
+#sensor-status {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    padding: 10px 20px;
+    border-radius: 25px;
+    z-index: 1000;
+}
+
+/* QR 코드는 작게 표시 (200x200px 이하) */
+#qr-code, #qr-container {
+    max-width: 150px;
+    max-height: 150px;
+}
+
+/* 캔버스는 전체 화면 사용 */
+#gameCanvas, #game-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
+</style>
+\`\`\`
+
+❌ **절대 하지 마세요 - 잘못된 레이아웃**:
+\`\`\`css
+/* ❌ 중앙 배치로 게임 화면 가림 */
+.session-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* ❌ QR 코드가 너무 큼 */
+#qr-code img {
+    width: 400px;
+    height: 400px;
+}
+\`\`\`
+
 ⚠️ **절대 포함하지 말아야 할 치명적 버그 패턴 (CRITICAL BUGS):**
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1009,7 +1086,134 @@ function startGame() {
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚨 **BUG #1: 공/오브젝트가 움직이지 않는 버그**
+🚨 **BUG #1: 레벨 전환 시 센서 입력이 중단되는 버그**
+
+이 버그는 **레벨을 클리어한 후 다음 레벨에서 센서 입력이 작동하지 않는** 문제입니다!
+첫 번째 레벨은 정상 작동하지만, 두 번째 레벨부터 센서로 조작이 안 되는 현상이 발생합니다.
+
+**원인**: 레벨 클리어 메시지를 표시할 때 오버레이를 사용하면 게임 루프가 멈추거나 센서 입력이 차단됩니다.
+
+❌ **절대 하지 마세요 - 잘못된 코드**:
+\`\`\`javascript
+// 레벨 클리어 처리
+function checkLevelComplete() {
+    const allStarsCollected = stars.every(star => star.collected);
+
+    if (allStarsCollected && stars.length > 0) {
+        level++;
+        generateLevel(level);
+
+        // ❌ 치명적 실수: 오버레이로 메시지 표시하면 센서 입력 중단!
+        showOverlay(\`레벨 \${level - 1} 클리어!\`, \`레벨 \${level} 시작\`);
+        setTimeout(() => {
+            hideOverlay();
+        }, 2000);
+
+        // ❌ 오버레이가 표시되는 동안 게임 루프가 멈추고 센서 입력 무시됨!
+    }
+}
+\`\`\`
+
+✅ **반드시 이렇게 하세요 - 올바른 코드**:
+\`\`\`javascript
+// ✅ 방법 1: 오버레이 대신 HUD 토스트 메시지 사용 (추천!)
+function checkLevelComplete() {
+    const allStarsCollected = stars.every(star => star.collected);
+
+    if (allStarsCollected && stars.length > 0) {
+        level++;
+        score += 500;
+
+        // ✅ 게임을 멈추지 않고 토스트 메시지만 표시
+        showToastMessage(\`🎉 레벨 \${level - 1} 클리어! 레벨 \${level} 시작\`);
+
+        // 다음 레벨 생성 (게임은 계속 진행)
+        generateLevel(level);
+
+        // 공 위치 초기화
+        ball.x = CANVAS_WIDTH / 2;
+        ball.y = CANVAS_HEIGHT / 2;
+        ball.vx = 0;
+        ball.vy = 0;
+
+        // ✅ 센서 입력은 계속 유지됨!
+    }
+}
+
+// 토스트 메시지 함수 (오버레이 사용 안함!)
+function showToastMessage(message) {
+    const toast = document.getElementById('toast-message') || createToastElement();
+    toast.textContent = message;
+    toast.style.display = 'block';
+    toast.style.opacity = '1';
+
+    // 2초 후 페이드아웃
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 300);
+    }, 2000);
+}
+
+function createToastElement() {
+    const toast = document.createElement('div');
+    toast.id = 'toast-message';
+    toast.style.cssText = \`
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 20px 40px;
+        border-radius: 15px;
+        font-size: 24px;
+        font-weight: bold;
+        z-index: 999;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    \`;
+    document.body.appendChild(toast);
+    return toast;
+}
+\`\`\`
+
+✅ **방법 2: 오버레이를 사용하되 센서 입력 유지**:
+\`\`\`javascript
+// 오버레이 표시 시에도 센서 데이터 처리 계속
+sdk.on('sensor-data', (event) => {
+    const data = event.detail || event;
+
+    // ✅ 게임 오버가 아니면 항상 센서 데이터 처리
+    // 오버레이 표시 중에도 센서 입력 유지!
+    if (!gameOver) {
+        processSensorData(data);
+    }
+});
+
+function showOverlay(title, message, pauseGame = false) {
+    const overlay = document.getElementById('overlay');
+    overlay.querySelector('.overlay-title').textContent = title;
+    overlay.querySelector('.overlay-message').innerHTML = message;
+    overlay.classList.remove('hidden');
+
+    // ✅ 레벨 전환 메시지는 게임을 멈추지 않음
+    if (pauseGame) {
+        gamePaused = true;
+    }
+    // pauseGame === false이면 센서 입력 계속 작동
+}
+\`\`\`
+
+**왜 이게 중요한가?**
+1. 첫 레벨만 플레이 가능하고 이후 레벨은 플레이 불가능하면 게임 완성도가 0%
+2. 사용자가 "버그 있는 게임"으로 인식하게 됨
+3. 레벨 시스템이 있는 게임은 반드시 이 패턴 적용 필수!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 **BUG #2: 공/오브젝트가 움직이지 않는 버그**
 ❌ **잘못된 코드**:
 \`\`\`javascript
 // 공이 패들에 붙어있는 상태에서 게임 시작 안됨
