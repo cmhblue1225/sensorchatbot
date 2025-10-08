@@ -21,7 +21,7 @@ class GameMaintenanceManager {
         this.llm = new ChatAnthropic({
             anthropicApiKey: config.claudeApiKey,
             model: config.claudeModel,
-            maxTokens: 8192,  // 긴 게임 코드 처리 가능하도록 증가
+            maxTokens: 64000,  // Claude Sonnet 4.5의 최대 출력 토큰 (64K)
             temperature: 0.2  // 유지보수는 정확성 최우선
         });
 
@@ -145,51 +145,77 @@ class GameMaintenanceManager {
      * 버그 분석 및 수정 코드 생성
      */
     async analyzeBugAndFix(currentCode, bugDescription, userContext) {
-        const prompt = `당신은 HTML5 Canvas 게임 버그를 분석하고 수정하는 전문 개발자입니다.
+        const codeLength = currentCode.length;
+        console.log(`📏 원본 코드 길이: ${codeLength} 문자`);
+
+        const prompt = `당신은 Claude Sonnet 4.5 모델로, 64,000 토큰의 긴 출력이 가능한 HTML5 Canvas 게임 버그 수정 전문가입니다.
 
 **사용자 버그 리포트:**
 "${bugDescription}"
 
 ${userContext ? `**추가 정보:**\n${userContext}\n` : ''}
 
-**현재 게임 코드:**
+**현재 게임 코드 (${codeLength}자):**
 \`\`\`html
-${currentCode.substring(0, 15000)}
+${currentCode}
 \`\`\`
 
 **분석 및 수정 작업:**
 1. 버그의 정확한 원인을 JavaScript 코드에서 찾으세요
-2. 버그를 수정한 완전한 HTML 파일을 생성하세요
-3. 변경사항을 명확히 표시하세요
+2. 버그를 수정한 **완전한** HTML 파일을 생성하세요 (코드를 절대 잘라내지 마세요!)
+3. 변경사항을 명확히 설명하세요
 
-**중요 규칙:**
-- SessionSDK, QR코드, 센서 연결 로직은 절대 변경하지 마세요
-- <!DOCTYPE html>부터 </html>까지 전체 코드를 반환하세요
-- 버그 수정에 필요한 최소한의 변경만 하세요
-- gameStarted 플래그가 있으면 활용하세요
+**필수 준수 사항:**
+✅ SessionSDK, QR코드, 센서 연결 로직은 **절대 변경 금지**
+✅ <!DOCTYPE html>부터 </html>까지 **전체 코드 반환 필수** (${codeLength}자 이상)
+✅ 버그 수정에 필요한 최소한의 변경만 하세요
+✅ 기존 CSS 스타일, 게임 로직은 최대한 유지하세요
 
-**일반적인 버그 패턴:**
-- "공이 움직이지 않아요" → gameStarted 플래그 확인, 속도 초기화 확인
-- "타이머가 작동 안해요" → setInterval/requestAnimationFrame 확인
-- "센서 반응 없어요" → sensor-data 이벤트 핸들러 확인
+**일반적인 버그 패턴 및 해결책:**
+- "공이 움직이지 않아요"
+  → \`gameStarted\` 플래그 확인, \`ball.dx\`, \`ball.dy\` 초기 속도 설정 확인
+  → \`startGame()\` 함수에서 \`ball.stuck = false\` 및 속도 설정 확인
+
+- "레벨 클리어 후 센서 입력 안돼요"
+  → \`showOverlay()\` 대신 토스트 메시지 사용
+  → 센서 데이터 처리 시 \`!gameOver\` 조건만 확인 (\`gamePaused\` 무시)
+
+- "타이머가 작동 안해요"
+  → \`setInterval()\` 또는 \`requestAnimationFrame()\` 호출 확인
+  → \`gameStarted\` 플래그 확인
+
+- "센서 반응 없어요"
+  → \`sensor-data\` 이벤트 핸들러에서 \`event.detail || event\` 패턴 확인
+  → \`processSensorData()\` 함수 호출 확인
 
 **출력 형식:**
-반드시 아래 형식으로 응답하세요. 설명이나 분석은 포함하지 말고, 오직 코드만 반환하세요!
+반드시 아래 형식으로 응답하세요.
 
+1. **변경 사항 요약** (간단히):
+- [수정한 부분 1]
+- [수정한 부분 2]
+
+2. **수정된 전체 코드**:
 \`\`\`html
 <!DOCTYPE html>
-<html>
-... 전체 수정된 HTML 코드 (SessionSDK 포함) ...
+<html lang="ko">
+<head>
+    ... (전체 head 내용) ...
+</head>
+<body>
+    ... (전체 body 내용, SessionSDK 포함) ...
+</body>
 </html>
 \`\`\`
 
-**중요:**
-- 설명 없이 코드만 반환하세요
-- <!DOCTYPE html>부터 </html>까지 전체 코드를 반환하세요
-- SessionSDK 관련 코드는 절대 삭제하지 마세요
-- 버그 수정에 필요한 최소한의 변경만 하세요
+**중요 - 코드 완성도:**
+- 원본 코드 길이: ${codeLength}자
+- 반환해야 할 최소 길이: ${codeLength}자 이상
+- 코드를 절대 잘라내거나 생략하지 마세요!
+- "... 생략 ..." 같은 표시 사용 금지!
+- SessionSDK 스크립트, QR 코드 생성 함수, 센서 이벤트 핸들러는 **필수 유지**
 
-지금 버그를 수정한 전체 HTML 코드를 생성하세요.`;
+지금 버그를 수정한 **완전한** HTML 코드를 생성하세요. 64K 토큰을 활용하여 전체 코드를 반환하세요!`;
 
         try {
             console.log('🤖 LLM 호출 중...');
@@ -295,30 +321,68 @@ ${currentCode.substring(0, 15000)}
      * 기능 추가 코드 생성
      */
     async addFeatureToGame(currentCode, featureDescription, userContext) {
-        const prompt = `당신은 게임에 새로운 기능을 추가하는 전문가입니다.
+        const codeLength = currentCode.length;
+        console.log(`📏 원본 코드 길이: ${codeLength} 문자`);
+
+        const prompt = `당신은 Claude Sonnet 4.5 모델로, 64,000 토큰 출력이 가능한 게임 기능 추가 전문가입니다.
 
 **사용자 기능 요청:**
 ${featureDescription}
 
 ${userContext ? `**추가 컨텍스트:**\n${userContext}\n` : ''}
 
-**현재 게임 코드:**
+**현재 게임 코드 (${codeLength}자):**
 \`\`\`html
 ${currentCode}
 \`\`\`
 
-**작업:**
-1. 요청된 기능을 게임에 추가하세요
-2. 기존 로직과 충돌하지 않도록 통합하세요
-3. 추가된 기능을 간단히 설명하세요
+**작업 지침:**
+1. 요청된 기능을 게임에 **점진적으로 추가**하세요
+2. 기존 로직과 충돌하지 않도록 **호환성 있게 통합**하세요
+3. 추가된 기능의 **사용 방법**을 주석으로 설명하세요
 
-**주의사항:**
-- 기존 게임 로직을 최대한 보존
-- SessionSDK 통합은 절대 건드리지 말 것
-- 새 기능이 기존 기능과 충돌하지 않도록 주의
+**필수 준수 사항:**
+✅ 기존 게임 로직을 **최대한 보존** (불필요한 변경 금지)
+✅ SessionSDK 통합, QR 코드, 센서 연결 로직은 **절대 건드리지 말 것**
+✅ 새 기능이 기존 기능과 충돌하지 않도록 **주의 깊게 통합**
+✅ CSS 스타일은 기존 스타일과 **일관성 유지**
+✅ <!DOCTYPE html>부터 </html>까지 **전체 코드 반환 필수** (${codeLength}자 이상)
+
+**일반적인 기능 추가 예시:**
+- "점수 시스템 추가" → 전역 변수 \`score = 0\`, UI에 \`<div id="score">점수: 0</div>\`, 이벤트 발생 시 증가
+- "파워업 아이템 추가" → 아이템 배열 생성, 렌더링 함수, 충돌 감지 로직 추가
+- "난이도 조절" → \`difficulty\` 변수 추가, 속도/빈도 조절 로직 통합
+- "사운드 이펙트 추가" → Audio 객체 생성, 이벤트 발생 시 재생
 
 **출력 형식:**
-반드시 \`\`\`html 코드 블록으로 전체 HTML을 감싸주세요.`;
+반드시 아래 형식으로 응답하세요.
+
+1. **추가된 기능 설명** (간단히):
+- [기능 1]
+- [기능 2]
+- [사용 방법]
+
+2. **기능이 추가된 전체 코드**:
+\`\`\`html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    ... (전체 head 내용) ...
+</head>
+<body>
+    ... (전체 body 내용, SessionSDK + 새 기능 포함) ...
+</body>
+</html>
+\`\`\`
+
+**중요 - 코드 완성도:**
+- 원본 코드 길이: ${codeLength}자
+- 반환해야 할 최소 길이: ${codeLength}자 이상 (기능 추가로 더 길어질 수 있음)
+- 코드를 절대 잘라내거나 생략하지 마세요!
+- "... 생략 ..." 같은 표시 사용 금지!
+- SessionSDK 스크립트, QR 코드 생성 함수, 센서 이벤트 핸들러는 **필수 유지**
+
+지금 기능을 추가한 **완전한** HTML 코드를 생성하세요. 64K 토큰을 활용하여 전체 코드를 반환하세요!`;
 
         try {
             const response = await this.llm.invoke(prompt);
