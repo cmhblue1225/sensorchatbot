@@ -34,8 +34,9 @@ class GameMaintenanceManager {
         // 활성 게임 세션 (gameId → 게임 정보)
         this.activeSessions = new Map();
 
-        // 세션 만료 시간 (30분)
-        this.sessionTimeout = 30 * 60 * 1000;
+        // 세션 만료 시간 (24시간)
+        // 💡 만료되어도 DB에서 자동 복원되므로 걱정 없음!
+        this.sessionTimeout = 24 * 60 * 60 * 1000;  // 24시간 (기존: 30분)
 
         // 자동 정리 타이머
         this.startSessionCleaner();
