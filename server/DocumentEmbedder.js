@@ -106,6 +106,11 @@ class DocumentEmbedder {
                     description: '센서 게임 완벽 개발 가이드 - 100% 성공 패턴'
                 },
                 {
+                    filePath: `${basePath}/docs/examples/PERFECT_GAME_EXAMPLES.md`,
+                    type: 'perfect_patterns',
+                    description: '완벽한 게임 패턴 예제 - cake-delivery와 shot-target 기반 검증된 패턴'
+                },
+                {
                     filePath: `${basePath}/docs/SESSIONSK_INTEGRATION_PATTERNS.md`,
                     type: 'integration_guide',
                     description: 'SessionSDK 통합 패턴 완벽 가이드'
@@ -114,6 +119,17 @@ class DocumentEmbedder {
                     filePath: `${basePath}/docs/SENSOR_GAME_TROUBLESHOOTING.md`,
                     type: 'troubleshooting',
                     description: '센서 게임 문제 해결 및 디버깅 가이드'
+                },
+                // V3 EXTREME 완벽 게임 HTML (전체 코드)
+                {
+                    filePath: `${basePath}/public/games/cake-delivery/index.html`,
+                    type: 'perfect_game',
+                    description: '완벽 게임 예제 - 케이크 배달 게임 (A+ 등급)'
+                },
+                {
+                    filePath: `${basePath}/public/games/shot-target/index.html`,
+                    type: 'perfect_game',
+                    description: '완벽 게임 예제 - 과녁 맞추기 게임 (A+ 등급)'
                 },
                 // 기존 중요 문서들
                 {

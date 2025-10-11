@@ -1,0 +1,18 @@
+{
+  "title": "센서 볼 게임",
+  "description": "스마트폰을 좌우로 기울여서 패들을 움직이고 공을 튕겨 벽돌을 깨는 아케이드 게임",
+  "gameType": "solo",
+  "genre": "arcade",
+  "difficulty": "medium",
+  "sensorMechanics": [
+    "tilt"
+  ],
+  "generatedAt": "2025-10-07T18:18:04.904Z",
+  "sessionId": "session_1759860895121_56w9qscjf",
+  "gameId": "센서-볼-게임-084905",
+  "filePaths": {
+    "index": "index.html"
+  },
+  "createdAt": "2025-10-07T18:18:04.906Z",
+  "version": "1.0.0"
+}

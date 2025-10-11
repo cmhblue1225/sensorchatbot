@@ -1,12 +1,12 @@
 {
-  "id": "tilt-breaker",
-  "title": "Tilt Breaker",
-  "description": "벽돌 깨기 게임을 제작하고 싶어.",
+  "id": "undefined",
+  "title": "undefined",
+  "description": "레벨이 여러 개 있는 미로 게임",
   "gameType": "solo",
   "difficulty": "medium",
   "version": "1.0.0",
   "author": "AI Game Generator",
-  "createdAt": "2025-10-01T18:16:17.726Z",
+  "createdAt": "2025-10-08T15:48:47.725Z",
   "sensors": [
     "orientation"
   ],

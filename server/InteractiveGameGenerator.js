@@ -8,6 +8,7 @@
  * - 실행 가능한 고품질 게임 생성 보장
  */
 
+const Anthropic = require('@anthropic-ai/sdk');
 const { ChatAnthropic } = require('@langchain/anthropic');
 const { OpenAIEmbeddings } = require('@langchain/openai');
 const { SupabaseVectorStore } = require('@langchain/community/vectorstores/supabase');
@@ -27,9 +28,17 @@ class InteractiveGameGenerator {
             openaiApiKey: process.env.OPENAI_API_KEY,
             supabaseUrl: process.env.SUPABASE_URL,
             supabaseKey: process.env.SUPABASE_ANON_KEY,
-            claudeModel: 'claude-3-5-sonnet-20241022',
-            maxTokens: 8192,   // Claude Sonnet 최대 출력 토큰
-            temperature: 0.7   // 일관성과 창의성의 균형
+            // 🚀 V4 UPGRADE: Claude Sonnet 4.5 (최신 모델)
+            claudeModel: 'claude-sonnet-4-5-20250929',  // Claude Sonnet 4.5 (2025.09.29)
+            claudeOpusModel: 'claude-opus-4-1-20250805',  // Claude Opus 4.1 (32k max)
+            maxTokens: 64000,  // ✅ Claude Sonnet 4.5 최대 출력 토큰 (8x 증가!)
+            temperature: 0.3,  // 🎯 일관성 강화: 0.7 → 0.3 (버그 감소)
+            // RAG 설정
+            ragTopK: 5,        // 검색 문서 수 증가: 3 → 5
+            ragSimilarityThreshold: 0.7,  // 유사도 임계값
+            // 품질 보증
+            minQualityScore: 95,  // 최소 품질 점수
+            maxRetries: 3         // 실패 시 재시도 횟수
         };
 
         // 컴포넌트 초기화
@@ -109,13 +118,12 @@ class InteractiveGameGenerator {
                 });
             }
 
-            // Claude LLM 초기화
-            this.llm = new ChatAnthropic({
-                anthropicApiKey: this.config.claudeApiKey,
-                modelName: this.config.claudeModel,
-                maxTokens: this.config.maxTokens,
-                temperature: this.config.temperature, // 일관성과 창의성의 균형
+            // 🚀 Anthropic SDK만 사용 (LangChain 완전 제거 - top_p 문제 해결)
+            this.anthropicClient = new Anthropic({
+                apiKey: this.config.claudeApiKey
             });
+
+            console.log('✅ Anthropic SDK 초기화 완료 (LangChain 미사용)');
 
             // Supabase 벡터 저장소 초기화
             if (this.supabaseClient && this.embeddings) {
@@ -530,7 +538,30 @@ ${context}
      */
     generateGameCreationPrompt(requirements, context) {
         const basePrompt = `당신은 Sensor Game Hub v6.0의 최고 전문 게임 개발자입니다.
-다음 상세 요구사항에 따라 **실제로 작동하는** 완벽한 HTML5 센서 게임을 생성해주세요.`;
+다음 상세 요구사항에 따라 **실제로 작동하는** 완벽한 HTML5 센서 게임을 생성해주세요.
+
+🚀 **중요: 64,000 토큰 출력 가능 - 완전한 게임 생성 필수!**
+
+⚠️ **극도로 중요한 품질 요구사항:**
+1. **완전한 코드 생성**: 모든 함수를 반드시 완성하세요. 중간에 멈추지 마세요!
+2. **검증된 패턴 사용**: 아래 제공된 예제 코드와 패턴을 정확히 따르세요!
+3. **버그 제로**: 자주 발생하는 4가지 버그 패턴을 절대 포함하지 마세요!
+4. **완벽한 동작**: 생성된 게임이 즉시 실행 가능해야 합니다!
+5. **풍부한 구현**: 64K 토큰을 활용하여 디테일하고 완성도 높은 게임을 만드세요!
+
+📝 **코드 완성도 체크리스트 (생성 전 반드시 확인!):**
+- [ ] 모든 선언된 함수가 완전히 구현되었는가?
+- [ ] 게임 루프(update, render)가 정상 작동하는가?
+- [ ] 충돌 감지 로직이 완전히 구현되었는가?
+- [ ] 게임 오버 처리가 완벽한가?
+- [ ] 리셋 기능이 제대로 작동하는가?
+- [ ] </html> 태그로 정상 종료되는가?
+
+⭐ **출력 토큰 충분함 - 절대 중간에 멈추지 마세요!**
+- 사용 가능한 출력 토큰: **64,000개** (약 48,000 단어)
+- 평균 게임 크기: 10,000-15,000 토큰 (30% 정도만 사용)
+- 복잡한 게임도 충분히 생성 가능!
+- **걱정하지 말고 완전한 코드를 모두 작성하세요!**`;
 
         // 장르 분석 정보가 있는 경우 활용
         const genreAnalysis = requirements.genreAnalysis;
@@ -660,6 +691,13 @@ sdk.on('sensor-connected', (event) => {
     // UI 업데이트
     document.getElementById('sensor-status').textContent = '센서 연결됨';
     document.getElementById('sensor-status').className = 'connected';
+
+    // 🚀 중요: 센서 연결 1초 후 자동 게임 시작 (플레이어블리티 필수!)
+    setTimeout(() => {
+        if (!gameStarted && !gameOver) {
+            startGame(); // ✅ 센서 연결 시 자동 시작 (필수 구현!)
+        }
+    }, 1000);
 });
 
 sdk.on('sensor-data', (event) => {
@@ -900,10 +938,384 @@ if (lives <= 0) {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ **게임 퀄리티 체크리스트 (모두 구현 필수!):**
 
+**필수 HTML 구조 (반드시 지켜야 할 ID/Class 규칙!):**
+- **캔버스**: \`<canvas id="gameCanvas">\` 또는 \`<canvas id="game-canvas">\` (둘 중 하나)
+- **세션 패널**: \`<div class="session-panel">\` 또는 \`<div id="session-panel">\`
+- **세션 코드**: \`<span id="session-code">\` 또는 \`<span id="session-code-display">\`
+- **QR 코드**: \`<div id="qr-code">\` 또는 \`<div id="qr-container">\`
+- **센서 상태**: \`<div id="sensor-status">\` (필수)
+
+🎨 **UI 레이아웃 필수 규칙 (게임 화면 가림 방지!):**
+
+**중요**: QR 코드와 세션 정보가 게임 화면 중앙을 가리면 안 됩니다!
+
+✅ **올바른 레이아웃 패턴**:
+\`\`\`html
+<style>
+/* 세션 정보는 좌측 상단 모서리에 배치 (게임 화면 안 가림) */
+.session-panel {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    max-width: 250px;
+}
+
+/* 게임 정보 (점수, 레벨)는 우측 상단에 배치 */
+.game-info {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    min-width: 150px;
+}
+
+/* 센서 상태는 좌측 하단에 배치 */
+#sensor-status {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    padding: 10px 20px;
+    border-radius: 25px;
+    z-index: 1000;
+}
+
+/* QR 코드는 작게 표시 (200x200px 이하) */
+#qr-code, #qr-container {
+    max-width: 150px;
+    max-height: 150px;
+}
+
+/* 캔버스는 전체 화면 사용 */
+#gameCanvas, #game-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
+</style>
+\`\`\`
+
+❌ **절대 하지 마세요 - 잘못된 레이아웃**:
+\`\`\`css
+/* ❌ 중앙 배치로 게임 화면 가림 */
+.session-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* ❌ QR 코드가 너무 큼 */
+#qr-code img {
+    width: 400px;
+    height: 400px;
+}
+\`\`\`
+
+⚠️ **절대 포함하지 말아야 할 치명적 버그 패턴 (CRITICAL BUGS):**
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 **가장 중요한 플레이어블리티 버그 (반드시 해결!):**
+
+🚨 **CRITICAL BUG #0: 센서 연결해도 게임이 자동 시작 안 되는 치명적 버그**
+
+이 버그는 **사용자가 게임을 플레이할 수 없게 만드는 가장 심각한 버그**입니다!
+센서를 연결했는데 게임이 시작되지 않으면 사용자는 게임을 할 수 없습니다.
+
+❌ **절대 하지 마세요 - 잘못된 코드**:
+\`\`\`javascript
+// ❌ 치명적 실수: 센서 연결되어도 메시지만 표시하고 게임 시작 안함
+sdk.on('sensor-connected', (event) => {
+    sensorConnected = true;
+    // 메시지만 표시하고 startGame()을 호출하지 않음!
+    showOverlay('센서 연결됨! 화면을 클릭하거나 흔들어서 시작하세요');
+    // ❌ 이렇게 하면 사용자가 수동으로 클릭/흔들기를 해야만 게임 시작!
+});
+\`\`\`
+
+✅ **반드시 이렇게 하세요 - 올바른 코드**:
+\`\`\`javascript
+// ✅ 완벽한 패턴: 센서 연결되면 1초 후 자동으로 게임 시작
+sdk.on('sensor-connected', (event) => {
+    const data = event.detail || event;
+    console.log('✅ 센서 연결됨:', data.sensorId);
+
+    sensorConnected = true;
+
+    // UI 업데이트
+    document.getElementById('sensor-status').textContent = '센서 연결됨 ✓';
+
+    // 🚀 필수: 1초 후 자동 게임 시작 (플레이어블리티 핵심!)
+    setTimeout(() => {
+        if (!gameStarted && !gameOver) {
+            startGame(); // ✅ 자동으로 게임 시작!
+            console.log('🎮 게임 자동 시작됨!');
+        }
+    }, 1000);
+});
+
+function startGame() {
+    console.log('🚀 게임 시작!');
+    gameStarted = true;
+
+    // 게임 타입에 따라 초기화
+    if (ball) {
+        ball.stuck = false;
+        ball.dx = 4;   // ✅ 초기 속도 반드시 설정!
+        ball.dy = -4;
+    }
+
+    hideOverlay(); // 오버레이 숨기기
+}
+\`\`\`
+
+**왜 이게 중요한가?**
+1. 사용자가 핸드폰으로 QR 스캔 → 센서 페이지 열기 → **자동으로 게임 시작되어야 함**
+2. 추가 클릭/흔들기를 요구하면 사용자 경험이 나빠짐
+3. 이 버그가 있으면 게임이 "기술적으로는 완성"이지만 "플레이 불가능"한 상태가 됨
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 **BUG #1: 레벨 전환 시 센서 입력이 중단되는 버그**
+
+이 버그는 **레벨을 클리어한 후 다음 레벨에서 센서 입력이 작동하지 않는** 문제입니다!
+첫 번째 레벨은 정상 작동하지만, 두 번째 레벨부터 센서로 조작이 안 되는 현상이 발생합니다.
+
+**원인**: 레벨 클리어 메시지를 표시할 때 오버레이를 사용하면 게임 루프가 멈추거나 센서 입력이 차단됩니다.
+
+❌ **절대 하지 마세요 - 잘못된 코드**:
+\`\`\`javascript
+// 레벨 클리어 처리
+function checkLevelComplete() {
+    const allStarsCollected = stars.every(star => star.collected);
+
+    if (allStarsCollected && stars.length > 0) {
+        level++;
+        generateLevel(level);
+
+        // ❌ 치명적 실수: 오버레이로 메시지 표시하면 센서 입력 중단!
+        showOverlay(\`레벨 \${level - 1} 클리어!\`, \`레벨 \${level} 시작\`);
+        setTimeout(() => {
+            hideOverlay();
+        }, 2000);
+
+        // ❌ 오버레이가 표시되는 동안 게임 루프가 멈추고 센서 입력 무시됨!
+    }
+}
+\`\`\`
+
+✅ **반드시 이렇게 하세요 - 올바른 코드**:
+\`\`\`javascript
+// ✅ 방법 1: 오버레이 대신 HUD 토스트 메시지 사용 (추천!)
+function checkLevelComplete() {
+    const allStarsCollected = stars.every(star => star.collected);
+
+    if (allStarsCollected && stars.length > 0) {
+        level++;
+        score += 500;
+
+        // ✅ 게임을 멈추지 않고 토스트 메시지만 표시
+        showToastMessage(\`🎉 레벨 \${level - 1} 클리어! 레벨 \${level} 시작\`);
+
+        // 다음 레벨 생성 (게임은 계속 진행)
+        generateLevel(level);
+
+        // 공 위치 초기화
+        ball.x = CANVAS_WIDTH / 2;
+        ball.y = CANVAS_HEIGHT / 2;
+        ball.vx = 0;
+        ball.vy = 0;
+
+        // ✅ 센서 입력은 계속 유지됨!
+    }
+}
+
+// 토스트 메시지 함수 (오버레이 사용 안함!)
+function showToastMessage(message) {
+    const toast = document.getElementById('toast-message') || createToastElement();
+    toast.textContent = message;
+    toast.style.display = 'block';
+    toast.style.opacity = '1';
+
+    // 2초 후 페이드아웃
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 300);
+    }, 2000);
+}
+
+function createToastElement() {
+    const toast = document.createElement('div');
+    toast.id = 'toast-message';
+    toast.style.cssText = \`
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 20px 40px;
+        border-radius: 15px;
+        font-size: 24px;
+        font-weight: bold;
+        z-index: 999;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    \`;
+    document.body.appendChild(toast);
+    return toast;
+}
+\`\`\`
+
+✅ **방법 2: 오버레이를 사용하되 센서 입력 유지**:
+\`\`\`javascript
+// 오버레이 표시 시에도 센서 데이터 처리 계속
+sdk.on('sensor-data', (event) => {
+    const data = event.detail || event;
+
+    // ✅ 게임 오버가 아니면 항상 센서 데이터 처리
+    // 오버레이 표시 중에도 센서 입력 유지!
+    if (!gameOver) {
+        processSensorData(data);
+    }
+});
+
+function showOverlay(title, message, pauseGame = false) {
+    const overlay = document.getElementById('overlay');
+    overlay.querySelector('.overlay-title').textContent = title;
+    overlay.querySelector('.overlay-message').innerHTML = message;
+    overlay.classList.remove('hidden');
+
+    // ✅ 레벨 전환 메시지는 게임을 멈추지 않음
+    if (pauseGame) {
+        gamePaused = true;
+    }
+    // pauseGame === false이면 센서 입력 계속 작동
+}
+\`\`\`
+
+**왜 이게 중요한가?**
+1. 첫 레벨만 플레이 가능하고 이후 레벨은 플레이 불가능하면 게임 완성도가 0%
+2. 사용자가 "버그 있는 게임"으로 인식하게 됨
+3. 레벨 시스템이 있는 게임은 반드시 이 패턴 적용 필수!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 **BUG #2: 공/오브젝트가 움직이지 않는 버그**
+❌ **잘못된 코드**:
+\`\`\`javascript
+// 공이 패들에 붙어있는 상태에서 게임 시작 안됨
+if (ball.stuck) {
+    ball.x = paddle.x + paddle.width / 2;
+    return; // ❌ 게임이 영원히 stuck 상태!
+}
+\`\`\`
+✅ **올바른 코드**:
+\`\`\`javascript
+// 게임 시작 전에만 공을 패들에 고정
+if (!gameStarted) {
+    ball.x = paddle.x + paddle.width / 2;
+    ball.y = paddle.y - ball.radius;
+    ball.dx = 0;  // 시작 전에는 속도 0
+    ball.dy = 0;
+} else {
+    // 게임 시작 후에는 정상 이동
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+}
+
+function startGame() {
+    gameStarted = true;
+    ball.stuck = false;
+    ball.dx = 4;  // ✅ 초기 속도 설정 필수!
+    ball.dy = -4;
+}
+\`\`\`
+
+🚨 **BUG #2: 초기 속도가 0인 버그**
+❌ **잘못된 코드**:
+\`\`\`javascript
+ball.stuck = false; // stuck은 풀었지만
+// ball.dx = 0, ball.dy = 0 ← 속도가 0이면 안움직임!
+\`\`\`
+✅ **올바른 코드**:
+\`\`\`javascript
+ball.stuck = false;
+ball.dx = 4;  // ✅ 반드시 0이 아닌 값!
+ball.dy = -4;
+\`\`\`
+
+🚨 **BUG #3: gameStarted 플래그를 설정하지 않는 버그**
+❌ **잘못된 코드**:
+\`\`\`javascript
+function updateGame() {
+    // gameStarted 체크 없이 업데이트
+    ball.x += ball.dx; // ❌ 조건 없이 항상 실행
+}
+\`\`\`
+✅ **올바른 코드**:
+\`\`\`javascript
+function updateGame() {
+    if (!gameStarted || gamePaused) return; // ✅ 플래그 체크 필수!
+
+    if (!ball.stuck) { // ✅ stuck 체크도 필수!
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+    }
+}
+\`\`\`
+
+🚨 **BUG #4: 클릭/흔들기 시작이 작동하지 않는 버그**
+❌ **잘못된 코드**:
+\`\`\`javascript
+canvas.addEventListener('click', () => {
+    ball.stuck = false; // ❌ gameStarted를 true로 안바꿈!
+});
+\`\`\`
+✅ **올바른 코드**:
+\`\`\`javascript
+canvas.addEventListener('click', () => {
+    if (!gameStarted && !gameOver && sensorConnected) {
+        startGame(); // ✅ startGame() 함수 호출!
+    }
+});
+
+// 흔들기로도 시작 가능
+function processSensorData(data) {
+    const { acceleration } = data.data;
+    if (acceleration) {
+        const shake = Math.sqrt(
+            acceleration.x ** 2 +
+            acceleration.y ** 2 +
+            acceleration.z ** 2
+        );
+
+        // 흔들기로 게임 시작
+        if (!gameStarted && shake > 20 && sensorConnected && !gameOver) {
+            startGame(); // ✅ 흔들기로도 시작!
+        }
+    }
+}
+\`\`\`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 **기본 요구사항:**
-1. ✅ 게임이 센서 연결 즉시 플레이 가능해야 함
-2. ✅ 게임 시작 조건이 명확해야 함 (클릭/흔들기 등)
-3. ✅ 게임 로직에 버그가 없어야 함 (위 버그 패턴 확인!)
+1. 🚨 **필수!** 센서 연결 후 1초 뒤 자동으로 게임 시작 (플레이어블리티 핵심!)
+2. ✅ 게임 시작 시 반드시 gameStarted = true, ball.stuck = false, 초기 속도 설정
+3. ✅ 위의 5가지 치명적 버그 패턴 절대 포함 금지! (특히 BUG #0!)
 4. ✅ 게임 오버/승리 조건이 명확해야 함
 5. ✅ 게임 오버 후 재시작 가능해야 함
 
@@ -928,7 +1340,34 @@ if (lives <= 0) {
 19. ✅ 성능 최적화 (불필요한 계산 반복 금지)
 20. ✅ 에러 처리 완비 (센서 미지원, 연결 끊김 등)
 
-**반드시 위의 체크리스트를 모두 만족하는 고품질 게임을 생성하세요!**`;
+**반드시 위의 체크리스트를 모두 만족하는 고품질 게임을 생성하세요!**
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 **최종 출력 지시사항 (극도로 중요!):**
+
+1. **완전한 HTML 파일 생성**: <!DOCTYPE html>부터 </html>까지 완전한 파일을 생성하세요.
+
+2. **모든 함수 완성 필수**:
+   - drawBricks(), drawPaddle(), drawBall() - 모든 렌더링 함수
+   - collisionDetection() - 완전한 충돌 감지 로직
+   - updateGame() - 게임 상태 업데이트
+   - resetGame() - 게임 리셋
+   - gameLoop() - 메인 게임 루프
+   - processSensorData() - 센서 데이터 처리
+   - initGame() - 게임 초기화
+
+3. **충분한 출력 토큰**: 64,000 토큰 사용 가능! 걱정 없이 풍부하고 완전한 코드를 작성하세요!
+
+4. **검증 완료 후 출력**: 생성된 코드가 위의 모든 체크리스트를 만족하는지 확인 후 출력하세요.
+
+5. **절대 중간에 멈추지 마세요**: 반드시 </html> 태그로 완전히 종료하세요!
+
+⚠️ **경고**: 불완전한 코드 생성 시 자동으로 낮은 점수를 받습니다!
+✅ **목표**: 100/130점 이상 (A+ 등급) 달성하기!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+이제 위의 모든 지시사항을 완벽히 따라 고품질 게임을 생성하세요! 🚀`;
     }
 
     /**
@@ -1229,8 +1668,8 @@ ${requirements.specialRequirements?.length > 0 ?
                 });
             }
 
-            // Claude API 사용 가능 여부 확인
-            if (!this.llm) {
+            // Claude API 사용 가능 여부 확인 (Anthropic SDK)
+            if (!this.anthropicClient) {
                 throw new Error('Claude API가 초기화되지 않았습니다. 환경변수를 확인해주세요.');
             }
 
@@ -1271,11 +1710,58 @@ ${requirements.specialRequirements?.length > 0 ?
                 });
             }
 
-            console.log('🤖 Claude API 호출 시작...');
+            console.log('🤖 Anthropic SDK 스트리밍 호출 시작... (64K 토큰 생성 가능)');
             const aiRequestStartTime = Date.now();
-            const response = await this.llm.invoke([{ role: 'user', content: gameGenerationPrompt }]);
+
+            // Anthropic SDK 직접 사용 (LangChain top_p 문제 우회)
+            const stream = await this.anthropicClient.messages.stream({
+                model: this.config.claudeModel,
+                max_tokens: this.config.maxTokens,  // 64,000 토큰
+                temperature: this.config.temperature,  // 0.3
+                messages: [{
+                    role: 'user',
+                    content: gameGenerationPrompt
+                }]
+            });
+
+            let fullContent = '';
+            let lastProgressUpdate = Date.now();
+            const progressUpdateInterval = 2000; // 2초마다 진행률 업데이트
+
+            // 스트림에서 데이터 수집
+            for await (const chunk of stream) {
+                if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
+                    fullContent += chunk.delta.text;
+
+                    // 2초마다 진행률 업데이트 (실시간 피드백)
+                    const now = Date.now();
+                    if (now - lastProgressUpdate > progressUpdateInterval && this.io) {
+                        const percentage = Math.min(75, 50 + (fullContent.length / 500)); // 50-75% 범위
+                        this.io.emit('game-generation-progress', {
+                            sessionId,
+                            step: 3,
+                            percentage: Math.floor(percentage),
+                            message: `코드 생성 중... (${Math.floor(fullContent.length / 1000)}KB 생성됨)`
+                        });
+                        lastProgressUpdate = now;
+                    }
+                }
+            }
+
             const aiRequestEndTime = Date.now();
-            
+
+            // 스트림 메타데이터 추출
+            const finalMessage = await stream.finalMessage();
+            const response = {
+                content: fullContent,
+                response_metadata: {
+                    stop_reason: finalMessage.stop_reason,
+                    usage: finalMessage.usage
+                }
+            };
+
+            console.log(`✅ 스트리밍 완료 (${((aiRequestEndTime - aiRequestStartTime) / 1000).toFixed(1)}초 소요)`);
+
             // AI 요청 성능 추적
             this.performanceMonitor.trackAIRequest(
                 sessionId,
@@ -1285,9 +1771,20 @@ ${requirements.specialRequirements?.length > 0 ?
                 null, // 토큰 사용량은 Claude API에서 직접 제공되지 않음
                 true
             );
-            
+
             console.log('✅ Claude API 응답 수신 완료');
             console.log(`📝 응답 길이: ${response.content.length} 문자`);
+
+            // 🔍 V3.1: stop_reason 로깅 추가 (토큰 제한 진단용)
+            if (response.response_metadata?.stop_reason) {
+                console.log(`🛑 Stop Reason: ${response.response_metadata.stop_reason}`);
+                if (response.response_metadata.stop_reason === 'max_tokens') {
+                    console.warn('⚠️ 경고: maxTokens 제한에 도달하여 응답이 잘림! 토큰 증가 또는 멀티스테이지 생성 고려 필요');
+                }
+            }
+            if (response.response_metadata?.usage) {
+                console.log(`📊 토큰 사용량:`, response.response_metadata.usage);
+            }
 
             // 🎯 Step 3 진행 중 - HTML 추출
             if (this.io) {
@@ -1499,51 +1996,73 @@ ${requirements.specialRequirements?.length > 0 ?
      */
     async getGameDevelopmentContext(requirements) {
         try {
+            // Phase 3-3 개선: 더 구체적인 쿼리 + 증가된 검색 결과 (k=3→5)
             const queries = [
-                `${requirements.gameType} 게임 개발 방법`,
-                `${requirements.genre} 게임 구현`,
-                `센서 데이터 ${requirements.sensorMechanics?.join(' ')} 활용`,
-                'SessionSDK 기본 사용법',
-                'GAME_TEMPLATE.html 구조'
+                `${requirements.gameType} ${requirements.genre} 게임 개발 완전한 예제 코드`,
+                `센서 ${requirements.sensorMechanics?.join(', ')} 활용한 게임 구현`,
+                'SessionSDK 통합 패턴 및 세션 생성 코드',
+                '게임 루프 update render 패턴',
+                '완벽한 게임 템플릿 HTML 구조'
             ];
 
             const contexts = [];
+            console.log('🔍 RAG 검색 시작:', queries.join(' | '));
+
             for (const query of queries) {
                 try {
-                    // Vector Store가 match_documents 함수를 찾지 못하므로
-                    // 임시로 fallback 처리 - 향후 Supabase RPC 함수 생성 필요
-                    console.log('⚠️ Vector Store 검색 실패 - 기본 컨텍스트 사용');
-                    // const retriever = this.vectorStore.asRetriever({
-                    //     k: 2,
-                    //     searchType: 'similarity'
-                    // });
-                    // const docs = await retriever.getRelevantDocuments(query);
-                    // contexts.push(...docs.map(doc => doc.pageContent));
+                    // Phase 3-3 개선: k=2→5, similarity threshold 추가
+                    const retriever = this.vectorStore.asRetriever({
+                        k: 5,  // 검색 결과 증가 (기존 2 → 5)
+                        searchType: 'similarity',
+                        filter: { similarity_threshold: 0.7 }  // 유사도 70% 이상
+                    });
+
+                    const docs = await retriever.getRelevantDocuments(query);
+                    console.log(`  ✅ "${query.slice(0, 30)}..." → ${docs.length}개 문서 검색됨`);
+                    contexts.push(...docs.map(doc => doc.pageContent));
+
                 } catch (err) {
-                    console.log('검색 건너뜀:', err.message);
+                    console.log(`  ⚠️ 검색 실패 (${query.slice(0, 30)}...):`, err.message);
                 }
             }
 
-            // Vector DB가 작동하지 않으므로 기본 컨텍스트 반환
-            return this.getDefaultGameContext();
+            // 검색된 컨텍스트가 있으면 사용, 없으면 기본 컨텍스트
+            if (contexts.length > 0) {
+                console.log(`✅ 총 ${contexts.length}개 컨텍스트 검색 완료`);
+                return contexts.join('\n\n---\n\n');
+            } else {
+                console.log('⚠️ Vector DB 검색 결과 없음 - 기본 컨텍스트 사용');
+                return this.getDefaultGameContext();
+            }
 
         } catch (error) {
-            console.error('컨텍스트 수집 실패:', error);
+            console.error('❌ 컨텍스트 수집 실패:', error);
             return this.getDefaultGameContext();
         }
     }
 
     /**
-     * 안전한 LLM 호출 (더미 모드 지원)
+     * 안전한 LLM 호출 (더미 모드 지원) - Anthropic SDK 사용
      */
     async safeInvokeLLM(prompt, stage = 'general', userMessage = '') {
-        if (this.mockMode || !this.llm) {
+        if (this.mockMode || !this.anthropicClient) {
             console.log('🎭 더미 모드 - 기본 응답 생성');
             return { content: this.generateMockResponse(stage, userMessage) };
         }
-        
+
         try {
-            return await this.llm.invoke([{ role: 'user', content: prompt }]);
+            // Anthropic SDK 직접 사용 (LangChain top_p 문제 완전 우회)
+            const response = await this.anthropicClient.messages.create({
+                model: this.config.claudeModel,
+                max_tokens: 4096,  // 대화 단계는 적은 토큰
+                temperature: this.config.temperature,
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }]
+            });
+
+            return { content: response.content[0].text };
         } catch (error) {
             console.error('❌ Claude API 호출 실패:', error);
             console.log('🎭 더미 모드로 대체');
