@@ -129,13 +129,45 @@ class GameServer {
         });
         
         // 게임 목록 API
-        this.app.get('/api/games', (req, res) => {
-            const games = this.gameScanner.getActiveGames();
-            res.json({
-                success: true,
-                data: games,
-                stats: this.gameScanner.getStats()
-            });
+        this.app.get('/api/games', async (req, res) => {
+            try {
+                const games = this.gameScanner.getActiveGames();
+
+                // 각 게임에 버전 정보 추가
+                const gamesWithVersion = await Promise.all(games.map(async (game) => {
+                    let version = '1.0';
+
+                    // GameMaintenanceManager에서 버전 정보 가져오기
+                    if (this.gameMaintenanceManager) {
+                        try {
+                            // DB에서 버전 정보 조회
+                            const versionInfo = await this.gameMaintenanceManager.getGameVersionFromDB(game.id);
+                            if (versionInfo && versionInfo.current_version) {
+                                version = versionInfo.current_version;
+                            }
+                        } catch (error) {
+                            console.log(`게임 ${game.id}의 버전 정보를 가져오지 못했습니다:`, error.message);
+                        }
+                    }
+
+                    return {
+                        ...game,
+                        version: version
+                    };
+                }));
+
+                res.json({
+                    success: true,
+                    data: gamesWithVersion,
+                    stats: this.gameScanner.getStats()
+                });
+            } catch (error) {
+                console.error('/api/games 오류:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
         });
         
         // 특정 게임 정보 API  

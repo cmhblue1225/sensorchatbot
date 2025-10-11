@@ -1869,7 +1869,7 @@ class DeveloperRoutes {
                                         <div style="font-size: 1.25rem; font-weight: 600; color: #E2E8F0; margin-bottom: 0.25rem;">\${game.title || game.id}</div>
                                         <div style="font-size: 0.875rem; color: #94A3B8;">\${game.id}</div>
                                     </div>
-                                    <span style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid #10B981;">v1.0</span>
+                                    <span style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid #10B981;">v\${game.version || '1.0'}</span>
                                 </div>
                                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-top: 1rem;">
                                     <button onclick="playManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">▶️ 플레이</button>
@@ -1947,7 +1947,7 @@ class DeveloperRoutes {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             gameId: currentManagerGameId,
-                            userReport: bugDescription
+                            bugDescription: bugDescription
                         })
                     });
 
@@ -1985,7 +1985,7 @@ class DeveloperRoutes {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             gameId: currentManagerGameId,
-                            featureRequest: featureDescription
+                            featureDescription: featureDescription
                         })
                     });
 
