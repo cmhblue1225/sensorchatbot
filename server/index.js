@@ -1285,6 +1285,12 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             this.gameMaintenanceManager = new GameMaintenanceManager(maintenanceConfig);
             console.log('✅ GameMaintenanceManager 초기화 완료');
 
+            // GameMaintenanceManager를 InteractiveGameGenerator에 주입
+            if (this.interactiveGameGenerator) {
+                this.interactiveGameGenerator.gameMaintenanceManager = this.gameMaintenanceManager;
+                console.log('✅ InteractiveGameGenerator에 GameMaintenanceManager 주입 완료');
+            }
+
             // 자동 문서 임베딩 실행
             await this.autoEmbedDocuments();
 
