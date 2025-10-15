@@ -1,0 +1,1026 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>김치 버무리 듀오</title>
+    <style>
+        :root {
+            --primary: #f97316;
+            --secondary: #84cc16;
+            --accent: #fb7185;
+            --surface: rgba(15, 23, 42, 0.85);
+            --background: #0f172a;
+            --card: rgba(30, 41, 59, 0.85);
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border: rgba(148, 163, 184, 0.4);
+            --success: #22c55e;
+            --warning: #facc15;
+            --error: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(120deg, #111827 0%, #0f172a 60%, #1e293b 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            padding: 2rem;
+        }
+
+        .game-shell {
+            width: 100%;
+            max-width: 1280px;
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: 320px 1fr 320px;
+        }
+
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            padding: 1.75rem;
+            box-shadow: 0 25px 60px rgba(15, 23, 42, 0.35);
+            backdrop-filter: blur(18px);
+        }
+
+        .session-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .session-panel h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .session-code {
+            font-size: 3.25rem;
+            font-weight: 800;
+            letter-spacing: 0.2rem;
+            text-align: center;
+            padding: 1rem;
+            border-radius: 1rem;
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(132, 204, 22, 0.2));
+            border: 1px solid rgba(249, 115, 22, 0.45);
+        }
+
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.15);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .start-button {
+            padding: 0.9rem 1.2rem;
+            border-radius: 0.85rem;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #f97316, #facc15);
+            color: #0f172a;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        .start-button.ready {
+            pointer-events: auto;
+            opacity: 1;
+            box-shadow: 0 12px 25px rgba(249, 115, 22, 0.35);
+        }
+
+        .start-button:active {
+            transform: translateY(2px);
+        }
+
+        .tips {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .tips strong {
+            color: var(--primary);
+        }
+
+        .stage-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phase-banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.1rem 1.4rem;
+            border-radius: 0.9rem;
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .phase-banner span {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        .beat-track {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.8rem;
+            padding: 1rem;
+            border-radius: 0.9rem;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .beat-dot {
+            position: relative;
+            height: 28px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.2);
+            overflow: hidden;
+        }
+
+        .beat-dot.active {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.65), rgba(132, 204, 22, 0.5));
+            box-shadow: 0 0 18px rgba(249, 115, 22, 0.55);
+        }
+
+        .beat-dot::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(248, 250, 252, 0.14);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.15s ease-out;
+        }
+
+        .beat-dot.success::after {
+            background: rgba(34, 197, 94, 0.4);
+            transform: scaleX(1);
+        }
+
+        .beat-dot.ok::after {
+            background: rgba(250, 204, 21, 0.35);
+            transform: scaleX(0.65);
+        }
+
+        .beat-dot.miss::after {
+            background: rgba(239, 68, 68, 0.4);
+            transform: scaleX(0.35);
+        }
+
+        .tabletop {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 1.2rem;
+            background: linear-gradient(120deg, rgba(101, 78, 45, 0.85), rgba(59, 37, 18, 0.92));
+            border: 1px solid rgba(241, 196, 125, 0.35);
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.25);
+        }
+
+        .bowl,
+        .cabbage-board {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            background: rgba(15, 23, 42, 0.18);
+            border-radius: 1rem;
+            padding: 1rem;
+            width: 100%;
+            height: 100%;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+        }
+
+        .bowl::before {
+            content: '';
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 50% 50%, rgba(252, 165, 165, 0.85), rgba(220, 38, 38, 0.85) 55%, rgba(127, 29, 29, 0.75));
+            box-shadow: inset 0 0 25px rgba(0,0,0,0.4);
+            position: relative;
+        }
+
+        .bowl .gauge {
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 18px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.5);
+            overflow: hidden;
+            border: 1px solid rgba(248, 250, 252, 0.25);
+        }
+
+        .bowl .gauge span {
+            display: block;
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #f97316, #fb7185);
+            transition: width 0.35s ease-out;
+        }
+
+        .cabbage-board::before {
+            content: '';
+            width: 200px;
+            height: 260px;
+            border-radius: 120px 120px 80px 80px;
+            background: linear-gradient(180deg, rgba(134, 239, 172, 0.95), rgba(74, 222, 128, 0.8));
+            box-shadow: inset 0 0 35px rgba(22, 163, 74, 0.45);
+            position: relative;
+        }
+
+        .cabbage-board .kimchi-layer {
+            position: absolute;
+            width: 200px;
+            height: 260px;
+            border-radius: 120px 120px 80px 80px;
+            background: conic-gradient(from 90deg, rgba(248, 113, 113, 0.1) 0%, rgba(248, 113, 113, 0.65) 65%, rgba(244, 114, 182, 0.45));
+            clip-path: inset(calc(100% - var(--fill, 0%)) 0 0 0 round 120px);
+            transition: clip-path 0.45s ease-out;
+        }
+
+        .team-feedback {
+            text-align: center;
+            padding: 0.9rem;
+            border-radius: 0.8rem;
+            background: rgba(15, 23, 42, 0.55);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            min-height: 54px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .players-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .player-card {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 1rem;
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at top right, rgba(249, 115, 22, 0.18), transparent 55%);
+            pointer-events: none;
+        }
+
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-label {
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .player-status {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .score-display {
+            display: flex;
+            gap: 0.5rem;
+            align-items: baseline;
+            color: var(--primary);
+        }
+
+        .score-display strong {
+            font-size: 2rem;
+        }
+
+        .timing-result {
+            font-size: 0.95rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.75rem;
+            background: rgba(148, 163, 184, 0.18);
+            color: var(--text-secondary);
+            text-align: center;
+            min-height: 38px;
+        }
+
+        .timing-result.good {
+            background: rgba(34, 197, 94, 0.18);
+            color: #4ade80;
+        }
+        .timing-result.ok {
+            background: rgba(250, 204, 21, 0.18);
+            color: #facc15;
+        }
+        .timing-result.miss {
+            background: rgba(239, 68, 68, 0.18);
+            color: #f87171;
+        }
+
+        .progress-meters {
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+        }
+
+        .meter {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .meter-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--text-muted);
+        }
+
+        .meter-bar {
+            position: relative;
+            width: 100%;
+            height: 12px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.6);
+            overflow: hidden;
+        }
+
+        .meter-bar span {
+            position: absolute;
+            inset: 0;
+            width: 0%;
+            background: linear-gradient(90deg, rgba(249, 115, 22, 0.9), rgba(132, 204, 22, 0.9));
+            transition: width 0.35s ease-out;
+        }
+
+        @media (max-width: 1100px) {
+            body {
+                padding: 1rem;
+            }
+            .game-shell {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="game-shell">
+    <section class="panel session-panel">
+        <h1>김치 버무리 듀오</h1>
+        <div class="session-code" id="sessionCode">----</div>
+        <div class="status-chip" id="sessionStatus">세션 준비 중...</div>
+        <button class="start-button" id="startButton">김장 시작</button>
+        <div class="tips">
+            <strong>게임 방법</strong><br>
+            1) 호스트 화면에서 세션을 열고 휴대폰 한 대 또는 두 대로 코드나 QR을 입력하세요.<br>
+            2) 비트가 빛날 때 좌우로 흔들어 양념을 모으세요.<br>
+            3) <strong>"Nice!"</strong> 타이밍을 맞추면 양념을 더 많이 모을 수 있어요.<br>
+            4) 모은 양념을 배추에 고르게 버무려 최고의 김장을 완성하세요!
+        </div>
+        <div class="progress-meters">
+            <div class="meter">
+                <span class="meter-label">양념 그릇</span>
+                <div class="meter-bar"><span id="seasoningMeter"></span></div>
+            </div>
+            <div class="meter">
+                <span class="meter-label">배추 버무림</span>
+                <div class="meter-bar"><span id="cabbageMeter"></span></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel stage-panel">
+        <div class="phase-banner">
+            <span id="phaseLabel">플레이어 연결을 기다리는 중</span>
+            <span id="beatCounter">0 / 0</span>
+        </div>
+        <div class="beat-track" id="beatTrack"></div>
+        <div class="tabletop">
+            <div class="bowl">
+                <div class="gauge"><span id="bowlFill"></span></div>
+            </div>
+            <div class="cabbage-board">
+                <div class="kimchi-layer" id="kimchiLayer" style="--fill: 0%;"></div>
+            </div>
+        </div>
+        <div class="team-feedback" id="teamFeedback">휴대폰을 연결하면 김장을 시작할 수 있어요.</div>
+    </section>
+
+    <section class="panel players-panel">
+        <article class="player-card" data-player="1">
+            <div class="player-header">
+                <span class="player-label">플레이어 1</span>
+                <span class="player-status" data-role="status">대기 중</span>
+            </div>
+            <div class="score-display">
+                <strong data-role="score">0</strong>
+                <span>점</span>
+            </div>
+            <div class="timing-result" data-role="timing">리듬을 기다리는 중...</div>
+        </article>
+        <article class="player-card" data-player="2">
+            <div class="player-header">
+                <span class="player-label">플레이어 2</span>
+                <span class="player-status" data-role="status">선택</span>
+            </div>
+            <div class="score-display">
+                <strong data-role="score">0</strong>
+                <span>점</span>
+            </div>
+            <div class="timing-result" data-role="timing">리듬을 기다리는 중...</div>
+        </article>
+    </section>
+</div>
+
+<!-- Socket.IO -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/SessionSDK.js"></script>
+<script>
+(() => {
+    class KimchiFestGame {
+        constructor() {
+            this.sdk = new SessionSDK({
+                gameId: 'kimchi-fest',
+                gameType: 'dual',
+                debug: true
+            });
+
+            this.dom = {
+                sessionCode: document.getElementById('sessionCode'),
+                sessionStatus: document.getElementById('sessionStatus'),
+                startButton: document.getElementById('startButton'),
+                phaseLabel: document.getElementById('phaseLabel'),
+                beatCounter: document.getElementById('beatCounter'),
+                beatTrack: document.getElementById('beatTrack'),
+                teamFeedback: document.getElementById('teamFeedback'),
+                bowlFill: document.getElementById('bowlFill'),
+                seasoningMeter: document.getElementById('seasoningMeter'),
+                cabbageMeter: document.getElementById('cabbageMeter'),
+                kimchiLayer: document.getElementById('kimchiLayer'),
+                playerCards: {
+                    1: document.querySelector('.player-card[data-player="1"]'),
+                    2: document.querySelector('.player-card[data-player="2"]')
+                }
+            };
+
+            this.dom.playerCards[1].querySelector('[data-role="status"]').textContent = '대기 중';
+            this.dom.playerCards[2].querySelector('[data-role="status"]').textContent = '선택';
+            Object.values(this.dom.playerCards).forEach(card => {
+                const timingEl = card.querySelector('[data-role="timing"]');
+                const scoreEl = card.querySelector('[data-role="score"]');
+                if (timingEl) {
+                    timingEl.textContent = '대기 중 for rhythm...';
+                    timingEl.className = 'timing-result';
+                }
+                if (scoreEl) {
+                    scoreEl.textContent = '0';
+                }
+            });
+
+            this.config = {
+                phases: [
+                    { key: 'gather', label: '양념 모으기', beats: 6 },
+                    { key: 'spread', label: '배추 버무리기', beats: 6 }
+                ],
+                beatInterval: 1500,
+                targetOffset: 600,
+                niceWindow: 180,
+                okWindow: 420,
+                shakeThreshold: 10.5,
+                shakeCooldown: 450,
+                gatherPointUnit: 100 / (6 * 2 * 2),
+                spreadPointUnit: 100 / (6 * 2 * 2)
+            };
+
+            this.state = {
+                phaseIndex: -1,
+                activeBeat: -1,
+                activeBeatStart: 0,
+                isRunning: false,
+                sensors준비 완료: 0,
+                beatTimer: null,
+                beatRecords: new Map(),
+                sessionCode: null,
+                isSoloMode: false,
+                sensorOrder: [],
+                playerData: {
+                    1: { sensorId: null, score: 0, lastShake: 0 },
+                    2: { sensorId: null, score: 0, lastShake: 0 }
+                },
+                mixture: 0,
+                coating: 0
+            };
+
+            this.bindUI();
+            this.registerSdkEvents();
+            this.updateStartAvailability();
+            this.renderBeatTrack(6);
+        }
+
+        bindUI() {
+            this.dom.startButton.addEventListener('click', () => {
+                if (!this.state.isRunning) {
+                    this.startGame();
+                } else {
+                    this.resetGame();
+                }
+            });
+        }
+
+        registerSdkEvents() {
+            this.sdk.on('connected', async () => {
+                this.dom.sessionStatus.textContent = '서버에 연결되었습니다. 세션을 준비하는 중입니다...';
+                try {
+                    await this.sdk.createSession();
+                } catch (error) {
+                    console.error('세션 생성 실패', error);
+                    this.dom.sessionStatus.textContent = '세션 생성 실패: ' + (error.message || error);
+                }
+            });
+
+            this.sdk.on('disconnected', () => {
+                this.dom.sessionStatus.textContent = '서버 연결이 끊어졌습니다. 재연결을 시도합니다...';
+                this.state.sessionCode = null;
+                this.dom.sessionCode.textContent = '----';
+                this.disableStartButton();
+                this.updateStartAvailability();
+                this.dom.teamFeedback.textContent = '서버 연결을 복구하는 중이에요. 잠시만 기다려 주세요.';
+            });
+
+            this.sdk.on('session-created', (event) => {
+                const session = (event && event.detail) ? event.detail : event;
+                const code = session.sessionCode || session.code || '----';
+                this.state.sessionCode = code;
+                this.dom.sessionCode.textContent = code;
+                this.dom.sessionStatus.textContent = '세션 코드가 준비되었습니다';
+                this.dom.teamFeedback.textContent = '휴대폰에서 세션 코드를 입력하면 김장을 시작할 수 있어요!';
+                this.updateStartAvailability();
+            });
+
+            this.sdk.on('sensor-connected', (event) => {
+                const payload = (event && event.detail) ? event.detail : event;
+                const sensorId = typeof payload === 'string' ? payload : (payload && payload.sensorId);
+                if (sensorId) {
+                    this.addSensor(sensorId);
+                }
+            });
+
+            this.sdk.on('sensor-disconnected', (event) => {
+                const payload = (event && event.detail) ? event.detail : event;
+                const sensorId = typeof payload === 'string' ? payload : (payload && payload.sensorId);
+                if (sensorId) {
+                    this.removeSensor(sensorId);
+                }
+            });
+
+            this.sdk.on('sensor-data', (packet) => {
+                this.handleSensorData(packet);
+            });
+
+            this.sdk.on('connection-error', (error) => {
+                console.error('연결 오류', error);
+                const message = (error && (error.error || error.message)) || error;
+                this.dom.sessionStatus.textContent = '연결 오류: ' + message;
+            });
+        }
+
+        addSensor(sensorId) {
+            if (this.state.sensorOrder.includes(sensorId)) {
+                return;
+            }
+
+            const slot = this.state.sensorOrder.length < 2 ? this.state.sensorOrder.length + 1 : null;
+            if (!slot) {
+                this.dom.teamFeedback.textContent = '참가 가능한 인원이 가득 찼습니다. 추가 연결은 관전만 가능합니다.';
+                return;
+            }
+
+            this.state.sensorOrder.push(sensorId);
+            const player = this.state.playerData[slot];
+            player.sensorId = sensorId;
+            player.score = 0;
+            player.lastShake = 0;
+            this.state.sensorsReady = this.state.sensorOrder.length;
+
+            const card = this.dom.playerCards[slot];
+            card.querySelector('[data-role="status"]').textContent = '준비 완료';
+            card.querySelector('[data-role="status"]').style.color = '#4ade80';
+            card.querySelector('[data-role="score"]').textContent = '0';
+            const timingEl = card.querySelector('[data-role="timing"]');
+            timingEl.textContent = '리듬을 기다리는 중...';
+            timingEl.className = 'timing-result';
+
+            this.updateStartAvailability();
+        }
+
+        removeSensor(sensorId) {
+            const index = this.state.sensorOrder.indexOf(sensorId);
+            if (index !== -1) {
+                this.state.sensorOrder.splice(index, 1);
+                this.state.sensorsReady = this.state.sensorOrder.length;
+
+                [1, 2].forEach((slotIndex) => {
+                    const id = this.state.sensorOrder[slotIndex - 1] || null;
+                    const player = this.state.playerData[slotIndex];
+                    player.sensorId = id;
+                    player.score = 0;
+                    player.lastShake = 0;
+
+                    const card = this.dom.playerCards[slotIndex];
+                    const statusEl = card.querySelector('[data-role="status"]');
+                    const scoreEl = card.querySelector('[data-role="score"]');
+                    const timingEl = card.querySelector('[data-role="timing"]');
+
+                    scoreEl.textContent = '0';
+                    timingEl.textContent = '리듬을 기다리는 중...';
+                    timingEl.className = 'timing-result';
+
+                    if (id) {
+                        statusEl.textContent = '준비 완료';
+                        statusEl.style.color = '#4ade80';
+                    } else {
+                        statusEl.textContent = slotIndex === 1 ? '대기 중' : '선택';
+                        statusEl.style.color = 'var(--text-muted)';
+                    }
+                });
+
+                this.stopGame();
+                this.state.isSoloMode = false;
+                this.updateStartAvailability();
+
+                const message = this.state.sensorOrder.length === 0 
+                    ? '플레이어가 나갔어요. 다시 연결해 주세요.' 
+                    : '1인 모드를 계속 이용할 수 있어요. 준비되면 시작 버튼을 눌러주세요!';
+                this.dom.teamFeedback.textContent = message;
+            }
+        }
+
+        enableStartButton(label) {
+            this.dom.startButton.textContent = label;
+            this.dom.startButton.classList.add('ready');
+        }
+
+        disableStartButton() {
+            this.dom.startButton.classList.remove('ready');
+            this.dom.startButton.textContent = '김장 시작';
+        }
+
+        updateStartAvailability() {
+            const sessionReady = Boolean(this.state.sessionCode);
+            const playerCount = this.state.sensorOrder.length;
+
+            if (!sessionReady) {
+                this.disableStartButton();
+                return;
+            }
+
+            if (playerCount === 0) {
+                this.disableStartButton();
+                this.dom.teamFeedback.textContent = '휴대폰을 연결하면 김장을 시작할 수 있어요.';
+                return;
+            }
+
+            if (playerCount === 1) {
+                this.enableStartButton('혼자 김장 시작');
+                this.dom.teamFeedback.textContent = '1인 모드 준비 완료! 준비되면 시작 버튼을 눌러주세요.';
+            } else {
+                this.enableStartButton('함께 김장 시작');
+                this.dom.teamFeedback.textContent = '두 명 모두 준비됐어요. 함께 김장을 시작해요!';
+            }
+        }
+
+        startGame() {
+            if (this.state.sensorOrder.length < 1) {
+                this.dom.teamFeedback.textContent = '휴대폰을 연결하면 김장을 시작할 수 있어요.';
+                return;
+            }
+
+            this.resetGame();
+            this.state.isSoloMode = this.state.sensorOrder.length === 1;
+            this.state.isRunning = true;
+            this.state.phaseIndex = 0;
+            this.dom.teamFeedback.textContent = this.state.isSoloMode
+                ? '1인 모드: 박자에 맞춰 양념을 듬뿍 모아보세요!'
+                : '2인 모드: 호흡을 맞춰 양념을 한가득 모아보세요!';
+            this.dom.startButton.textContent = '다시하기';
+
+            this.startPhase();
+        }
+
+        resetGame() {
+            this.stopGame();
+            this.state.isSoloMode = false;
+            Object.values(this.state.playerData).forEach(player => {
+                player.score = 0;
+                player.lastShake = 0;
+            });
+            Object.values(this.dom.playerCards).forEach(card => {
+                card.querySelector('[data-role="score"]').textContent = '0';
+                const timingEl = card.querySelector('[data-role="timing"]');
+                timingEl.textContent = '리듬을 기다리는 중...';
+                timingEl.className = 'timing-result';
+            });
+            this.state.mixture = 0;
+            this.state.coating = 0;
+            this.updateMeters();
+            this.renderBeatTrack(this.config.phases[0].beats);
+            this.dom.phaseLabel.textContent = '김장 준비 중';
+            this.dom.beatCounter.textContent = '0 / 0';
+        }
+
+        startPhase() {
+            const phase = this.config.phases[this.state.phaseIndex];
+            this.dom.phaseLabel.textContent = '단계 ' + (this.state.phaseIndex + 1) + ': ' + phase.label;
+            this.dom.beatCounter.textContent = '0 / ' + phase.beats;
+            this.renderBeatTrack(phase.beats);
+            this.state.activeBeat = -1;
+            this.scheduleNextBeat();
+        }
+
+        resolveBeat(index) {
+            const record = this.state.beatRecords.get(index) || new Map();
+            const connectedPlayers = this.state.sensorOrder.slice(0, 2).map((sensorId) => this.getPlayerSlot(sensorId));
+            let niceCounts = 0;
+
+            connectedPlayers.forEach(slot => {
+                if (!slot) return;
+                if (!record.has(slot)) {
+                    this.registerResult(slot, 'miss', 0, index);
+                } else {
+                    const result = record.get(slot);
+                    if (result?.status === 'nice') {
+                        niceCounts += 1;
+                    }
+                }
+            });
+
+            if (this.state.isSoloMode) {
+                if (niceCounts >= 1) {
+                    this.dom.teamFeedback.textContent = '좋았어요! 혼자서도 리듬을 잘 맞추고 있어요!';
+                } else {
+                    this.dom.teamFeedback.textContent = '이번 박자를 놓쳤어요. 다음 박자를 노려보세요!';
+                }
+            } else if (niceCounts === 2) {
+                this.dom.teamFeedback.textContent = '환상의 호흡이에요! 양념이 넘쳐나요!';
+            } else if (niceCounts === 1) {
+                this.dom.teamFeedback.textContent = '한 명이 성공했어요! 함께 박자를 맞춰봐요.';
+            } else {
+                this.dom.teamFeedback.textContent = '이번에는 박자가 어긋났네요. 다시 도전해봐요!';
+            }
+
+            this.scheduleNextBeat();
+        }
+
+        finishPhase() {
+            const phase = this.config.phases[this.state.phaseIndex];
+            if (phase.key === 'gather') {
+                if (this.state.mixture >= 80) {
+                    this.dom.teamFeedback.textContent = '양념이 한가득이에요! 이제 배추 잎마다 골고루 발라봐요!';
+                } else {
+                    this.dom.teamFeedback.textContent = '양념이 조금 부족하지만 정성껏 골고루 발라봐요!';
+                }
+            }
+
+            this.state.phaseIndex += 1;
+            if (this.state.phaseIndex >= this.config.phases.length) {
+                this.finishGame();
+            } else {
+                this.startPhase();
+            }
+        }
+
+        finishGame() {
+            this.state.isRunning = false;
+            const totalScore = this.state.playerData[1].score + this.state.playerData[2].score;
+            let feedback = '';
+
+            if (this.state.isSoloMode) {
+                if (this.state.coating >= 90) {
+                    feedback = '전설의 1인 김치! 배추 잎마다 완벽하게 버무려졌어요.';
+                } else if (this.state.coating >= 60) {
+                    feedback = '혼자서도 멋졌어요! 김치가 맛있게 익을 거예요.';
+                } else {
+                    feedback = '조금 부족해요. 다시 도전하면 더 좋아질 거예요!';
+                }
+            } else {
+                if (this.state.coating >= 90) {
+                    feedback = '최고의 팀워크! 완벽한 김장이 완성됐어요!';
+                } else if (this.state.coating >= 60) {
+                    feedback = '맛있는 김치가 기대돼요! 박자를 조금만 더 맞춰봐요!';
+                } else {
+                    feedback = '조금 고르지 않네요. 둘이 함께 다시 도전해봐요!';
+                }
+            }
+
+            this.dom.phaseLabel.textContent = '김장 완료!';
+            this.dom.beatCounter.textContent = totalScore + '점 획득';
+            this.dom.teamFeedback.textContent = feedback;
+            this.dom.startButton.textContent = '다시하기';
+        }
+
+        registerResult(slot, status, points, beatIndex) {
+            const record = this.state.beatRecords.get(beatIndex) || new Map();
+            if (record.has(slot)) {
+                return;
+            }
+
+            record.set(slot, { status, points });
+            this.state.beatRecords.set(beatIndex, record);
+
+            const player = this.state.playerData[slot];
+            player.score += points;
+            this.dom.playerCards[slot].querySelector('[data-role="score"]').textContent = String(player.score);
+
+            const timingEl = this.dom.playerCards[slot].querySelector('[data-role="timing"]');
+            timingEl.className = 'timing-result';
+            timingEl.classList.add(status === 'nice' ? 'good' : (status === 'ok' || status === 'late') ? 'ok' : 'miss');
+
+            if (status === 'nice') {
+                timingEl.textContent = 'Nice! 완벽한 타이밍!';
+            } else if (status === 'ok') {
+                timingEl.textContent = '좋아요! 박자를 유지하세요.';
+            } else if (status === 'late') {
+                timingEl.textContent = '조금 늦었지만 양념은 추가됐어요!';
+            } else {
+                timingEl.textContent = '놓쳤어요. 다음 박자를 노려봐요!';
+            }
+
+            const dot = this.dom.beatTrack.querySelector('.beat-dot[data-index="' + beatIndex + '"]');
+            if (dot) {
+                if (status === 'nice') {
+                    dot.classList.add('success');
+                } else if (status === 'ok' || status === 'late') {
+                    dot.classList.add('ok');
+                } else {
+                    dot.classList.add('miss');
+                }
+            }
+
+            const phase = this.config.phases[this.state.phaseIndex];
+            const unit = phase.key === 'gather' ? this.config.gatherPointUnit : this.config.spreadPointUnit;
+            if (phase.key === 'gather') {
+                this.state.mixture = Math.min(100, this.state.mixture + unit * (status === 'nice' ? 2 : points));
+            } else {
+                this.state.coating = Math.min(100, this.state.coating + unit * (status === 'nice' ? 2 : points));
+            }
+            this.updateMeters();
+        }
+        getPlayerSlot(sensorId) {
+            const idx = this.state.sensorOrder.indexOf(sensorId);
+            return idx !== -1 ? idx + 1 : null;
+        }
+
+        handleSensorData(packet) {
+            if (!this.state.isRunning) {
+                return;
+            }
+
+            const slot = this.getPlayerSlot(packet.sensorId);
+            if (!slot) {
+                return;
+            }
+
+            const player = this.state.playerData[slot];
+            const now = performance.now();
+            if (now - player.lastShake < this.config.shakeCooldown) {
+                return;
+            }
+
+            const accel = packet.data.acceleration;
+            const lateralForce = Math.abs(accel.x) + Math.abs(accel.y * 0.35);
+            if (lateralForce < this.config.shakeThreshold) {
+                return;
+            }
+
+            player.lastShake = now;
+
+            const targetTime = this.state.activeBeatStart + this.config.targetOffset;
+            const delta = Math.abs(now - targetTime);
+
+            let status = 'miss';
+            let points = 0;
+
+            if (delta <= this.config.niceWindow) {
+                status = 'nice';
+                points = 2;
+            } else if (delta <= this.config.okWindow) {
+                status = 'ok';
+                points = 1;
+            } else {
+                status = 'late';
+                points = 1;
+            }
+
+            this.registerResult(slot, status, points, this.state.activeBeat);
+        }
+
+        registerResult(slot, status, points, beatIndex) {
+            const record = this.state.beatRecords.get(beatIndex) || new Map();
+            if (record.has(slot)) {
+                return;
+            }
+
+            record.set(slot, { status, points });
+            this.state.beatRecords.set(beatIndex, record);
+
+            const player = this.state.playerData[slot];
+            player.score += points;
+            this.dom.playerCards[slot].querySelector('[data-role="score"]').textContent = String(player.score);
+
+            const timingEl = this.dom.playerCards[slot].querySelector('[data-role="timing"]');
+            timingEl.className = 'timing-result';
+            timingEl.classList.add(status === 'nice' ? 'good' : (status === 'ok' || status === 'late') ? 'ok' : 'miss');
+
+            if (status === 'nice') {
+                timingEl.textContent = 'Nice! Perfect timing!';
+            } else if (status === 'ok') {
+                timingEl.textContent = '좋아요! 박자를 유지하세요.';
+            } else if (status === 'late') {
+                timingEl.textContent = '조금 늦었지만 양념은 추가됐어요!';
+            } else {
+                timingEl.textContent = '박자를 놓쳤어요. 다음 박자를 노려보세요!';
+            }
+
+            const dot = this.dom.beatTrack.querySelector('.beat-dot[data-index="' + beatIndex + '"]');
+            if (dot) {
+                if (status === 'nice') {
+                    dot.classList.add('success');
+                } else if (status === 'ok' || status === 'late') {
+                    dot.classList.add('ok');
+                } else {
+                    dot.classList.add('miss');
+                }
+            }
+
+            const phase = this.config.phases[this.state.phaseIndex];
+            const unit = phase.key === 'gather' ? this.config.gatherPointUnit : this.config.spreadPointUnit;
+            if (phase.key === 'gather') {
+                this.state.mixture = Math.min(100, this.state.mixture + unit * (status === 'nice' ? 2 : points));
+            } else {
+                this.state.coating = Math.min(100, this.state.coating + unit * (status === 'nice' ? 2 : points));
+            }
+            this.updateMeters();
+        }
+
+        updateMeters() {
+            this.dom.bowlFill.style.width = this.state.mixture + '%';
+            this.dom.seasoningMeter.style.width = this.state.mixture + '%';
+            this.dom.cabbageMeter.style.width = this.state.coating + '%';
+            this.dom.kimchiLayer.style.setProperty('--fill', this.state.coating + '%');
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        new KimchiFestGame();
+    });
+})();
+</script>
+</body>
+</html>
+
