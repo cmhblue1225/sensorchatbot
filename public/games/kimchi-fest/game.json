@@ -1,0 +1,34 @@
+{
+  "id": "kimchi-fest",
+  "title": "김치 버무리 듀오",
+  "description": "박자에 맞춰 양념을 모아 배추에 버무리는 김장 게임입니다. 혼자서도, 둘이서도 즐겨보세요.",
+  "category": "dual",
+  "icon": "kimchi",
+  "version": "6.0.0",
+  "author": "Sensor Game Hub Team",
+  "created": "2025-10-02T00:00:00Z",
+  "sensors": [
+    "motion",
+    "orientation"
+  ],
+  "maxPlayers": 2,
+  "difficulty": "easy",
+  "status": "active",
+  "featured": true,
+  "tags": [
+    "cooperative",
+    "rhythm",
+    "cooking",
+    "kimchi",
+    "solo"
+  ],
+  "instructions": [
+    "호스트 화면에서 세션을 열고 휴대폰 한 대 또는 두 대로 코드나 QR을 입력하세요.",
+    "비트가 빛날 때 휴대폰을 좌우로 흔들어 양념을 모으세요.",
+    "모은 양념을 배추 잎 곳곳에 골고루 버무려 높은 점수를 노려보세요."
+  ],
+  "controls": {
+    "sensor1": "좌우 흔들기",
+    "sensor2": "좌우 흔들기"
+  }
+}
