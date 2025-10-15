@@ -1,24 +1,22 @@
-﻿<!DOCTYPE html>
+﻿
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>김치 버무리 듀오</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>김치 페스티벌</title>
     <style>
         :root {
-            --primary: #f97316;
-            --secondary: #84cc16;
-            --accent: #fb7185;
-            --surface: rgba(15, 23, 42, 0.85);
-            --background: #0f172a;
-            --card: rgba(30, 41, 59, 0.85);
-            --text-primary: #f8fafc;
-            --text-secondary: #cbd5e1;
-            --text-muted: #94a3b8;
-            --border: rgba(148, 163, 184, 0.4);
-            --success: #22c55e;
-            --warning: #facc15;
-            --error: #ef4444;
+            --bg: #0f172a;
+            --panel: rgba(17, 24, 39, 0.9);
+            --panel-border: rgba(148, 163, 184, 0.35);
+            --accent: #f97316;
+            --accent-strong: #facc15;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --positive: #4ade80;
+            --warning: #fbbf24;
+            --danger: #f87171;
         }
 
         * {
@@ -28,289 +26,232 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(120deg, #111827 0%, #0f172a 60%, #1e293b 100%);
+            font-family: "Noto Sans KR", "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top, rgba(59, 130, 246, 0.22), transparent 42%), var(--bg);
+            color: var(--text);
             min-height: 100vh;
-            color: var(--text-primary);
             display: flex;
             justify-content: center;
-            align-items: stretch;
-            padding: 2rem;
+            padding: 32px;
         }
 
-        .game-shell {
+        .wrapper {
             width: 100%;
-            max-width: 1280px;
+            max-width: 1180px;
             display: grid;
-            gap: 1.5rem;
-            grid-template-columns: 320px 1fr 320px;
+            gap: 24px;
+            grid-template-columns: 320px 1fr 280px;
         }
 
         .panel {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 1.25rem;
-            padding: 1.75rem;
-            box-shadow: 0 25px 60px rgba(15, 23, 42, 0.35);
-            backdrop-filter: blur(18px);
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45);
         }
 
         .session-panel {
             display: flex;
             flex-direction: column;
-            gap: 1.25rem;
+            gap: 18px;
         }
 
         .session-panel h1 {
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             font-weight: 700;
-            color: var(--primary);
-        }
-
-        .session-code {
-            font-size: 3.25rem;
-            font-weight: 800;
-            letter-spacing: 0.2rem;
-            text-align: center;
-            padding: 1rem;
-            border-radius: 1rem;
-            background: linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(132, 204, 22, 0.2));
-            border: 1px solid rgba(249, 115, 22, 0.45);
+            color: var(--accent);
         }
 
         .status-chip {
             display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
-            padding: 0.4rem 0.85rem;
+            gap: 8px;
+            font-size: 0.95rem;
+            color: var(--muted);
+            background: rgba(148, 163, 184, 0.18);
+            padding: 8px 16px;
             border-radius: 999px;
-            background: rgba(148, 163, 184, 0.15);
-            color: var(--text-secondary);
+        }
+
+        .session-code {
+            font-family: "Roboto Mono", "Courier New", monospace;
+            font-size: 2.8rem;
+            font-weight: 700;
+            letter-spacing: 0.26rem;
+            text-align: center;
+            padding: 18px;
+            border-radius: 16px;
+            background: rgba(249, 115, 22, 0.25);
+            border: 1px solid rgba(249, 115, 22, 0.38);
+        }
+
+        .qr-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            border-radius: 16px;
+            background: rgba(15, 23, 42, 0.68);
+            border: 1px dashed rgba(148, 163, 184, 0.4);
+        }
+
+        .qr-box {
+            width: 180px;
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.88);
+            border-radius: 14px;
+            padding: 12px;
+        }
+
+        .qr-box canvas,
+        .qr-box img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .qr-hint {
             font-size: 0.85rem;
-        }
-
-        .start-button {
-            padding: 0.9rem 1.2rem;
-            border-radius: 0.85rem;
-            border: none;
-            font-size: 1rem;
-            font-weight: 600;
-            background: linear-gradient(135deg, #f97316, #facc15);
-            color: #0f172a;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            pointer-events: none;
-            opacity: 0.4;
-        }
-
-        .start-button.ready {
-            pointer-events: auto;
-            opacity: 1;
-            box-shadow: 0 12px 25px rgba(249, 115, 22, 0.35);
-        }
-
-        .start-button:active {
-            transform: translateY(2px);
+            color: var(--muted);
+            text-align: center;
+            line-height: 1.5;
         }
 
         .tips {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        .tips strong {
-            color: var(--primary);
-        }
-
-        .stage-panel {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
-            position: relative;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        .tips li {
+            list-style: disc inside;
+        }
+
+        .meters {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .meter-label {
+            font-size: 0.85rem;
+            color: var(--muted);
+            letter-spacing: 0.1em;
+        }
+
+        .meter-bar {
+            height: 12px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.55);
+            border: 1px solid rgba(148, 163, 184, 0.2);
             overflow: hidden;
         }
 
-        .phase-banner {
+        .meter-bar span {
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #f97316, #facc15);
+            transition: width 0.35s ease-out;
+        }
+
+        .start-button {
+            padding: 12px 18px;
+            border-radius: 14px;
+            border: none;
+            background: linear-gradient(135deg, #f97316, #facc15);
+            color: #0f172a;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: not-allowed;
+            opacity: 0.55;
+            transition: transform 0.2s ease;
+        }
+
+        .start-button.ready {
+            cursor: pointer;
+            opacity: 1;
+        }
+
+        .start-button.ready:active {
+            transform: translateY(2px);
+        }
+        .stage-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .phase-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1.1rem 1.4rem;
-            border-radius: 0.9rem;
-            background: rgba(15, 23, 42, 0.75);
-            border: 1px solid rgba(249, 115, 22, 0.3);
-        }
-
-        .phase-banner span {
-            font-size: 1.1rem;
-            font-weight: 600;
-            letter-spacing: 0.04em;
+            background: rgba(15, 23, 42, 0.68);
+            border-radius: 16px;
+            padding: 14px 18px;
+            border: 1px solid rgba(249, 115, 22, 0.35);
         }
 
         .beat-track {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
-            gap: 0.8rem;
-            padding: 1rem;
-            border-radius: 0.9rem;
-            background: rgba(15, 23, 42, 0.65);
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            gap: 12px;
         }
 
         .beat-dot {
-            position: relative;
-            height: 28px;
+            height: 22px;
             border-radius: 999px;
             background: rgba(148, 163, 184, 0.2);
-            overflow: hidden;
+            transition: background 0.2s ease, box-shadow 0.2s ease;
         }
 
         .beat-dot.active {
-            background: linear-gradient(135deg, rgba(249, 115, 22, 0.65), rgba(132, 204, 22, 0.5));
-            box-shadow: 0 0 18px rgba(249, 115, 22, 0.55);
+            background: rgba(249, 115, 22, 0.45);
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.45);
         }
 
-        .beat-dot::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: rgba(248, 250, 252, 0.14);
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.15s ease-out;
-        }
-
-        .beat-dot.success::after {
+        .beat-dot.success {
             background: rgba(34, 197, 94, 0.4);
-            transform: scaleX(1);
         }
 
-        .beat-dot.ok::after {
-            background: rgba(250, 204, 21, 0.35);
-            transform: scaleX(0.65);
+        .beat-dot.ok {
+            background: rgba(250, 204, 21, 0.36);
         }
 
-        .beat-dot.miss::after {
-            background: rgba(239, 68, 68, 0.4);
-            transform: scaleX(0.35);
-        }
-
-        .tabletop {
-            flex: 1;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1.5rem;
-            padding: 1.5rem;
-            border-radius: 1.2rem;
-            background: linear-gradient(120deg, rgba(101, 78, 45, 0.85), rgba(59, 37, 18, 0.92));
-            border: 1px solid rgba(241, 196, 125, 0.35);
-            box-shadow: inset 0 0 40px rgba(0,0,0,0.25);
-        }
-
-        .bowl,
-        .cabbage-board {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 1rem;
-            background: rgba(15, 23, 42, 0.18);
-            border-radius: 1rem;
-            padding: 1rem;
-            width: 100%;
-            height: 100%;
-            border: 1px solid rgba(148, 163, 184, 0.18);
-        }
-
-        .bowl::before {
-            content: '';
-            width: 160px;
-            height: 160px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 50% 50%, rgba(252, 165, 165, 0.85), rgba(220, 38, 38, 0.85) 55%, rgba(127, 29, 29, 0.75));
-            box-shadow: inset 0 0 25px rgba(0,0,0,0.4);
-            position: relative;
-        }
-
-        .bowl .gauge {
-            position: absolute;
-            bottom: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 140px;
-            height: 18px;
-            border-radius: 999px;
-            background: rgba(15, 23, 42, 0.5);
-            overflow: hidden;
-            border: 1px solid rgba(248, 250, 252, 0.25);
-        }
-
-        .bowl .gauge span {
-            display: block;
-            width: 0%;
-            height: 100%;
-            background: linear-gradient(90deg, #f97316, #fb7185);
-            transition: width 0.35s ease-out;
-        }
-
-        .cabbage-board::before {
-            content: '';
-            width: 200px;
-            height: 260px;
-            border-radius: 120px 120px 80px 80px;
-            background: linear-gradient(180deg, rgba(134, 239, 172, 0.95), rgba(74, 222, 128, 0.8));
-            box-shadow: inset 0 0 35px rgba(22, 163, 74, 0.45);
-            position: relative;
-        }
-
-        .cabbage-board .kimchi-layer {
-            position: absolute;
-            width: 200px;
-            height: 260px;
-            border-radius: 120px 120px 80px 80px;
-            background: conic-gradient(from 90deg, rgba(248, 113, 113, 0.1) 0%, rgba(248, 113, 113, 0.65) 65%, rgba(244, 114, 182, 0.45));
-            clip-path: inset(calc(100% - var(--fill, 0%)) 0 0 0 round 120px);
-            transition: clip-path 0.45s ease-out;
+        .beat-dot.miss {
+            background: rgba(239, 68, 68, 0.36);
         }
 
         .team-feedback {
+            background: rgba(15, 23, 42, 0.62);
+            border-radius: 14px;
+            padding: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
             text-align: center;
-            padding: 0.9rem;
-            border-radius: 0.8rem;
-            background: rgba(15, 23, 42, 0.55);
-            border: 1px solid rgba(148, 163, 184, 0.15);
-            min-height: 54px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1rem;
-            color: var(--text-secondary);
+            color: var(--muted);
+            line-height: 1.6;
         }
 
         .players-panel {
             display: flex;
             flex-direction: column;
-            gap: 1.25rem;
+            gap: 18px;
         }
 
         .player-card {
-            background: rgba(15, 23, 42, 0.75);
-            border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 1rem;
-            padding: 1.2rem;
+            background: rgba(15, 23, 42, 0.68);
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            padding: 18px;
             display: flex;
             flex-direction: column;
-            gap: 0.8rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .player-card::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at top right, rgba(249, 115, 22, 0.18), transparent 55%);
-            pointer-events: none;
+            gap: 12px;
         }
 
         .player-header {
@@ -319,116 +260,88 @@
             align-items: center;
         }
 
-        .player-label {
-            font-weight: 700;
-            letter-spacing: 0.04em;
-        }
-
         .player-status {
-            font-size: 0.85rem;
-            color: var(--text-muted);
+            font-weight: 600;
+            color: var(--muted);
         }
 
-        .score-display {
-            display: flex;
-            gap: 0.5rem;
-            align-items: baseline;
-            color: var(--primary);
+        .player-status.online {
+            color: var(--positive);
         }
 
-        .score-display strong {
-            font-size: 2rem;
+        .score-value {
+            font-size: 2.4rem;
+            font-weight: 700;
+            color: var(--accent);
         }
 
-        .timing-result {
+        .score-suffix {
+            margin-left: 6px;
+            color: var(--muted);
+        }
+
+        .timing {
             font-size: 0.95rem;
-            padding: 0.5rem 0.75rem;
-            border-radius: 0.75rem;
+            padding: 10px 12px;
+            border-radius: 12px;
             background: rgba(148, 163, 184, 0.18);
-            color: var(--text-secondary);
+            color: var(--muted);
             text-align: center;
-            min-height: 38px;
         }
 
-        .timing-result.good {
-            background: rgba(34, 197, 94, 0.18);
-            color: #4ade80;
-        }
-        .timing-result.ok {
-            background: rgba(250, 204, 21, 0.18);
-            color: #facc15;
-        }
-        .timing-result.miss {
-            background: rgba(239, 68, 68, 0.18);
-            color: #f87171;
+        .timing.good {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--positive);
         }
 
-        .progress-meters {
-            display: flex;
-            flex-direction: column;
-            gap: 0.9rem;
+        .timing.ok {
+            background: rgba(250, 204, 21, 0.2);
+            color: var(--warning);
         }
 
-        .meter {
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-        }
-
-        .meter-label {
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            color: var(--text-muted);
-        }
-
-        .meter-bar {
-            position: relative;
-            width: 100%;
-            height: 12px;
-            border-radius: 999px;
-            background: rgba(15, 23, 42, 0.6);
-            overflow: hidden;
-        }
-
-        .meter-bar span {
-            position: absolute;
-            inset: 0;
-            width: 0%;
-            background: linear-gradient(90deg, rgba(249, 115, 22, 0.9), rgba(132, 204, 22, 0.9));
-            transition: width 0.35s ease-out;
+        .timing.miss {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
         }
 
         @media (max-width: 1100px) {
-            body {
-                padding: 1rem;
-            }
-            .game-shell {
+            .wrapper {
                 grid-template-columns: 1fr;
+            }
+
+            .stage-panel {
+                order: 3;
+            }
+
+            .players-panel {
+                order: 2;
             }
         }
     </style>
 </head>
 <body>
-<div class="game-shell">
+<div class="wrapper">
     <section class="panel session-panel">
-        <h1>김치 버무리 듀오</h1>
+        <h1>김치 페스티벌</h1>
+        <p class="status-chip" id="sessionStatus">세션 준비 중...</p>
         <div class="session-code" id="sessionCode">----</div>
-        <div class="status-chip" id="sessionStatus">세션 준비 중...</div>
-        <button class="start-button" id="startButton">김장 시작</button>
-        <div class="tips">
-            <strong>게임 방법</strong><br>
-            1) 호스트 화면에서 세션을 열고 휴대폰 한 대 또는 두 대로 코드나 QR을 입력하세요.<br>
-            2) 비트가 빛날 때 좌우로 흔들어 양념을 모으세요.<br>
-            3) <strong>"Nice!"</strong> 타이밍을 맞추면 양념을 더 많이 모을 수 있어요.<br>
-            4) 모은 양념을 배추에 고르게 버무려 최고의 김장을 완성하세요!
+        <div class="qr-wrapper">
+            <div class="qr-box" id="qrBox"><span id="qrPlaceholder">세션 생성 대기</span></div>
+            <p class="qr-hint">휴대폰에서 센서 페이지를 열고 QR 코드를 스캔하거나<br>세션 코드를 입력해 주세요.</p>
         </div>
-        <div class="progress-meters">
-            <div class="meter">
-                <span class="meter-label">양념 그릇</span>
+        <button class="start-button" id="startButton" disabled>게임 시작</button>
+        <ul class="tips">
+            <li>휴대폰으로 센서 페이지를 열고 상단의 세션 코드를 입력하세요.</li>
+            <li>두 명이 참여하면 협동 모드, 한 명이면 솔로 모드로 진행돼요.</li>
+            <li>박자가 빛날 때 휴대폰을 흔들어 <strong>Nice!</strong>를 노려보세요.</li>
+            <li>양념이 가득 차면 배추를 골고루 버무려 완성하세요!</li>
+        </ul>
+        <div class="meters">
+            <div>
+                <span class="meter-label">양념 수집률</span>
                 <div class="meter-bar"><span id="seasoningMeter"></span></div>
             </div>
-            <div class="meter">
+            <div>
                 <span class="meter-label">배추 버무림</span>
                 <div class="meter-bar"><span id="cabbageMeter"></span></div>
             </div>
@@ -436,184 +349,207 @@
     </section>
 
     <section class="panel stage-panel">
-        <div class="phase-banner">
-            <span id="phaseLabel">플레이어 연결을 기다리는 중</span>
+        <div class="phase-header">
+            <span id="phaseLabel">플레이어 대기 중</span>
             <span id="beatCounter">0 / 0</span>
         </div>
         <div class="beat-track" id="beatTrack"></div>
-        <div class="tabletop">
-            <div class="bowl">
-                <div class="gauge"><span id="bowlFill"></span></div>
-            </div>
-            <div class="cabbage-board">
-                <div class="kimchi-layer" id="kimchiLayer" style="--fill: 0%;"></div>
-            </div>
-        </div>
-        <div class="team-feedback" id="teamFeedback">휴대폰을 연결하면 김장을 시작할 수 있어요.</div>
+        <div class="team-feedback" id="teamFeedback">휴대폰을 연결하면 바로 김치 버무리기가 시작됩니다.</div>
     </section>
 
     <section class="panel players-panel">
         <article class="player-card" data-player="1">
             <div class="player-header">
-                <span class="player-label">플레이어 1</span>
+                <span>플레이어 1</span>
                 <span class="player-status" data-role="status">대기 중</span>
             </div>
-            <div class="score-display">
-                <strong data-role="score">0</strong>
-                <span>점</span>
+            <div>
+                <span class="score-value" data-role="score">0</span>
+                <span class="score-suffix">점</span>
             </div>
-            <div class="timing-result" data-role="timing">리듬을 기다리는 중...</div>
+            <div class="timing" data-role="timing">리듬을 맞춰볼까요?</div>
         </article>
         <article class="player-card" data-player="2">
             <div class="player-header">
-                <span class="player-label">플레이어 2</span>
-                <span class="player-status" data-role="status">선택</span>
+                <span>플레이어 2</span>
+                <span class="player-status" data-role="status">대기 중</span>
             </div>
-            <div class="score-display">
-                <strong data-role="score">0</strong>
-                <span>점</span>
+            <div>
+                <span class="score-value" data-role="score">0</span>
+                <span class="score-suffix">점</span>
             </div>
-            <div class="timing-result" data-role="timing">리듬을 기다리는 중...</div>
+            <div class="timing" data-role="timing">리듬을 맞춰볼까요?</div>
         </article>
     </section>
 </div>
 
-<!-- Socket.IO -->
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/SessionSDK.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script>
 (() => {
+    const TEXT = {
+        statusPreparing: '세션 준비 중...',
+        statusReady: '세션이 준비되었습니다!',
+        statusDisconnected: '연결이 끊어졌습니다. 다시 시도 중...',
+        createErrorPrefix: '세션 생성 실패: ',
+        connectionErrorPrefix: '연결 오류: ',
+        qrPlaceholder: '세션 생성 대기',
+        startDefault: '게임 시작',
+        startSolo: '혼자서 버무리기',
+        startDuo: '둘이서 버무리기',
+        startReset: '초기화',
+        startRestart: '다시하기',
+        teamConnect: '휴대폰을 연결하면 바로 김치 버무리기가 시작됩니다.',
+        teamSoloReady: '한 명이 준비되었습니다. 버튼을 눌러 혼자서 버무려보세요!',
+        teamDuoReady: '두 명이 모두 준비됐어요! 함께 박자를 맞춰보세요.',
+        teamAllLeft: '플레이어가 모두 나갔어요. 휴대폰을 다시 연결해 주세요.',
+        teamOneLeft: '한 명이 나갔어요. 다른 친구가 들어오면 협동 모드로 진행돼요.',
+        soloStart: '혼자서도 멋진 김치를 만들 수 있어요! 박자에 맞춰 흔들어 주세요.',
+        duoStart: '두 사람이 힘을 합칠 시간입니다! 동시에 흔들어 주세요.',
+        reset: '게임이 초기화되었습니다. 준비가 되면 다시 시작하세요.',
+        gatherSuccess: '양념이 듬뿍 모였어요! 이제 배추에 정성껏 버무려 봅시다.',
+        gatherLow: '양념이 조금 부족해요. 다음 라운드에서 더 힘껏 흔들어 주세요.',
+        finishHigh: '김치가 반짝반짝! 완벽한 조화를 이뤘어요.',
+        finishMid: '훌륭해요! 조금만 더 힘내면 완벽한 김치를 만들 수 있어요.',
+        finishLow: '아쉬워요. 다음에는 박자를 더 잘 맞춰보세요.',
+        timingDefault: '리듬을 맞춰볼까요?',
+        timingNice: '나이스! 완벽한 타이밍!',
+        timingOk: '좋아요! 살짝 어긋났지만 괜찮아요.',
+        timingLate: '조금 늦었어요. 다음엔 더 빠르게!',
+        timingMiss: '박자를 놓쳤어요. 다시 도전!'
+    };
+    const PHASES = [
+        { key: 'gather', label: '양념 모으기', beats: 6 },
+        { key: 'spread', label: '배추에 버무리기', beats: 6 }
+    ];
+
     class KimchiFestGame {
         constructor() {
-            this.sdk = new SessionSDK({
-                gameId: 'kimchi-fest',
-                gameType: 'dual',
-                debug: true
-            });
+            this.sdk = new SessionSDK({ gameId: 'kimchi-fest', gameType: 'dual', debug: true });
 
             this.dom = {
-                sessionCode: document.getElementById('sessionCode'),
                 sessionStatus: document.getElementById('sessionStatus'),
+                sessionCode: document.getElementById('sessionCode'),
                 startButton: document.getElementById('startButton'),
+                qrBox: document.getElementById('qrBox'),
+                qrPlaceholder: document.getElementById('qrPlaceholder'),
                 phaseLabel: document.getElementById('phaseLabel'),
                 beatCounter: document.getElementById('beatCounter'),
                 beatTrack: document.getElementById('beatTrack'),
                 teamFeedback: document.getElementById('teamFeedback'),
-                bowlFill: document.getElementById('bowlFill'),
                 seasoningMeter: document.getElementById('seasoningMeter'),
                 cabbageMeter: document.getElementById('cabbageMeter'),
-                kimchiLayer: document.getElementById('kimchiLayer'),
                 playerCards: {
                     1: document.querySelector('.player-card[data-player="1"]'),
                     2: document.querySelector('.player-card[data-player="2"]')
                 }
             };
 
-            this.dom.playerCards[1].querySelector('[data-role="status"]').textContent = '대기 중';
-            this.dom.playerCards[2].querySelector('[data-role="status"]').textContent = '선택';
-            Object.values(this.dom.playerCards).forEach(card => {
-                const timingEl = card.querySelector('[data-role="timing"]');
-                const scoreEl = card.querySelector('[data-role="score"]');
-                if (timingEl) {
-                    timingEl.textContent = '대기 중 for rhythm...';
-                    timingEl.className = 'timing-result';
-                }
-                if (scoreEl) {
-                    scoreEl.textContent = '0';
-                }
-            });
-
             this.config = {
-                phases: [
-                    { key: 'gather', label: '양념 모으기', beats: 6 },
-                    { key: 'spread', label: '배추 버무리기', beats: 6 }
-                ],
+                phases: PHASES,
                 beatInterval: 1500,
                 targetOffset: 600,
                 niceWindow: 180,
                 okWindow: 420,
                 shakeThreshold: 10.5,
                 shakeCooldown: 450,
-                gatherPointUnit: 100 / (6 * 2 * 2),
-                spreadPointUnit: 100 / (6 * 2 * 2)
+                gatherPointUnit: 100 / (PHASES[0].beats * 2 * 2),
+                spreadPointUnit: 100 / (PHASES[1].beats * 2 * 2)
             };
 
             this.state = {
+                sessionCode: null,
                 phaseIndex: -1,
                 activeBeat: -1,
                 activeBeatStart: 0,
-                isRunning: false,
-                sensors준비 완료: 0,
                 beatTimer: null,
-                beatRecords: new Map(),
-                sessionCode: null,
+                isRunning: false,
                 isSoloMode: false,
                 sensorOrder: [],
+                beatRecords: new Map(),
+                mixture: 0,
+                coating: 0,
                 playerData: {
                     1: { sensorId: null, score: 0, lastShake: 0 },
                     2: { sensorId: null, score: 0, lastShake: 0 }
-                },
-                mixture: 0,
-                coating: 0
+                }
             };
 
+            this.initializeUI();
             this.bindUI();
             this.registerSdkEvents();
+        }
+
+        initializeUI() {
+            this.dom.sessionStatus.textContent = TEXT.statusPreparing;
+            this.renderQrCode(null);
+            this.renderBeatTrack(PHASES[0].beats);
+            this.updateMeters();
+            this.resetPlayers();
             this.updateStartAvailability();
-            this.renderBeatTrack(6);
         }
 
         bindUI() {
             this.dom.startButton.addEventListener('click', () => {
-                if (!this.state.isRunning) {
-                    this.startGame();
-                } else {
+                if (this.state.isRunning) {
                     this.resetGame();
+                    this.dom.teamFeedback.textContent = TEXT.reset;
+                    this.updateStartAvailability();
+                } else {
+                    this.startGame();
                 }
             });
         }
 
         registerSdkEvents() {
             this.sdk.on('connected', async () => {
-                this.dom.sessionStatus.textContent = '서버에 연결되었습니다. 세션을 준비하는 중입니다...';
+                this.dom.sessionStatus.textContent = TEXT.statusPreparing;
                 try {
                     await this.sdk.createSession();
                 } catch (error) {
-                    console.error('세션 생성 실패', error);
-                    this.dom.sessionStatus.textContent = '세션 생성 실패: ' + (error.message || error);
+                    this.dom.sessionStatus.textContent = TEXT.createErrorPrefix + (error?.message || error);
                 }
             });
 
             this.sdk.on('disconnected', () => {
-                this.dom.sessionStatus.textContent = '서버 연결이 끊어졌습니다. 재연결을 시도합니다...';
+                this.dom.sessionStatus.textContent = TEXT.statusDisconnected;
                 this.state.sessionCode = null;
                 this.dom.sessionCode.textContent = '----';
-                this.disableStartButton();
+                this.renderQrCode(null);
+                this.resetPlayers();
+                this.stopGame();
+                this.dom.teamFeedback.textContent = TEXT.teamConnect;
                 this.updateStartAvailability();
-                this.dom.teamFeedback.textContent = '서버 연결을 복구하는 중이에요. 잠시만 기다려 주세요.';
             });
 
             this.sdk.on('session-created', (event) => {
-                const session = (event && event.detail) ? event.detail : event;
-                const code = session.sessionCode || session.code || '----';
+                const session = event?.detail || event;
+                const code = session?.sessionCode || session?.code || '----';
                 this.state.sessionCode = code;
                 this.dom.sessionCode.textContent = code;
-                this.dom.sessionStatus.textContent = '세션 코드가 준비되었습니다';
-                this.dom.teamFeedback.textContent = '휴대폰에서 세션 코드를 입력하면 김장을 시작할 수 있어요!';
+                this.dom.sessionStatus.textContent = TEXT.statusReady;
+                this.renderQrCode(code);
+                this.dom.teamFeedback.textContent = TEXT.teamConnect;
                 this.updateStartAvailability();
             });
 
+            this.sdk.on('connection-error', (error) => {
+                const message = error?.error || error?.message || String(error);
+                this.dom.sessionStatus.textContent = TEXT.connectionErrorPrefix + message;
+            });
+
             this.sdk.on('sensor-connected', (event) => {
-                const payload = (event && event.detail) ? event.detail : event;
-                const sensorId = typeof payload === 'string' ? payload : (payload && payload.sensorId);
+                const payload = event?.detail || event;
+                const sensorId = typeof payload === 'string' ? payload : payload?.sensorId;
                 if (sensorId) {
                     this.addSensor(sensorId);
                 }
             });
 
             this.sdk.on('sensor-disconnected', (event) => {
-                const payload = (event && event.detail) ? event.detail : event;
-                const sensorId = typeof payload === 'string' ? payload : (payload && payload.sensorId);
+                const payload = event?.detail || event;
+                const sensorId = typeof payload === 'string' ? payload : payload?.sensorId;
                 if (sensorId) {
                     this.removeSensor(sensorId);
                 }
@@ -622,22 +558,111 @@
             this.sdk.on('sensor-data', (packet) => {
                 this.handleSensorData(packet);
             });
-
-            this.sdk.on('connection-error', (error) => {
-                console.error('연결 오류', error);
-                const message = (error && (error.error || error.message)) || error;
-                this.dom.sessionStatus.textContent = '연결 오류: ' + message;
-            });
         }
 
+        renderQrCode(code) {
+            this.dom.qrBox.innerHTML = '';
+            if (!code) {
+                this.dom.qrPlaceholder.textContent = TEXT.qrPlaceholder;
+                this.dom.qrBox.appendChild(this.dom.qrPlaceholder);
+                return;
+            }
+
+            const joinUrl = `${window.location.origin}/sensor.html?session=${code}`;
+            if (typeof QRCode !== 'undefined') {
+                try {
+                    new QRCode(this.dom.qrBox, {
+                        text: joinUrl,
+                        width: 180,
+                        height: 180,
+                        colorDark: '#ffffff',
+                        colorLight: '#111827',
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                    return;
+                } catch (error) {
+                    console.warn('QRCode.js 오류, 대체 이미지 사용', error);
+                }
+            }
+
+            const img = document.createElement('img');
+            img.alt = '세션 QR 코드';
+            img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(joinUrl)}`;
+            this.dom.qrBox.appendChild(img);
+        }
+
+        resetPlayers() {
+            [1, 2].forEach((slot) => {
+                const card = this.dom.playerCards[slot];
+                if (!card) return;
+                card.querySelector('[data-role="status"]').textContent = TEXT.statusWaiting;
+                card.querySelector('[data-role="status"]').classList.remove('online');
+                card.querySelector('[data-role="score"]').textContent = '0';
+                card.querySelector('[data-role="timing"]').textContent = TEXT.timingDefault;
+                card.querySelector('[data-role="timing"]').className = 'timing';
+                this.state.playerData[slot] = { sensorId: null, score: 0, lastShake: 0 };
+            });
+            this.state.sensorOrder = [];
+            this.state.isSoloMode = false;
+            this.state.mixture = 0;
+            this.state.coating = 0;
+        }
+
+        enableStartButton(label) {
+            this.dom.startButton.textContent = label;
+            this.dom.startButton.disabled = false;
+            this.dom.startButton.classList.add('ready');
+        }
+
+        disableStartButton(label = TEXT.startDefault) {
+            this.dom.startButton.textContent = label;
+            this.dom.startButton.disabled = true;
+            this.dom.startButton.classList.remove('ready');
+        }
+
+        updateStartAvailability() {
+            if (this.state.isRunning) {
+                this.enableStartButton(TEXT.startReset);
+                return;
+            }
+
+            if (!this.state.sessionCode) {
+                this.disableStartButton(TEXT.startDefault);
+                return;
+            }
+
+            const playerCount = this.state.sensorOrder.length;
+            if (playerCount === 0) {
+                this.disableStartButton(TEXT.startDefault);
+                this.dom.teamFeedback.textContent = TEXT.teamConnect;
+                return;
+            }
+
+            if (playerCount === 1) {
+                this.enableStartButton(TEXT.startSolo);
+                this.dom.teamFeedback.textContent = TEXT.teamSoloReady;
+            } else {
+                this.enableStartButton(TEXT.startDuo);
+                this.dom.teamFeedback.textContent = TEXT.teamDuoReady;
+            }
+        }
+
+        renderBeatTrack(beats) {
+            this.dom.beatTrack.innerHTML = '';
+            for (let i = 0; i < beats; i += 1) {
+                const dot = document.createElement('div');
+                dot.className = 'beat-dot';
+                dot.dataset.index = String(i);
+                this.dom.beatTrack.appendChild(dot);
+            }
+        }
         addSensor(sensorId) {
             if (this.state.sensorOrder.includes(sensorId)) {
                 return;
             }
-
             const slot = this.state.sensorOrder.length < 2 ? this.state.sensorOrder.length + 1 : null;
             if (!slot) {
-                this.dom.teamFeedback.textContent = '참가 가능한 인원이 가득 찼습니다. 추가 연결은 관전만 가능합니다.';
+                this.dom.teamFeedback.textContent = TEXT.teamDuoReady;
                 return;
             }
 
@@ -646,98 +671,53 @@
             player.sensorId = sensorId;
             player.score = 0;
             player.lastShake = 0;
-            this.state.sensorsReady = this.state.sensorOrder.length;
 
             const card = this.dom.playerCards[slot];
-            card.querySelector('[data-role="status"]').textContent = '준비 완료';
-            card.querySelector('[data-role="status"]').style.color = '#4ade80';
-            card.querySelector('[data-role="score"]').textContent = '0';
-            const timingEl = card.querySelector('[data-role="timing"]');
-            timingEl.textContent = '리듬을 기다리는 중...';
-            timingEl.className = 'timing-result';
+            if (card) {
+                const statusEl = card.querySelector('[data-role="status"]');
+                statusEl.textContent = TEXT.statusConnected;
+                statusEl.classList.add('online');
+                card.querySelector('[data-role="score"]').textContent = '0';
+                this.setTimingMessage(slot, TEXT.timingDefault, null);
+            }
 
             this.updateStartAvailability();
         }
 
         removeSensor(sensorId) {
             const index = this.state.sensorOrder.indexOf(sensorId);
-            if (index !== -1) {
-                this.state.sensorOrder.splice(index, 1);
-                this.state.sensorsReady = this.state.sensorOrder.length;
-
-                [1, 2].forEach((slotIndex) => {
-                    const id = this.state.sensorOrder[slotIndex - 1] || null;
-                    const player = this.state.playerData[slotIndex];
-                    player.sensorId = id;
-                    player.score = 0;
-                    player.lastShake = 0;
-
-                    const card = this.dom.playerCards[slotIndex];
-                    const statusEl = card.querySelector('[data-role="status"]');
-                    const scoreEl = card.querySelector('[data-role="score"]');
-                    const timingEl = card.querySelector('[data-role="timing"]');
-
-                    scoreEl.textContent = '0';
-                    timingEl.textContent = '리듬을 기다리는 중...';
-                    timingEl.className = 'timing-result';
-
-                    if (id) {
-                        statusEl.textContent = '준비 완료';
-                        statusEl.style.color = '#4ade80';
-                    } else {
-                        statusEl.textContent = slotIndex === 1 ? '대기 중' : '선택';
-                        statusEl.style.color = 'var(--text-muted)';
-                    }
-                });
-
-                this.stopGame();
-                this.state.isSoloMode = false;
-                this.updateStartAvailability();
-
-                const message = this.state.sensorOrder.length === 0 
-                    ? '플레이어가 나갔어요. 다시 연결해 주세요.' 
-                    : '1인 모드를 계속 이용할 수 있어요. 준비되면 시작 버튼을 눌러주세요!';
-                this.dom.teamFeedback.textContent = message;
-            }
-        }
-
-        enableStartButton(label) {
-            this.dom.startButton.textContent = label;
-            this.dom.startButton.classList.add('ready');
-        }
-
-        disableStartButton() {
-            this.dom.startButton.classList.remove('ready');
-            this.dom.startButton.textContent = '김장 시작';
-        }
-
-        updateStartAvailability() {
-            const sessionReady = Boolean(this.state.sessionCode);
-            const playerCount = this.state.sensorOrder.length;
-
-            if (!sessionReady) {
-                this.disableStartButton();
+            if (index === -1) {
                 return;
             }
+            this.state.sensorOrder.splice(index, 1);
 
-            if (playerCount === 0) {
-                this.disableStartButton();
-                this.dom.teamFeedback.textContent = '휴대폰을 연결하면 김장을 시작할 수 있어요.';
-                return;
-            }
+            [1, 2].forEach((slot) => {
+                const id = this.state.sensorOrder[slot - 1] || null;
+                const card = this.dom.playerCards[slot];
+                if (!card) return;
+                const statusEl = card.querySelector('[data-role="status"]');
+                const timingEl = card.querySelector('[data-role="timing"]');
+                card.querySelector('[data-role="score"]').textContent = '0';
+                this.setTimingMessage(slot, TEXT.timingDefault, null);
+                if (id) {
+                    statusEl.textContent = TEXT.statusConnected;
+                    statusEl.classList.add('online');
+                } else {
+                    statusEl.textContent = TEXT.statusWaiting;
+                    statusEl.classList.remove('online');
+                }
+                timingEl.className = 'timing';
+            });
 
-            if (playerCount === 1) {
-                this.enableStartButton('혼자 김장 시작');
-                this.dom.teamFeedback.textContent = '1인 모드 준비 완료! 준비되면 시작 버튼을 눌러주세요.';
-            } else {
-                this.enableStartButton('함께 김장 시작');
-                this.dom.teamFeedback.textContent = '두 명 모두 준비됐어요. 함께 김장을 시작해요!';
-            }
+            this.stopGame();
+            this.state.isSoloMode = false;
+            this.dom.teamFeedback.textContent = this.state.sensorOrder.length === 0 ? TEXT.teamAllLeft : TEXT.teamOneLeft;
+            this.updateStartAvailability();
         }
 
         startGame() {
-            if (this.state.sensorOrder.length < 1) {
-                this.dom.teamFeedback.textContent = '휴대폰을 연결하면 김장을 시작할 수 있어요.';
+            if (this.state.sensorOrder.length === 0) {
+                this.dom.teamFeedback.textContent = TEXT.teamConnect;
                 return;
             }
 
@@ -745,154 +725,192 @@
             this.state.isSoloMode = this.state.sensorOrder.length === 1;
             this.state.isRunning = true;
             this.state.phaseIndex = 0;
-            this.dom.teamFeedback.textContent = this.state.isSoloMode
-                ? '1인 모드: 박자에 맞춰 양념을 듬뿍 모아보세요!'
-                : '2인 모드: 호흡을 맞춰 양념을 한가득 모아보세요!';
-            this.dom.startButton.textContent = '다시하기';
+            this.state.activeBeat = -1;
 
+            this.dom.teamFeedback.textContent = this.state.isSoloMode ? TEXT.soloStart : TEXT.duoStart;
+            this.enableStartButton(TEXT.startReset);
             this.startPhase();
         }
 
         resetGame() {
             this.stopGame();
-            this.state.isSoloMode = false;
-            Object.values(this.state.playerData).forEach(player => {
+            this.state.mixture = 0;
+            this.state.coating = 0;
+            this.state.beatRecords = new Map();
+            Object.values(this.state.playerData).forEach((player) => {
                 player.score = 0;
                 player.lastShake = 0;
             });
-            Object.values(this.dom.playerCards).forEach(card => {
+            [1, 2].forEach((slot) => {
+                const card = this.dom.playerCards[slot];
+                if (!card) return;
                 card.querySelector('[data-role="score"]').textContent = '0';
-                const timingEl = card.querySelector('[data-role="timing"]');
-                timingEl.textContent = '리듬을 기다리는 중...';
-                timingEl.className = 'timing-result';
+                const statusEl = card.querySelector('[data-role="status"]');
+                if (this.state.playerData[slot].sensorId) {
+                    statusEl.textContent = TEXT.statusConnected;
+                    statusEl.classList.add('online');
+                } else {
+                    statusEl.textContent = TEXT.statusWaiting;
+                    statusEl.classList.remove('online');
+                }
+                this.setTimingMessage(slot, TEXT.timingDefault, null);
             });
-            this.state.mixture = 0;
-            this.state.coating = 0;
             this.updateMeters();
-            this.renderBeatTrack(this.config.phases[0].beats);
-            this.dom.phaseLabel.textContent = '김장 준비 중';
+            this.renderBeatTrack(PHASES[0].beats);
+            this.dom.phaseLabel.textContent = TEXT.teamConnect;
             this.dom.beatCounter.textContent = '0 / 0';
+        }
+
+        stopGame() {
+            if (this.state.beatTimer) {
+                clearTimeout(this.state.beatTimer);
+                this.state.beatTimer = null;
+            }
+            this.state.isRunning = false;
+            this.state.activeBeat = -1;
+            this.dom.beatTrack.querySelectorAll('.beat-dot').forEach((dot) => {
+                dot.classList.remove('active', 'success', 'ok', 'miss');
+            });
         }
 
         startPhase() {
             const phase = this.config.phases[this.state.phaseIndex];
-            this.dom.phaseLabel.textContent = '단계 ' + (this.state.phaseIndex + 1) + ': ' + phase.label;
-            this.dom.beatCounter.textContent = '0 / ' + phase.beats;
+            if (!phase) {
+                this.finishGame();
+                return;
+            }
+            this.state.beatRecords = new Map();
+            this.dom.phaseLabel.textContent = `${TEXT.roundLabel} ${this.state.phaseIndex + 1}: ${phase.label}`;
+            this.dom.beatCounter.textContent = `0 / ${phase.beats}`;
             this.renderBeatTrack(phase.beats);
-            this.state.activeBeat = -1;
             this.scheduleNextBeat();
         }
 
-        resolveBeat(index) {
-            const record = this.state.beatRecords.get(index) || new Map();
-            const connectedPlayers = this.state.sensorOrder.slice(0, 2).map((sensorId) => this.getPlayerSlot(sensorId));
-            let niceCounts = 0;
+        scheduleNextBeat() {
+            if (!this.state.isRunning) {
+                return;
+            }
+            if (this.state.beatTimer) {
+                clearTimeout(this.state.beatTimer);
+            }
+            const phase = this.config.phases[this.state.phaseIndex];
+            if (!phase) {
+                this.finishPhase();
+                return;
+            }
+            this.state.activeBeat += 1;
+            if (this.state.activeBeat >= phase.beats) {
+                this.finishPhase();
+                return;
+            }
 
-            connectedPlayers.forEach(slot => {
-                if (!slot) return;
-                if (!record.has(slot)) {
-                    this.registerResult(slot, 'miss', 0, index);
-                } else {
-                    const result = record.get(slot);
-                    if (result?.status === 'nice') {
-                        niceCounts += 1;
-                    }
+            this.state.activeBeatStart = performance.now();
+            this.dom.beatCounter.textContent = `${this.state.activeBeat + 1} / ${phase.beats}`;
+            this.dom.beatTrack.querySelectorAll('.beat-dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index === this.state.activeBeat);
+                if (index === this.state.activeBeat) {
+                    dot.classList.remove('success', 'ok', 'miss');
                 }
             });
 
-            if (this.state.isSoloMode) {
-                if (niceCounts >= 1) {
-                    this.dom.teamFeedback.textContent = '좋았어요! 혼자서도 리듬을 잘 맞추고 있어요!';
-                } else {
-                    this.dom.teamFeedback.textContent = '이번 박자를 놓쳤어요. 다음 박자를 노려보세요!';
+            this.state.beatTimer = setTimeout(() => {
+                this.resolveBeat(this.state.activeBeat);
+            }, this.config.beatInterval);
+        }
+
+        resolveBeat(index) {
+            if (!this.state.isRunning) {
+                return;
+            }
+            const record = this.state.beatRecords.get(index) || new Map();
+            this.state.beatRecords.set(index, record);
+
+            const activeSlots = this.state.sensorOrder.slice(0, 2)
+                .map((sensorId) => this.getPlayerSlot(sensorId))
+                .filter(Boolean);
+
+            activeSlots.forEach((slot) => {
+                if (!record.has(slot)) {
+                    this.registerResult(slot, 'miss', 0, index);
                 }
-            } else if (niceCounts === 2) {
-                this.dom.teamFeedback.textContent = '환상의 호흡이에요! 양념이 넘쳐나요!';
-            } else if (niceCounts === 1) {
-                this.dom.teamFeedback.textContent = '한 명이 성공했어요! 함께 박자를 맞춰봐요.';
+            });
+
+            const niceCount = activeSlots.reduce((count, slot) => {
+                const result = this.state.beatRecords.get(index)?.get(slot);
+                return result?.status === 'nice' ? count + 1 : count;
+            }, 0);
+
+            if (this.state.isSoloMode) {
+                this.dom.teamFeedback.textContent = niceCount >= 1 ? TEXT.gatherSuccess : TEXT.gatherLow;
             } else {
-                this.dom.teamFeedback.textContent = '이번에는 박자가 어긋났네요. 다시 도전해봐요!';
+                if (niceCount === 2) {
+                    this.dom.teamFeedback.textContent = TEXT.finishHigh;
+                } else if (niceCount === 1) {
+                    this.dom.teamFeedback.textContent = TEXT.timingOk;
+                } else {
+                    this.dom.teamFeedback.textContent = TEXT.timingMiss;
+                }
             }
 
             this.scheduleNextBeat();
         }
 
         finishPhase() {
-            const phase = this.config.phases[this.state.phaseIndex];
-            if (phase.key === 'gather') {
-                if (this.state.mixture >= 80) {
-                    this.dom.teamFeedback.textContent = '양념이 한가득이에요! 이제 배추 잎마다 골고루 발라봐요!';
-                } else {
-                    this.dom.teamFeedback.textContent = '양념이 조금 부족하지만 정성껏 골고루 발라봐요!';
-                }
+            if (!this.state.isRunning) {
+                return;
             }
-
+            if (this.config.phases[this.state.phaseIndex]?.key === 'gather') {
+                this.dom.teamFeedback.textContent = this.state.mixture >= 80 ? TEXT.gatherSuccess : TEXT.gatherLow;
+            }
             this.state.phaseIndex += 1;
             if (this.state.phaseIndex >= this.config.phases.length) {
                 this.finishGame();
             } else {
+                this.state.activeBeat = -1;
                 this.startPhase();
             }
         }
 
         finishGame() {
-            this.state.isRunning = false;
+            this.stopGame();
             const totalScore = this.state.playerData[1].score + this.state.playerData[2].score;
-            let feedback = '';
-
-            if (this.state.isSoloMode) {
-                if (this.state.coating >= 90) {
-                    feedback = '전설의 1인 김치! 배추 잎마다 완벽하게 버무려졌어요.';
-                } else if (this.state.coating >= 60) {
-                    feedback = '혼자서도 멋졌어요! 김치가 맛있게 익을 거예요.';
-                } else {
-                    feedback = '조금 부족해요. 다시 도전하면 더 좋아질 거예요!';
-                }
-            } else {
-                if (this.state.coating >= 90) {
-                    feedback = '최고의 팀워크! 완벽한 김장이 완성됐어요!';
-                } else if (this.state.coating >= 60) {
-                    feedback = '맛있는 김치가 기대돼요! 박자를 조금만 더 맞춰봐요!';
-                } else {
-                    feedback = '조금 고르지 않네요. 둘이 함께 다시 도전해봐요!';
-                }
+            let feedback = TEXT.finishLow;
+            if (this.state.coating >= 90) {
+                feedback = TEXT.finishHigh;
+            } else if (this.state.coating >= 60) {
+                feedback = TEXT.finishMid;
             }
-
-            this.dom.phaseLabel.textContent = '김장 완료!';
-            this.dom.beatCounter.textContent = totalScore + '점 획득';
             this.dom.teamFeedback.textContent = feedback;
-            this.dom.startButton.textContent = '다시하기';
+            this.dom.phaseLabel.textContent = '모든 라운드 완료';
+            this.dom.beatCounter.textContent = `${totalScore} ${TEXT.totalScoreSuffix}`;
+            this.enableStartButton(TEXT.startRestart);
+            this.state.isRunning = false;
         }
 
         registerResult(slot, status, points, beatIndex) {
-            const record = this.state.beatRecords.get(beatIndex) || new Map();
+            if (!slot) return;
+            let record = this.state.beatRecords.get(beatIndex);
+            if (!record) {
+                record = new Map();
+                this.state.beatRecords.set(beatIndex, record);
+            }
             if (record.has(slot)) {
                 return;
             }
-
             record.set(slot, { status, points });
-            this.state.beatRecords.set(beatIndex, record);
 
             const player = this.state.playerData[slot];
             player.score += points;
-            this.dom.playerCards[slot].querySelector('[data-role="score"]').textContent = String(player.score);
-
-            const timingEl = this.dom.playerCards[slot].querySelector('[data-role="timing"]');
-            timingEl.className = 'timing-result';
-            timingEl.classList.add(status === 'nice' ? 'good' : (status === 'ok' || status === 'late') ? 'ok' : 'miss');
-
-            if (status === 'nice') {
-                timingEl.textContent = 'Nice! 완벽한 타이밍!';
-            } else if (status === 'ok') {
-                timingEl.textContent = '좋아요! 박자를 유지하세요.';
-            } else if (status === 'late') {
-                timingEl.textContent = '조금 늦었지만 양념은 추가됐어요!';
-            } else {
-                timingEl.textContent = '놓쳤어요. 다음 박자를 노려봐요!';
+            const card = this.dom.playerCards[slot];
+            if (card) {
+                card.querySelector('[data-role="score"]').textContent = String(player.score);
             }
 
-            const dot = this.dom.beatTrack.querySelector('.beat-dot[data-index="' + beatIndex + '"]');
+            this.setTimingMessage(slot, this.statusToMessage(status), status);
+
+            const dot = this.dom.beatTrack.querySelector(`.beat-dot[data-index="${beatIndex}"]`);
             if (dot) {
+                dot.classList.remove('active', 'success', 'ok', 'miss');
                 if (status === 'nice') {
                     dot.classList.add('success');
                 } else if (status === 'ok' || status === 'late') {
@@ -903,28 +921,59 @@
             }
 
             const phase = this.config.phases[this.state.phaseIndex];
-            const unit = phase.key === 'gather' ? this.config.gatherPointUnit : this.config.spreadPointUnit;
-            if (phase.key === 'gather') {
-                this.state.mixture = Math.min(100, this.state.mixture + unit * (status === 'nice' ? 2 : points));
-            } else {
-                this.state.coating = Math.min(100, this.state.coating + unit * (status === 'nice' ? 2 : points));
+            if (phase) {
+                const unit = phase.key === 'gather' ? this.config.gatherPointUnit : this.config.spreadPointUnit;
+                const boost = status === 'nice' ? 2 : points;
+                if (phase.key === 'gather') {
+                    this.state.mixture = Math.min(100, this.state.mixture + unit * boost);
+                } else {
+                    this.state.coating = Math.min(100, this.state.coating + unit * boost);
+                }
+                this.updateMeters();
             }
-            this.updateMeters();
         }
+
+        statusToMessage(status) {
+            switch (status) {
+                case 'nice':
+                    return TEXT.timingNice;
+                case 'ok':
+                    return TEXT.timingOk;
+                case 'late':
+                    return TEXT.timingLate;
+                default:
+                    return TEXT.timingMiss;
+            }
+        }
+
+        setTimingMessage(slot, message, tone) {
+            const card = this.dom.playerCards[slot];
+            if (!card) return;
+            const timingEl = card.querySelector('[data-role="timing"]');
+            timingEl.className = 'timing';
+            if (tone === 'nice') {
+                timingEl.classList.add('good');
+            } else if (tone === 'ok' || tone === 'late') {
+                timingEl.classList.add('ok');
+            } else if (tone === 'miss') {
+                timingEl.classList.add('miss');
+            }
+            timingEl.textContent = message;
+        }
+
         getPlayerSlot(sensorId) {
-            const idx = this.state.sensorOrder.indexOf(sensorId);
-            return idx !== -1 ? idx + 1 : null;
+            const index = this.state.sensorOrder.indexOf(sensorId);
+            return index === -1 ? null : index + 1;
         }
 
         handleSensorData(packet) {
-            if (!this.state.isRunning) {
+            if (!this.state.isRunning || !packet) {
                 return;
             }
-
-            const slot = this.getPlayerSlot(packet.sensorId);
-            if (!slot) {
-                return;
-            }
+            const sensorId = packet.sensorId || packet.sensor_id;
+            if (!sensorId) return;
+            const slot = this.getPlayerSlot(sensorId);
+            if (!slot) return;
 
             const player = this.state.playerData[slot];
             const now = performance.now();
@@ -932,20 +981,22 @@
                 return;
             }
 
-            const accel = packet.data.acceleration;
-            const lateralForce = Math.abs(accel.x) + Math.abs(accel.y * 0.35);
+            const accel = packet.data?.acceleration;
+            if (!accel) {
+                return;
+            }
+
+            const lateralForce = Math.abs(accel.x || 0) + Math.abs((accel.y || 0) * 0.35);
             if (lateralForce < this.config.shakeThreshold) {
                 return;
             }
 
             player.lastShake = now;
-
             const targetTime = this.state.activeBeatStart + this.config.targetOffset;
             const delta = Math.abs(now - targetTime);
 
             let status = 'miss';
             let points = 0;
-
             if (delta <= this.config.niceWindow) {
                 status = 'nice';
                 points = 2;
@@ -960,59 +1011,9 @@
             this.registerResult(slot, status, points, this.state.activeBeat);
         }
 
-        registerResult(slot, status, points, beatIndex) {
-            const record = this.state.beatRecords.get(beatIndex) || new Map();
-            if (record.has(slot)) {
-                return;
-            }
-
-            record.set(slot, { status, points });
-            this.state.beatRecords.set(beatIndex, record);
-
-            const player = this.state.playerData[slot];
-            player.score += points;
-            this.dom.playerCards[slot].querySelector('[data-role="score"]').textContent = String(player.score);
-
-            const timingEl = this.dom.playerCards[slot].querySelector('[data-role="timing"]');
-            timingEl.className = 'timing-result';
-            timingEl.classList.add(status === 'nice' ? 'good' : (status === 'ok' || status === 'late') ? 'ok' : 'miss');
-
-            if (status === 'nice') {
-                timingEl.textContent = 'Nice! Perfect timing!';
-            } else if (status === 'ok') {
-                timingEl.textContent = '좋아요! 박자를 유지하세요.';
-            } else if (status === 'late') {
-                timingEl.textContent = '조금 늦었지만 양념은 추가됐어요!';
-            } else {
-                timingEl.textContent = '박자를 놓쳤어요. 다음 박자를 노려보세요!';
-            }
-
-            const dot = this.dom.beatTrack.querySelector('.beat-dot[data-index="' + beatIndex + '"]');
-            if (dot) {
-                if (status === 'nice') {
-                    dot.classList.add('success');
-                } else if (status === 'ok' || status === 'late') {
-                    dot.classList.add('ok');
-                } else {
-                    dot.classList.add('miss');
-                }
-            }
-
-            const phase = this.config.phases[this.state.phaseIndex];
-            const unit = phase.key === 'gather' ? this.config.gatherPointUnit : this.config.spreadPointUnit;
-            if (phase.key === 'gather') {
-                this.state.mixture = Math.min(100, this.state.mixture + unit * (status === 'nice' ? 2 : points));
-            } else {
-                this.state.coating = Math.min(100, this.state.coating + unit * (status === 'nice' ? 2 : points));
-            }
-            this.updateMeters();
-        }
-
         updateMeters() {
-            this.dom.bowlFill.style.width = this.state.mixture + '%';
-            this.dom.seasoningMeter.style.width = this.state.mixture + '%';
-            this.dom.cabbageMeter.style.width = this.state.coating + '%';
-            this.dom.kimchiLayer.style.setProperty('--fill', this.state.coating + '%');
+            this.dom.seasoningMeter.style.width = `${this.state.mixture}%`;
+            this.dom.cabbageMeter.style.width = `${this.state.coating}%`;
         }
     }
 
@@ -1023,4 +1024,3 @@
 </script>
 </body>
 </html>
-
