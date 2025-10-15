@@ -1004,7 +1004,8 @@ class HtmlGenerator {
 
                 .nav-cards {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    grid-template-columns: repeat(2, 1fr);
+                    grid-template-rows: repeat(2, 1fr);
                     gap: 2rem;
                     margin-bottom: 3rem;
                 }
@@ -1117,6 +1118,323 @@ class HtmlGenerator {
 
                     .nav-cards {
                         grid-template-columns: 1fr;
+                        grid-template-rows: auto;
+                    }
+                }
+
+                @media (min-width: 769px) and (max-width: 1024px) {
+                    .nav-cards {
+                        gap: 1.5rem;
+                    }
+                }
+
+                /* Auth Styles */
+                .auth-buttons {
+                    display: flex;
+                    gap: 1rem;
+                    margin: 2rem 0;
+                    justify-content: center;
+                }
+
+                .auth-btn {
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: 12px;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    text-decoration: none;
+                    display: inline-block;
+                }
+
+                .login-btn {
+                    background: rgba(99, 102, 241, 0.2);
+                    color: #6366F1;
+                    border: 2px solid #6366F1;
+                }
+
+                .login-btn:hover {
+                    background: #6366F1;
+                    color: white;
+                    transform: translateY(-2px);
+                }
+
+                .signup-btn {
+                    background: #6366F1;
+                    color: white;
+                    border: 2px solid #6366F1;
+                }
+
+                .signup-btn:hover {
+                    background: #5B21B6;
+                    border-color: #5B21B6;
+                    transform: translateY(-2px);
+                }
+
+                .logout-btn {
+                    background: rgba(239, 68, 68, 0.2);
+                    color: #EF4444;
+                    border: 2px solid #EF4444;
+                    padding: 8px 16px;
+                    font-size: 0.9rem;
+                }
+
+                .logout-btn:hover {
+                    background: #EF4444;
+                    color: white;
+                }
+
+                .user-info {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    margin: 2rem 0;
+                    justify-content: center;
+                }
+
+                .user-greeting {
+                    color: #F8FAFC;
+                    font-size: 1.1rem;
+                    font-weight: 500;
+                }
+
+                /* Modal Styles */
+                .auth-modal {
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 1000;
+                    justify-content: center;
+                    align-items: center;
+                }
+
+                .auth-modal.show {
+                    display: flex;
+                }
+
+                .modal-content {
+                    background: rgba(30, 41, 59, 0.95);
+                    backdrop-filter: blur(20px);
+                    border: 2px solid rgba(99, 102, 241, 0.3);
+                    border-radius: 24px;
+                    padding: 2.5rem;
+                    width: 90%;
+                    max-width: 400px;
+                    position: relative;
+                }
+
+                .modal-header {
+                    text-align: center;
+                    margin-bottom: 2rem;
+                }
+
+                .modal-title {
+                    color: #F8FAFC;
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                    margin: 0;
+                }
+
+                .modal-close {
+                    position: absolute;
+                    top: 1rem;
+                    right: 1rem;
+                    background: none;
+                    border: none;
+                    color: #94A3B8;
+                    font-size: 1.5rem;
+                    cursor: pointer;
+                    transition: color 0.3s;
+                }
+
+                .modal-close:hover {
+                    color: #F8FAFC;
+                }
+
+                .form-group {
+                    margin-bottom: 1.5rem;
+                }
+
+                .form-label {
+                    display: block;
+                    color: #F8FAFC;
+                    font-weight: 500;
+                    margin-bottom: 0.5rem;
+                }
+
+                .form-input {
+                    width: 100%;
+                    padding: 12px 16px;
+                    border: 2px solid rgba(99, 102, 241, 0.3);
+                    border-radius: 12px;
+                    background: rgba(15, 23, 42, 0.8);
+                    color: #F8FAFC;
+                    font-size: 1rem;
+                    transition: border-color 0.3s;
+                    box-sizing: border-box;
+                }
+
+                .form-input:focus {
+                    outline: none;
+                    border-color: #6366F1;
+                }
+
+                .form-submit {
+                    width: 100%;
+                    padding: 12px;
+                    background: #6366F1;
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: background 0.3s;
+                }
+
+                .form-submit:hover {
+                    background: #5B21B6;
+                }
+
+                .form-submit:disabled {
+                    background: #64748B;
+                    cursor: not-allowed;
+                }
+
+                .error-message {
+                    color: #EF4444;
+                    font-size: 0.9rem;
+                    margin-top: 0.5rem;
+                    display: none;
+                }
+
+                .success-message {
+                    color: #10B981;
+                    font-size: 0.9rem;
+                    margin-top: 0.5rem;
+                    display: none;
+                }
+
+                /* Login Required Popup */
+                .login-required-modal {
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 1100;
+                    justify-content: center;
+                    align-items: center;
+                }
+
+                .login-required-modal.show {
+                    display: flex;
+                }
+
+                .login-required-content {
+                    background: rgba(30, 41, 59, 0.95);
+                    backdrop-filter: blur(20px);
+                    border: 2px solid rgba(239, 68, 68, 0.5);
+                    border-radius: 24px;
+                    padding: 2.5rem;
+                    width: 90%;
+                    max-width: 450px;
+                    text-align: center;
+                    position: relative;
+                }
+
+                .login-required-icon {
+                    font-size: 3rem;
+                    color: #EF4444;
+                    margin-bottom: 1rem;
+                }
+
+                .login-required-title {
+                    color: #F8FAFC;
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                    margin: 0 0 1rem 0;
+                }
+
+                .login-required-message {
+                    color: #CBD5E1;
+                    font-size: 1rem;
+                    line-height: 1.6;
+                    margin-bottom: 2rem;
+                }
+
+                .login-required-buttons {
+                    display: flex;
+                    gap: 1rem;
+                    justify-content: center;
+                }
+
+                .login-required-btn {
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: 12px;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                }
+
+                .login-required-primary {
+                    background: #6366F1;
+                    color: white;
+                    border: 2px solid #6366F1;
+                }
+
+                .login-required-primary:hover {
+                    background: #5B21B6;
+                    border-color: #5B21B6;
+                    transform: translateY(-2px);
+                }
+
+                .login-required-secondary {
+                    background: transparent;
+                    color: #CBD5E1;
+                    border: 2px solid #64748B;
+                }
+
+                .login-required-secondary:hover {
+                    background: rgba(100, 116, 139, 0.2);
+                    color: #F8FAFC;
+                    border-color: #94A3B8;
+                }
+
+                @media (max-width: 768px) {
+                    .login-required-content {
+                        width: 95%;
+                        padding: 2rem;
+                    }
+
+                    .login-required-buttons {
+                        flex-direction: column;
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .auth-buttons {
+                        flex-direction: column;
+                        align-items: center;
+                    }
+
+                    .user-info {
+                        flex-direction: column;
+                        gap: 0.5rem;
+                    }
+
+                    .modal-content {
+                        width: 95%;
+                        padding: 2rem;
                     }
                 }
             </style>
@@ -1128,6 +1446,18 @@ class HtmlGenerator {
                 <div class="hero">
                     <h1 class="hero-title">${title}</h1>
                     <p class="hero-subtitle">🎮 모바일 센서로 새로운 게임 경험을</p>
+
+                    <!-- Auth Buttons -->
+                    <div class="auth-buttons" id="authButtons">
+                        <button class="auth-btn login-btn" onclick="showLoginModal()">로그인</button>
+                        <button class="auth-btn signup-btn" onclick="showSignupModal()">회원가입</button>
+                    </div>
+
+                    <!-- User Info (hidden by default) -->
+                    <div class="user-info" id="userInfo" style="display: none;">
+                        <span class="user-greeting">안녕하세요, <span id="userName"></span>님!</span>
+                        <button class="auth-btn logout-btn" onclick="logout()">로그아웃</button>
+                    </div>
 
                     <!-- Stats -->
                     <div class="stats-container">
@@ -1166,7 +1496,7 @@ class HtmlGenerator {
                         <span class="nav-card-badge">Mobile Controller</span>
                     </a>
 
-                    <a href="/interactive-game-generator" class="nav-card" style="border-color: rgba(139, 92, 246, 0.5); background: rgba(139, 92, 246, 0.1);">
+                    <a href="javascript:void(0)" onclick="navigateToAIGenerator()" class="nav-card" style="border-color: rgba(139, 92, 246, 0.5); background: rgba(139, 92, 246, 0.1);">
                         <span class="nav-card-icon">🤖</span>
                         <h2 class="nav-card-title">AI 게임 생성기</h2>
                         <p class="nav-card-description">
@@ -1175,6 +1505,7 @@ class HtmlGenerator {
                         <span class="nav-card-badge" style="background: rgba(139, 92, 246, 0.3); border-color: #8B5CF6;">95% Quality Guaranteed</span>
                     </a>
 
+                    <!-- 게임 관리 섹션 숨김 - 개발자 센터에 통합됨
                     <a href="/game-manager" class="nav-card">
                         <span class="nav-card-icon">🛠️</span>
                         <h2 class="nav-card-title">게임 관리</h2>
@@ -1183,8 +1514,9 @@ class HtmlGenerator {
                         </p>
                         <span class="nav-card-badge">Game Maintenance</span>
                     </a>
+                    -->
 
-                    <a href="/developer" class="nav-card">
+                    <a href="javascript:void(0)" onclick="navigateToDeveloper()" class="nav-card">
                         <span class="nav-card-icon">👨‍💻</span>
                         <h2 class="nav-card-title">개발자 센터</h2>
                         <p class="nav-card-description">
@@ -1220,6 +1552,80 @@ class HtmlGenerator {
                         <p class="feature-text">대화형 AI 게임 개발 도구</p>
                     </div>
                 </div>
+
+                <!-- Login Modal -->
+                <div id="loginModal" class="auth-modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="modal-title">로그인</h2>
+                            <button class="modal-close" onclick="closeAuthModals()">&times;</button>
+                        </div>
+                        <form id="loginForm">
+                            <div class="form-group">
+                                <label class="form-label" for="loginEmail">이메일</label>
+                                <input type="email" id="loginEmail" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="loginPassword">비밀번호</label>
+                                <input type="password" id="loginPassword" class="form-input" required>
+                            </div>
+                            <button type="submit" class="form-submit" id="loginSubmit">로그인</button>
+                            <div id="loginError" class="error-message"></div>
+                            <div id="loginSuccess" class="success-message"></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Signup Modal -->
+                <div id="signupModal" class="auth-modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="modal-title">회원가입</h2>
+                            <button class="modal-close" onclick="closeAuthModals()">&times;</button>
+                        </div>
+                        <form id="signupForm">
+                            <div class="form-group">
+                                <label class="form-label" for="signupName">이름</label>
+                                <input type="text" id="signupName" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="signupNickname">닉네임</label>
+                                <input type="text" id="signupNickname" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="signupEmail">이메일</label>
+                                <input type="email" id="signupEmail" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="signupPassword">비밀번호</label>
+                                <input type="password" id="signupPassword" class="form-input" required>
+                            </div>
+                            <button type="submit" class="form-submit" id="signupSubmit">회원가입</button>
+                            <div id="signupError" class="error-message"></div>
+                            <div id="signupSuccess" class="success-message"></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Login Required Modal -->
+                <div id="loginRequiredModal" class="login-required-modal">
+                    <div class="login-required-content">
+                        <div class="login-required-icon">🔐</div>
+                        <h2 class="login-required-title">로그인이 필요합니다</h2>
+                        <p class="login-required-message" id="loginRequiredMessage">
+                            이 기능을 사용하려면 로그인이 필요합니다.<br>
+                            로그인하시겠습니까?
+                        </p>
+                        <div class="login-required-buttons">
+                            <button class="login-required-btn login-required-primary" onclick="proceedToLogin()">
+                                로그인하기
+                            </button>
+                            <button class="login-required-btn login-required-secondary" onclick="closeLoginRequiredModal()">
+                                취소
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
 
@@ -1227,10 +1633,287 @@ class HtmlGenerator {
             console.log('🎮 Sensor Game Hub v6.0 - Landing Page');
             console.log('📊 Stats:', ${JSON.stringify(stats)});
 
-            // 페이지 로드 애니메이션
-            document.addEventListener('DOMContentLoaded', () => {
+            // 인증 상태 관리
+            let currentUser = null;
+            let authToken = localStorage.getItem('authToken');
+
+            // 페이지 로드 시 인증 상태 확인
+            document.addEventListener('DOMContentLoaded', async () => {
                 console.log('✅ Landing page loaded successfully');
+                await checkAuthStatus();
             });
+
+            // 인증 상태 확인
+            async function checkAuthStatus() {
+                if (!authToken) {
+                    showAuthButtons();
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/auth/user', {
+                        headers: {
+                            'Authorization': 'Bearer ' + authToken
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        currentUser = data.user;
+                        showUserInfo();
+                    } else {
+                        localStorage.removeItem('authToken');
+                        authToken = null;
+                        showAuthButtons();
+                    }
+                } catch (error) {
+                    console.error('Auth check error:', error);
+                    showAuthButtons();
+                }
+            }
+
+            // 인증 버튼 표시
+            function showAuthButtons() {
+                document.getElementById('authButtons').style.display = 'flex';
+                document.getElementById('userInfo').style.display = 'none';
+            }
+
+            // 사용자 정보 표시
+            function showUserInfo() {
+                document.getElementById('authButtons').style.display = 'none';
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('userName').textContent = currentUser.nickname || currentUser.name;
+            }
+
+            // 로그인 모달 표시
+            function showLoginModal() {
+                document.getElementById('loginModal').classList.add('show');
+            }
+
+            // 회원가입 모달 표시
+            function showSignupModal() {
+                document.getElementById('signupModal').classList.add('show');
+            }
+
+            // 모달 닫기
+            function closeAuthModals() {
+                document.getElementById('loginModal').classList.remove('show');
+                document.getElementById('signupModal').classList.remove('show');
+                clearMessages();
+            }
+
+            // 에러/성공 메시지 초기화
+            function clearMessages() {
+                const messages = document.querySelectorAll('.error-message, .success-message');
+                messages.forEach(msg => {
+                    msg.style.display = 'none';
+                    msg.textContent = '';
+                });
+            }
+
+            // 에러 메시지 표시
+            function showError(elementId, message) {
+                const element = document.getElementById(elementId);
+                element.textContent = message;
+                element.style.display = 'block';
+            }
+
+            // 성공 메시지 표시
+            function showSuccess(elementId, message) {
+                const element = document.getElementById(elementId);
+                element.textContent = message;
+                element.style.display = 'block';
+            }
+
+            // 로그인 폼 처리
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                clearMessages();
+
+                const submitButton = document.getElementById('loginSubmit');
+                submitButton.disabled = true;
+                submitButton.textContent = '로그인 중...';
+
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email, password })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        authToken = data.session.access_token;
+                        localStorage.setItem('authToken', authToken);
+                        currentUser = data.user;
+
+                        showSuccess('loginSuccess', '로그인되었습니다!');
+
+                        setTimeout(() => {
+                            closeAuthModals();
+                            showUserInfo();
+                        }, 1000);
+                    } else {
+                        showError('loginError', data.error || '로그인에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showError('loginError', '네트워크 오류가 발생했습니다.');
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.textContent = '로그인';
+                }
+            });
+
+            // 회원가입 폼 처리
+            document.getElementById('signupForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                clearMessages();
+
+                const submitButton = document.getElementById('signupSubmit');
+                submitButton.disabled = true;
+                submitButton.textContent = '가입 중...';
+
+                const name = document.getElementById('signupName').value;
+                const nickname = document.getElementById('signupNickname').value;
+                const email = document.getElementById('signupEmail').value;
+                const password = document.getElementById('signupPassword').value;
+
+                try {
+                    const response = await fetch('/api/auth/signup', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ name, nickname, email, password })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        authToken = data.session.access_token;
+                        localStorage.setItem('authToken', authToken);
+                        currentUser = data.user;
+
+                        showSuccess('signupSuccess', '회원가입이 완료되었습니다!');
+
+                        setTimeout(() => {
+                            closeAuthModals();
+                            showUserInfo();
+                        }, 1000);
+                    } else {
+                        showError('signupError', data.error || '회원가입에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('Signup error:', error);
+                    showError('signupError', '네트워크 오류가 발생했습니다.');
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.textContent = '회원가입';
+                }
+            });
+
+            // 로그아웃
+            async function logout() {
+                try {
+                    if (authToken) {
+                        await fetch('/api/auth/logout', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer ' + authToken
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Logout error:', error);
+                } finally {
+                    localStorage.removeItem('authToken');
+                    authToken = null;
+                    currentUser = null;
+                    showAuthButtons();
+                }
+            }
+
+            // 모달 외부 클릭 시 닫기
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('auth-modal')) {
+                    closeAuthModals();
+                }
+                if (e.target.classList.contains('login-required-modal')) {
+                    closeLoginRequiredModal();
+                }
+            });
+
+            // 네비게이션 함수들
+            let pendingNavigation = null;
+
+            // AI 게임 생성기 접근
+            function navigateToAIGenerator() {
+                if (currentUser) {
+                    // 로그인된 경우 바로 이동
+                    window.location.href = '/interactive-game-generator';
+                } else {
+                    // 로그인 필요 팝업 표시
+                    showLoginRequiredModal(
+                        'AI 게임 생성기',
+                        'AI 게임 생성기를 사용하려면 로그인이 필요합니다.<br>게임 제작자 계정으로 로그인해주세요.'
+                    );
+                    pendingNavigation = '/interactive-game-generator';
+                }
+            }
+
+            // 개발자 센터 접근
+            function navigateToDeveloper() {
+                if (currentUser) {
+                    // 로그인된 경우 바로 이동
+                    window.location.href = '/developer';
+                } else {
+                    // 로그인 필요 팝업 표시
+                    showLoginRequiredModal(
+                        '개발자 센터',
+                        '개발자 센터를 사용하려면 로그인이 필요합니다.<br>문서, AI 챗봇, 개발 도구에 접근하려면 로그인해주세요.'
+                    );
+                    pendingNavigation = '/developer';
+                }
+            }
+
+            // 로그인 필요 모달 표시
+            function showLoginRequiredModal(feature, message) {
+                document.getElementById('loginRequiredMessage').innerHTML = message;
+                document.getElementById('loginRequiredModal').classList.add('show');
+            }
+
+            // 로그인 필요 모달 닫기
+            function closeLoginRequiredModal() {
+                document.getElementById('loginRequiredModal').classList.remove('show');
+                pendingNavigation = null;
+            }
+
+            // 로그인 진행
+            function proceedToLogin() {
+                closeLoginRequiredModal();
+                showLoginModal();
+            }
+
+            // 로그인 성공 후 처리 수정
+            const originalLoginSuccess = showUserInfo;
+            showUserInfo = function() {
+                originalLoginSuccess();
+
+                // 대기 중인 네비게이션이 있으면 실행
+                if (pendingNavigation) {
+                    setTimeout(() => {
+                        window.location.href = pendingNavigation;
+                        pendingNavigation = null;
+                    }, 500);
+                }
+            };
         `;
 
         return this.getBaseTemplate(title, content + styles, scripts);

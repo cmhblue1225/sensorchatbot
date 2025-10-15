@@ -27,6 +27,7 @@ const InteractiveGameGenerator = require('./InteractiveGameGenerator');
 const GameMaintenanceManager = require('./GameMaintenanceManager');
 const LandingRoutes = require('./routes/landingRoutes');
 const DeveloperRoutes = require('./routes/developerRoutes');
+const AuthRoutes = require('./routes/authRoutes');
 
 class GameServer {
     constructor() {
@@ -89,6 +90,10 @@ class GameServer {
      * HTTP 라우트 설정
      */
     setupRoutes() {
+        // AuthRoutes 등록 (인증 API)
+        const authRoutes = new AuthRoutes();
+        this.app.use('/', authRoutes.getRouter());
+
         // LandingRoutes 등록 (랜딩 페이지)
         const landingRoutes = new LandingRoutes(this.gameScanner, () => this.aiAssistant);
         this.app.use('/', landingRoutes.getRouter());
@@ -124,13 +129,45 @@ class GameServer {
         });
         
         // 게임 목록 API
-        this.app.get('/api/games', (req, res) => {
-            const games = this.gameScanner.getActiveGames();
-            res.json({
-                success: true,
-                data: games,
-                stats: this.gameScanner.getStats()
-            });
+        this.app.get('/api/games', async (req, res) => {
+            try {
+                const games = this.gameScanner.getActiveGames();
+
+                // 각 게임에 버전 정보 추가
+                const gamesWithVersion = await Promise.all(games.map(async (game) => {
+                    let version = '1.0';
+
+                    // GameMaintenanceManager에서 버전 정보 가져오기
+                    if (this.gameMaintenanceManager) {
+                        try {
+                            // DB에서 버전 정보 조회
+                            const versionInfo = await this.gameMaintenanceManager.getGameVersionFromDB(game.id);
+                            if (versionInfo && versionInfo.current_version) {
+                                version = versionInfo.current_version;
+                            }
+                        } catch (error) {
+                            console.log(`게임 ${game.id}의 버전 정보를 가져오지 못했습니다:`, error.message);
+                        }
+                    }
+
+                    return {
+                        ...game,
+                        version: version
+                    };
+                }));
+
+                res.json({
+                    success: true,
+                    data: gamesWithVersion,
+                    stats: this.gameScanner.getStats()
+                });
+            } catch (error) {
+                console.error('/api/games 오류:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
         });
         
         // 특정 게임 정보 API  
@@ -1279,6 +1316,12 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             };
             this.gameMaintenanceManager = new GameMaintenanceManager(maintenanceConfig);
             console.log('✅ GameMaintenanceManager 초기화 완료');
+
+            // GameMaintenanceManager를 InteractiveGameGenerator에 주입
+            if (this.interactiveGameGenerator) {
+                this.interactiveGameGenerator.gameMaintenanceManager = this.gameMaintenanceManager;
+                console.log('✅ InteractiveGameGenerator에 GameMaintenanceManager 주입 완료');
+            }
 
             // 자동 문서 임베딩 실행
             await this.autoEmbedDocuments();

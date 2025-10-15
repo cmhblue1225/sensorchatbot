@@ -22,7 +22,7 @@ const RequirementCollector = require('./RequirementCollector');
 const PerformanceMonitor = require('./PerformanceMonitor');
 
 class InteractiveGameGenerator {
-    constructor(gameScanner = null, io = null) {
+    constructor(gameScanner = null, io = null, gameMaintenanceManager = null) {
         this.config = {
             claudeApiKey: process.env.CLAUDE_API_KEY,
             openaiApiKey: process.env.OPENAI_API_KEY,
@@ -53,6 +53,9 @@ class InteractiveGameGenerator {
 
         // Socket.IO 주입 (진행률 트래킹을 위해)
         this.io = io;
+
+        // GameMaintenanceManager 주입 (게임 생성 후 자동 등록)
+        this.gameMaintenanceManager = gameMaintenanceManager;
 
         // 대화 세션 관리
         this.activeSessions = new Map(); // sessionId -> conversationData
@@ -1945,6 +1948,27 @@ ${requirements.specialRequirements?.length > 0 ?
                 }
             } else {
                 console.log('⚠️ GameScanner가 주입되지 않아 자동 스캔을 건너뜁니다.');
+            }
+
+            // 🔧 게임 유지보수 시스템에 자동 등록
+            if (this.gameMaintenanceManager) {
+                try {
+                    console.log('🔧 GameMaintenanceManager에 게임 등록 중...');
+                    this.gameMaintenanceManager.registerGameSession(saveResult.gameId, {
+                        title: metadata.title,
+                        description: metadata.description,
+                        gameType: metadata.gameType,
+                        genre: metadata.genre,
+                        path: `games/${saveResult.gameId}`,
+                        generatedAt: metadata.generatedAt
+                    });
+                    console.log(`✅ 게임 유지보수 세션 등록 완료 - ${saveResult.gameId} (v1.0)`);
+                } catch (registerError) {
+                    console.error('⚠️ 게임 유지보수 세션 등록 실패:', registerError.message);
+                    // 게임은 생성되었으므로 오류로 처리하지 않음
+                }
+            } else {
+                console.log('⚠️ GameMaintenanceManager가 주입되지 않아 자동 등록을 건너뜁니다.');
             }
 
             return {
