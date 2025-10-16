@@ -1496,13 +1496,13 @@ class HtmlGenerator {
                         <span class="nav-card-badge">Mobile Controller</span>
                     </a>
 
-                    <a href="javascript:void(0)" onclick="navigateToAIGenerator()" class="nav-card" style="border-color: rgba(139, 92, 246, 0.5); background: rgba(139, 92, 246, 0.1);">
+                    <a href="javascript:void(0)" onclick="navigateToAIGenerator()" class="nav-card">
                         <span class="nav-card-icon">🤖</span>
                         <h2 class="nav-card-title">AI 게임 생성기</h2>
                         <p class="nav-card-description">
                             Multi-Stage Generation으로 A+ 게임 자동 생성
                         </p>
-                        <span class="nav-card-badge" style="background: rgba(139, 92, 246, 0.3); border-color: #8B5CF6;">95% Quality Guaranteed</span>
+                        <span class="nav-card-badge">95% Quality Guaranteed</span>
                     </a>
 
                     <!-- 게임 관리 섹션 숨김 - 개발자 센터에 통합됨
