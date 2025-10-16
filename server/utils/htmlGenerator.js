@@ -2143,15 +2143,15 @@ class HtmlGenerator {
                         <div class="stat-label">전체 게임</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">${games.filter(g => g.type === 'solo').length}</div>
+                        <div class="stat-value">${games.filter(g => g.category === 'solo').length}</div>
                         <div class="stat-label">솔로 게임</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">${games.filter(g => g.type === 'dual').length}</div>
+                        <div class="stat-value">${games.filter(g => g.category === 'dual').length}</div>
                         <div class="stat-label">듀얼 게임</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">${games.filter(g => g.type === 'multi').length}</div>
+                        <div class="stat-value">${games.filter(g => g.category === 'multi').length}</div>
                         <div class="stat-label">멀티 게임</div>
                     </div>
                 </div>
@@ -2160,9 +2160,9 @@ class HtmlGenerator {
                     ${games.map(game => `
                         <a href="/games/${game.id}/" class="game-card">
                             <span class="game-icon">${game.icon || '🎮'}</span>
-                            <h2 class="game-title">${game.name || game.id}</h2>
+                            <h2 class="game-title">${game.title || game.name || game.id}</h2>
                             <div class="game-id">${game.id}</div>
-                            <div class="game-type">${this.getGameTypeLabel(game.type)}</div>
+                            <div class="game-type">${this.getGameTypeLabel(game.category)}</div>
                             <p class="game-description">
                                 ${game.description || '센서를 이용한 재미있는 게임입니다.'}
                             </p>
