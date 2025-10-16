@@ -5,8 +5,55 @@
 > 이 문서는 AI 개발자와 시스템 아키텍트를 위한 전문 가이드입니다.
 
 **작성일**: 2025년 10월 10일
+**최종 업데이트**: 2025년 10월 11일
 **버전**: v6.0.0
 **대상**: AI 개발자, 시스템 관리자, 고급 기여자
+
+---
+
+## 🚀 최신 업데이트 (2025-10-11)
+
+### ✅ 완료된 주요 작업
+
+#### 1. 게임 유지보수 시스템 완전 통합 (100% 완료)
+- **InteractiveGameGenerator** ↔ **GameMaintenanceManager** 자동 연동
+- 게임 생성 시 자동으로 유지보수 세션 등록 (v1.0)
+- 버그 신고/기능 추가 시 자동 버전 증가 (v1.1, v1.2...)
+- Supabase `game_versions` 테이블 영구 저장
+
+#### 2. API 파라미터 불일치 수정 완료
+- **버그 신고 API**: `userReport` → `bugDescription` 수정
+- **기능 추가 API**: `featureRequest` → `featureDescription` 수정
+- 프론트엔드(developerRoutes.js) ↔ 백엔드(index.js) 파라미터 일치
+
+#### 3. DB 버전 정보 실시간 연동
+- `/api/games` 엔드포인트에서 각 게임의 실제 버전 정보 조회
+- `GameMaintenanceManager.getGameVersionFromDB()` 메서드 활용
+- 게임 관리 탭에서 동적 버전 배지 표시 (`v${game.version}`)
+
+#### 4. 개발자 센터 UI 개선
+- `/developer` 페이지에 게임 관리 탭 통합 완료
+- 독립 `/game-manager` 라우트 제거
+- 퀵 링크 정리 (게임 생성 버튼 제거)
+
+### 🎯 현재 시스템 상태
+
+#### ✅ 완전 작동 중인 기능
+- 🎮 AI 게임 생성 → 자동 v1.0 등록
+- 🐛 버그 신고 → 자동 수정 + 버전 증가 (v1.0 → v1.1)
+- ✨ 기능 추가 → 자동 추가 + 버전 증가 (v1.1 → v1.2)
+- 💾 DB 영구 저장 → 서버 재시작해도 버전 유지
+- 🖥️ 실시간 UI 반영 → 게임 목록에 최신 버전 표시
+
+#### 📊 파일 수정 이력 (2025-10-11)
+1. `server/index.js` (Line 132-171): `/api/games` 비동기 변경 + DB 버전 조회
+2. `server/routes/developerRoutes.js` (3곳):
+   - Line 1872: 하드코딩 `v1.0` → 동적 `v${game.version}`
+   - Line 1950: `userReport` → `bugDescription`
+   - Line 1988: `featureRequest` → `featureDescription`
+
+### ⚠️ 중요 - Git 작업 규칙
+**사용자가 직접 commit/push를 수행합니다. AI는 git 작업을 하지 않습니다.**
 
 ---
 
@@ -14,6 +61,7 @@
 
 ### 실제 경로
 - **프로젝트 경로**: `/Users/dev/졸업작품/sensorchatbot`
+- **Supabase 프로젝트 ID**: `rwkgktwdljsddowcxphc`
 - **버전**: 6.0.0
 - **프로젝트명**: Sensor Game Hub v6.0
 - **설명**: AI 기반 모바일 센서 게임 생성 및 플레이 플랫폼
@@ -21,7 +69,7 @@
 ### 핵심 기술 스택
 - **Backend**: Node.js 16+, Express 4.18.2, Socket.IO 4.7.2
 - **AI**: Claude Sonnet 4.5 (64K 토큰), OpenAI Embeddings, Langchain
-- **Database**: Supabase (PostgreSQL + pgvector)
+- **Database**: Supabase (PostgreSQL + pgvector) - Project ID: rwkgktwdljsddowcxphc
 - **Frontend**: HTML5 Canvas, Vanilla JavaScript ES6+
 - **Real-time**: WebSocket (50ms 센서 전송)
 
@@ -1203,12 +1251,171 @@ open http://localhost:3000/games/my-new-game
 
 ✅ **19개 게임** (5개 검증됨, 3개 기본, 2개 실험, 9개 AI 생성)
 ✅ **AI 게임 생성 시스템** (Claude Sonnet 4.5 + RAG)
-✅ **자동 유지보수 시스템** (버그 수정 + 기능 추가)
+✅ **자동 유지보수 시스템** (버그 수정 + 기능 추가) - **2025-10-11 완전 통합 완료**
 ✅ **완전한 문서 시스템** (28개 파일, 425KB 온보딩 가이드)
 ✅ **실시간 센서 시스템** (50ms WebSocket)
 ✅ **SessionSDK** (590줄, 3개 유틸리티 클래스)
 ✅ **개발자 도구** (AI 생성기, 유지보수 패널)
 ✅ **성능 모니터링** (실시간 통계, 메모리 관리)
+
+---
+
+## 🔄 완전 자동화된 게임 생성 및 유지보수 플로우
+
+### 전체 작동 흐름 (End-to-End)
+
+```
+1. 게임 생성 (/developer → AI 게임 생성기)
+   ↓
+   사용자: "스마트폰을 기울여서 공을 굴리는 미로 게임"
+   ↓
+   InteractiveGameGenerator.generateFinalGame()
+   ↓
+   ✅ 게임 코드 생성 (64K 토큰)
+   ↓
+   GameMaintenanceManager.registerGameSession() 자동 호출
+   ↓
+   ✅ DB에 game_versions 레코드 생성 (v1.0)
+   ↓
+   📁 public/games/maze-game-abc123/index.html 저장
+   ↓
+   ✅ 게임 준비 완료!
+
+2. 게임 목록 조회 (/developer → 게임 관리 탭)
+   ↓
+   GET /api/games
+   ↓
+   GameMaintenanceManager.getGameVersionFromDB() 각 게임마다 호출
+   ↓
+   ✅ 게임 카드에 "v1.0" 배지 표시
+
+3. 버그 신고 (게임 관리 탭 → 🐛 버그 신고 버튼)
+   ↓
+   사용자: "공이 벽에 붙어서 떨어지지 않습니다"
+   ↓
+   POST /api/maintenance/report-bug
+   ↓
+   GameMaintenanceManager.handleBugReport()
+   ↓
+   Claude AI가 버그 분석 및 수정
+   ↓
+   ✅ backups/index.v1.0.html 백업 생성
+   ↓
+   ✅ 수정된 코드로 index.html 덮어쓰기
+   ↓
+   ✅ 버전 증가 (v1.0 → v1.1)
+   ↓
+   ✅ DB 업데이트 (game_versions.current_version = '1.1')
+   ↓
+   🎉 버그 수정 완료! 게임 목록 새로고침 시 v1.1 표시
+
+4. 기능 추가 (게임 관리 탭 → ✨ 기능 추가 버튼)
+   ↓
+   사용자: "60초 타이머를 추가해주세요"
+   ↓
+   POST /api/maintenance/add-feature
+   ↓
+   GameMaintenanceManager.handleFeatureRequest()
+   ↓
+   Claude AI가 기능 추가 (증분 업데이트)
+   ↓
+   ✅ backups/index.v1.1.html 백업 생성
+   ↓
+   ✅ 타이머 기능이 추가된 코드로 덮어쓰기
+   ↓
+   ✅ 버전 증가 (v1.1 → v1.2)
+   ↓
+   ✅ DB 업데이트 (game_versions.current_version = '1.2')
+   ↓
+   🎉 기능 추가 완료! 게임 목록 새로고침 시 v1.2 표시
+
+5. 서버 재시작
+   ↓
+   GameServer 초기화
+   ↓
+   GET /api/games 호출 시 DB에서 자동 복원
+   ↓
+   ✅ 버전 정보 유지 (v1.2)
+   ↓
+   💾 영구 저장 덕분에 모든 수정 이력 보존
+```
+
+---
+
+## 🎯 다음 작업 시 참고사항
+
+### 수정된 핵심 파일 (2025-10-11)
+
+1. **server/index.js** (Line 132-171)
+   - `/api/games` 엔드포인트가 비동기 함수로 변경됨
+   - 각 게임마다 `GameMaintenanceManager.getGameVersionFromDB()` 호출
+   - 응답에 `version` 필드 포함
+
+2. **server/routes/developerRoutes.js**
+   - Line 1872: `v${game.version || '1.0'}` (동적 버전 표시)
+   - Line 1950: `bugDescription` (API 파라미터)
+   - Line 1988: `featureDescription` (API 파라미터)
+
+3. **server/InteractiveGameGenerator.js** (Line 1954-1972)
+   - 게임 생성 후 `GameMaintenanceManager.registerGameSession()` 자동 호출
+   - 생성된 게임은 즉시 v1.0으로 등록됨
+
+4. **server/GameMaintenanceManager.js**
+   - Line 38: `sessionTimeout = 24 * 60 * 60 * 1000` (24시간)
+   - DB 자동 복원 기능으로 사실상 무제한 세션 유지
+
+### 현재 작동 중인 API 엔드포인트
+
+```
+✅ GET /api/games - 게임 목록 + 버전 정보
+✅ POST /api/maintenance/report-bug - 버그 수정
+✅ POST /api/maintenance/add-feature - 기능 추가
+✅ GET /api/maintenance/history/:gameId - 수정 이력
+✅ GET /api/maintenance/session/:gameId - 세션 정보
+✅ GET /api/maintenance/version/:gameId - 버전 정보
+```
+
+### Supabase 데이터베이스 (rwkgktwdljsddowcxphc)
+
+**game_versions 테이블 구조:**
+```sql
+CREATE TABLE game_versions (
+  id BIGSERIAL PRIMARY KEY,
+  game_id TEXT UNIQUE NOT NULL,
+  current_version TEXT NOT NULL,
+  title TEXT,
+  description TEXT,
+  game_type TEXT,
+  modifications JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### 알려진 문제 없음 (2025-10-11 기준)
+
+- ✅ API 파라미터 불일치 해결됨
+- ✅ 버전 정보 DB 연동 완료
+- ✅ 게임 관리 탭 통합 완료
+- ✅ 모든 기능 테스트 완료
+
+### 향후 개선 아이디어
+
+1. **버전 히스토리 UI 개선**
+   - 각 버전별 diff 표시
+   - 특정 버전으로 롤백 기능
+
+2. **자동 테스트 강화**
+   - 버그 수정 후 자동 테스트 실행
+   - 품질 점수 향상 확인
+
+3. **멀티 언어 지원**
+   - 영어 버그 리포트 지원
+   - 다국어 게임 생성
+
+4. **협업 기능**
+   - 여러 개발자가 동시에 게임 수정
+   - 버전 충돌 해결 시스템
 
 ---
 
@@ -1221,5 +1428,7 @@ open http://localhost:3000/games/my-new-game
 **Made with ❤️ by Sensor Game Hub Team**
 
 [📚 README.md](README.md) | [👨‍💻 개발자 가이드](DEVELOPER_GUIDE.md) | [📖 문서 시스템](docs/)
+
+**최종 업데이트: 2025-10-11 - 게임 유지보수 시스템 완전 통합 완료 🎉**
 
 </div>
