@@ -144,6 +144,22 @@ class DeveloperRoutes {
         this.router.get('/api/preview-game/:gameId', async (req, res) => {
             await this.handlePreviewGame(req, res);
         });
+
+        // 🆕 계정 관리 API
+        // 사용자 정보 조회 (인증 필요)
+        this.router.get('/api/account/info', checkCreatorAuth, async (req, res) => {
+            await this.handleGetAccountInfo(req, res);
+        });
+
+        // 닉네임 변경 (인증 필요)
+        this.router.post('/api/account/change-nickname', checkCreatorAuth, async (req, res) => {
+            await this.handleChangeNickname(req, res);
+        });
+
+        // 비밀번호 변경 (인증 필요)
+        this.router.post('/api/account/change-password', checkCreatorAuth, async (req, res) => {
+            await this.handleChangePassword(req, res);
+        });
     }
 
     /**
@@ -1077,6 +1093,7 @@ class DeveloperRoutes {
                 <button class="tab" data-tab="docs">📚 문서</button>
                 <button class="tab" data-tab="chat">💬 AI 챗봇</button>
                 <button class="tab" data-tab="manager">🎯 게임 관리</button>
+                <button class="tab" data-tab="account">👤 계정 관리</button>
             </div>
 
             <div class="tab-content active" id="welcome-tab">
@@ -1101,6 +1118,10 @@ class DeveloperRoutes {
 
             <div class="tab-content" id="manager-tab">
                 ${this.generateGameManagerHTML()}
+            </div>
+
+            <div class="tab-content" id="account-tab">
+                ${this.generateAccountManagementHTML()}
             </div>
         </main>
     </div>
@@ -2049,6 +2070,321 @@ class DeveloperRoutes {
     }
 
     /**
+     * 계정 관리 HTML 생성
+     */
+    generateAccountManagementHTML() {
+        return `
+        <div class="account-management-container">
+            <div class="account-header">
+                <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; background: linear-gradient(135deg, #6366F1, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    👤 계정 관리
+                </h2>
+                <p style="color: #94A3B8; margin-bottom: 2rem;">사용자 정보를 관리하고 수정하세요</p>
+            </div>
+
+            <div id="account-loading" style="text-align: center; color: #94A3B8; padding: 2rem;">
+                사용자 정보를 불러오는 중...
+            </div>
+
+            <div id="account-content" style="display: none; max-width: 600px;">
+                <!-- 사용자 정보 표시 -->
+                <div class="account-section" style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.25rem; font-weight: 600; color: #E2E8F0; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(100, 116, 139, 0.3); padding-bottom: 0.75rem;">
+                        📋 기본 정보
+                    </h3>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">사용자 이름</label>
+                        <div id="account-name" style="padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 8px; color: #E2E8F0;">-</div>
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">닉네임</label>
+                        <div id="account-nickname" style="padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 8px; color: #E2E8F0;">-</div>
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">이메일</label>
+                        <div id="account-email" style="padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 8px; color: #E2E8F0;">-</div>
+                    </div>
+
+                    <div>
+                        <label style="display: block; color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">비밀번호</label>
+                        <div style="padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 8px; color: #E2E8F0;">
+                            ••••••••
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 닉네임 변경 -->
+                <div class="account-section" style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.25rem; font-weight: 600; color: #E2E8F0; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(100, 116, 139, 0.3); padding-bottom: 0.75rem;">
+                        ✏️ 닉네임 변경
+                    </h3>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">새 닉네임</label>
+                        <input
+                            type="text"
+                            id="new-nickname-input"
+                            placeholder="새 닉네임을 입력하세요"
+                            style="width: 100%; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 8px; color: #F8FAFC; font-size: 1rem;"
+                        >
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">현재 비밀번호</label>
+                        <input
+                            type="password"
+                            id="nickname-password-input"
+                            placeholder="비밀번호를 입력하세요"
+                            style="width: 100%; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 8px; color: #F8FAFC; font-size: 1rem;"
+                        >
+                    </div>
+
+                    <button onclick="changeNickname()" style="width: 100%; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                        닉네임 변경
+                    </button>
+                    <div id="nickname-change-message" style="margin-top: 1rem; text-align: center; display: none;"></div>
+                </div>
+
+                <!-- 비밀번호 변경 -->
+                <div class="account-section" style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 16px; padding: 2rem;">
+                    <h3 style="font-size: 1.25rem; font-weight: 600; color: #E2E8F0; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(100, 116, 139, 0.3); padding-bottom: 0.75rem;">
+                        🔒 비밀번호 변경
+                    </h3>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">현재 비밀번호</label>
+                        <input
+                            type="password"
+                            id="current-password-input"
+                            placeholder="현재 비밀번호를 입력하세요"
+                            style="width: 100%; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 8px; color: #F8FAFC; font-size: 1rem;"
+                        >
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">새 비밀번호</label>
+                        <input
+                            type="password"
+                            id="new-password-input"
+                            placeholder="새 비밀번호를 입력하세요"
+                            style="width: 100%; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 8px; color: #F8FAFC; font-size: 1rem;"
+                        >
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">새 비밀번호 확인</label>
+                        <input
+                            type="password"
+                            id="confirm-password-input"
+                            placeholder="새 비밀번호를 다시 입력하세요"
+                            style="width: 100%; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 8px; color: #F8FAFC; font-size: 1rem;"
+                        >
+                    </div>
+
+                    <button onclick="changePassword()" style="width: 100%; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                        비밀번호 변경
+                    </button>
+                    <div id="password-change-message" style="margin-top: 1rem; text-align: center; display: none;"></div>
+                </div>
+            </div>
+
+            <div id="account-error" style="display: none; text-align: center; color: #EF4444; padding: 2rem;">
+                사용자 정보를 불러올 수 없습니다. 로그인이 필요합니다.
+            </div>
+        </div>
+
+        <script>
+            // 계정 탭이 활성화될 때 사용자 정보 로드
+            document.querySelector('[data-tab="account"]').addEventListener('click', () => {
+                setTimeout(loadAccountInfo, 100);
+            });
+
+            // 사용자 정보 로드
+            async function loadAccountInfo() {
+                try {
+                    document.getElementById('account-loading').style.display = 'block';
+                    document.getElementById('account-content').style.display = 'none';
+                    document.getElementById('account-error').style.display = 'none';
+
+                    const response = await fetch('/developer/api/account/info', {
+                        headers: {
+                            'Authorization': 'Bearer ' + (localStorage.getItem('authToken') || '')
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load account info');
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        document.getElementById('account-name').textContent = data.user.name || '-';
+                        document.getElementById('account-nickname').textContent = data.user.nickname || '-';
+                        document.getElementById('account-email').textContent = data.user.email || '-';
+
+                        document.getElementById('account-loading').style.display = 'none';
+                        document.getElementById('account-content').style.display = 'block';
+                    } else {
+                        throw new Error(data.error || 'Failed to load account info');
+                    }
+                } catch (error) {
+                    console.error('계정 정보 로드 실패:', error);
+                    document.getElementById('account-loading').style.display = 'none';
+                    document.getElementById('account-error').style.display = 'block';
+                }
+            }
+
+            // 닉네임 변경
+            async function changeNickname() {
+                const newNickname = document.getElementById('new-nickname-input').value.trim();
+                const password = document.getElementById('nickname-password-input').value;
+                const messageDiv = document.getElementById('nickname-change-message');
+
+                if (!newNickname) {
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#EF4444';
+                    messageDiv.textContent = '새 닉네임을 입력하세요.';
+                    return;
+                }
+
+                if (!password) {
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#EF4444';
+                    messageDiv.textContent = '비밀번호를 입력하세요.';
+                    return;
+                }
+
+                try {
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#8B5CF6';
+                    messageDiv.textContent = '처리 중...';
+
+                    const response = await fetch('/developer/api/account/change-nickname', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + (localStorage.getItem('authToken') || '')
+                        },
+                        body: JSON.stringify({
+                            newNickname: newNickname,
+                            password: password
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        messageDiv.style.color = '#10B981';
+                        messageDiv.textContent = '✅ 닉네임이 성공적으로 변경되었습니다.';
+                        document.getElementById('account-nickname').textContent = newNickname;
+                        document.getElementById('new-nickname-input').value = '';
+                        document.getElementById('nickname-password-input').value = '';
+                    } else {
+                        messageDiv.style.color = '#EF4444';
+                        messageDiv.textContent = '❌ ' + (data.error || '닉네임 변경에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('닉네임 변경 실패:', error);
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#EF4444';
+                    messageDiv.textContent = '❌ 닉네임 변경 중 오류가 발생했습니다.';
+                }
+            }
+
+            // 비밀번호 변경
+            async function changePassword() {
+                const currentPassword = document.getElementById('current-password-input').value;
+                const newPassword = document.getElementById('new-password-input').value;
+                const confirmPassword = document.getElementById('confirm-password-input').value;
+                const messageDiv = document.getElementById('password-change-message');
+
+                if (!currentPassword) {
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#EF4444';
+                    messageDiv.textContent = '현재 비밀번호를 입력하세요.';
+                    return;
+                }
+
+                if (!newPassword) {
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#EF4444';
+                    messageDiv.textContent = '새 비밀번호를 입력하세요.';
+                    return;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#EF4444';
+                    messageDiv.textContent = '새 비밀번호가 일치하지 않습니다.';
+                    return;
+                }
+
+                if (newPassword.length < 6) {
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#EF4444';
+                    messageDiv.textContent = '비밀번호는 최소 6자 이상이어야 합니다.';
+                    return;
+                }
+
+                try {
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#8B5CF6';
+                    messageDiv.textContent = '처리 중...';
+
+                    const response = await fetch('/developer/api/account/change-password', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + (localStorage.getItem('authToken') || '')
+                        },
+                        body: JSON.stringify({
+                            currentPassword: currentPassword,
+                            newPassword: newPassword
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // 새 세션 토큰을 localStorage에 저장 (로그인 상태 유지)
+                        if (data.session && data.session.access_token) {
+                            console.log('✅ 새 세션 토큰 저장');
+                            localStorage.setItem('authToken', data.session.access_token);
+                        } else if (data.requireRelogin) {
+                            // 재로그인 필요
+                            messageDiv.style.color = '#F59E0B';
+                            messageDiv.textContent = '⚠️ 비밀번호가 변경되었습니다. 다시 로그인해주세요.';
+                            setTimeout(() => {
+                                window.location.href = '/';
+                            }, 2000);
+                            return;
+                        }
+
+                        messageDiv.style.color = '#10B981';
+                        messageDiv.textContent = '✅ 비밀번호가 성공적으로 변경되었습니다.';
+                        document.getElementById('current-password-input').value = '';
+                        document.getElementById('new-password-input').value = '';
+                        document.getElementById('confirm-password-input').value = '';
+                    } else {
+                        messageDiv.style.color = '#EF4444';
+                        messageDiv.textContent = '❌ ' + (data.error || '비밀번호 변경에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('비밀번호 변경 실패:', error);
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#EF4444';
+                    messageDiv.textContent = '❌ 비밀번호 변경 중 오류가 발생했습니다.';
+                }
+            }
+        </script>
+        `;
+    }
+
+    /**
      * 문서 뷰어
      */
     async viewDocument(req, res) {
@@ -2716,6 +3052,298 @@ class DeveloperRoutes {
                 </body>
                 </html>
             `);
+        }
+    }
+
+    /**
+     * 사용자 정보 조회
+     */
+    async handleGetAccountInfo(req, res) {
+        try {
+            console.log('🔍 [계정 정보 조회] 시작');
+            console.log('User:', req.user ? { id: req.user.id, email: req.user.email } : 'undefined');
+            console.log('Creator:', req.creator);
+
+            const user = req.user; // authMiddleware에서 추가됨
+            let creator = req.creator; // authMiddleware에서 추가됨
+
+            const { createClient } = require('@supabase/supabase-js');
+            const supabaseAdmin = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY
+            );
+
+            console.log('Service Role Key 존재 여부:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+            // game_creators 테이블에 데이터가 없으면 생성 (기존 사용자 대응)
+            if (!creator) {
+                console.log('⚠️ Creator 정보 없음, 자동 생성 시도');
+                const userName = user.user_metadata?.name || user.email.split('@')[0];
+                const userNickname = user.user_metadata?.nickname || userName;
+
+                console.log('생성할 데이터:', { id: user.id, name: userName, nickname: userNickname });
+
+                const { data: newCreator, error: insertError } = await supabaseAdmin
+                    .from('game_creators')
+                    .insert({
+                        id: user.id,
+                        name: userName,
+                        nickname: userNickname,
+                        games_created: 0
+                    })
+                    .select('id, name, nickname')
+                    .single();
+
+                if (insertError) {
+                    console.error('❌ Creator insert error:', insertError);
+                    console.error('Error details:', JSON.stringify(insertError, null, 2));
+                    return res.status(500).json({
+                        success: false,
+                        error: '사용자 정보를 생성할 수 없습니다.',
+                        details: insertError.message
+                    });
+                }
+
+                if (newCreator) {
+                    console.log('✅ Creator 생성 성공:', newCreator);
+                    creator = newCreator;
+                }
+            } else {
+                console.log('✅ Creator 정보 존재:', creator);
+            }
+
+            res.json({
+                success: true,
+                user: {
+                    id: user.id,
+                    name: creator.name,
+                    nickname: creator.nickname,
+                    email: user.email,
+                    password: '' // 보안상 비밀번호는 절대 전송하지 않음
+                }
+            });
+        } catch (error) {
+            console.error('❌ 사용자 정보 조회 오류:', error);
+            res.status(500).json({
+                success: false,
+                error: '사용자 정보를 불러올 수 없습니다.',
+                details: error.message
+            });
+        }
+    }
+
+    /**
+     * 닉네임 변경
+     */
+    async handleChangeNickname(req, res) {
+        try {
+            console.log('🔄 [닉네임 변경] 시작');
+            const { newNickname, password } = req.body;
+            const user = req.user;
+
+            console.log('요청 데이터:', { newNickname, passwordLength: password?.length, userId: user.id });
+
+            if (!newNickname || !password) {
+                console.log('❌ 입력값 누락');
+                return res.status(400).json({
+                    success: false,
+                    error: '닉네임과 비밀번호를 입력하세요.'
+                });
+            }
+
+            // 닉네임 유효성 검사
+            if (newNickname.length < 2 || newNickname.length > 20) {
+                return res.status(400).json({
+                    success: false,
+                    error: '닉네임은 2-20자 사이여야 합니다.'
+                });
+            }
+
+            // Supabase 클라이언트 생성
+            const { createClient } = require('@supabase/supabase-js');
+            const supabase = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_ANON_KEY
+            );
+            const supabaseAdmin = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY
+            );
+
+            // 비밀번호 확인 (Supabase Auth의 signInWithPassword 사용)
+            console.log('🔐 비밀번호 확인 중...');
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email: user.email,
+                password: password
+            });
+
+            if (signInError || !signInData.user) {
+                console.log('❌ 비밀번호 확인 실패:', signInError);
+                return res.status(401).json({
+                    success: false,
+                    error: '비밀번호가 올바르지 않습니다.'
+                });
+            }
+
+            console.log('✅ 비밀번호 확인 성공');
+
+            // 닉네임 중복 확인
+            console.log('🔍 닉네임 중복 확인 중...');
+            const { data: existingNickname, error: checkError } = await supabaseAdmin
+                .from('game_creators')
+                .select('id')
+                .eq('nickname', newNickname)
+                .neq('id', user.id)
+                .maybeSingle();
+
+            if (checkError) {
+                console.error('❌ 닉네임 중복 확인 오류:', checkError);
+            }
+
+            if (existingNickname) {
+                console.log('❌ 닉네임 중복:', newNickname);
+                return res.status(409).json({
+                    success: false,
+                    error: '이미 사용 중인 닉네임입니다.'
+                });
+            }
+
+            // game_creators 테이블에서 닉네임 업데이트 (Service Role Key 사용)
+            console.log('📝 닉네임 업데이트 중...', { newNickname, userId: user.id });
+            const { error: updateError } = await supabaseAdmin
+                .from('game_creators')
+                .update({ nickname: newNickname })
+                .eq('id', user.id);
+
+            if (updateError) {
+                console.error('❌ 닉네임 업데이트 오류:', updateError);
+                console.error('Error details:', JSON.stringify(updateError, null, 2));
+                return res.status(500).json({
+                    success: false,
+                    error: '닉네임 변경에 실패했습니다.',
+                    details: updateError.message
+                });
+            }
+
+            console.log('✅ 닉네임 변경 성공:', newNickname);
+            res.json({
+                success: true,
+                message: '닉네임이 성공적으로 변경되었습니다.',
+                newNickname: newNickname
+            });
+        } catch (error) {
+            console.error('❌ 닉네임 변경 오류:', error);
+            console.error('Error stack:', error.stack);
+            res.status(500).json({
+                success: false,
+                error: '닉네임 변경 중 오류가 발생했습니다.',
+                details: error.message
+            });
+        }
+    }
+
+    /**
+     * 비밀번호 변경
+     */
+    async handleChangePassword(req, res) {
+        try {
+            console.log('🔐 [비밀번호 변경] 시작');
+            const { currentPassword, newPassword } = req.body;
+            const user = req.user;
+
+            console.log('요청 데이터:', {
+                currentPasswordLength: currentPassword?.length,
+                newPasswordLength: newPassword?.length,
+                userId: user.id
+            });
+
+            if (!currentPassword || !newPassword) {
+                console.log('❌ 입력값 누락');
+                return res.status(400).json({
+                    success: false,
+                    error: '현재 비밀번호와 새 비밀번호를 입력하세요.'
+                });
+            }
+
+            if (newPassword.length < 6) {
+                console.log('❌ 비밀번호 길이 부족:', newPassword.length);
+                return res.status(400).json({
+                    success: false,
+                    error: '비밀번호는 최소 6자 이상이어야 합니다.'
+                });
+            }
+
+            // Supabase 클라이언트 생성
+            const { createClient } = require('@supabase/supabase-js');
+            const supabase = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_ANON_KEY
+            );
+
+            // 현재 비밀번호 확인
+            console.log('🔐 현재 비밀번호 확인 중...');
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email: user.email,
+                password: currentPassword
+            });
+
+            if (signInError || !signInData.user) {
+                console.log('❌ 현재 비밀번호 확인 실패:', signInError);
+                return res.status(401).json({
+                    success: false,
+                    error: '현재 비밀번호가 올바르지 않습니다.'
+                });
+            }
+
+            console.log('✅ 현재 비밀번호 확인 성공');
+
+            // 비밀번호 업데이트 (Supabase Auth)
+            console.log('📝 비밀번호 업데이트 중...');
+            const { data: updateData, error: updateError } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+
+            if (updateError) {
+                console.error('❌ 비밀번호 업데이트 오류:', updateError);
+                return res.status(500).json({
+                    success: false,
+                    error: '비밀번호 변경에 실패했습니다.',
+                    details: updateError.message
+                });
+            }
+
+            console.log('✅ 비밀번호 변경 성공');
+
+            // 새 비밀번호로 다시 로그인하여 새 세션 토큰 받기
+            console.log('🔄 새 세션 생성 중...');
+            const { data: newSessionData, error: newSessionError } = await supabase.auth.signInWithPassword({
+                email: user.email,
+                password: newPassword
+            });
+
+            if (newSessionError || !newSessionData.session) {
+                console.error('❌ 새 세션 생성 실패:', newSessionError);
+                // 비밀번호는 변경되었지만 세션 생성 실패
+                return res.json({
+                    success: true,
+                    message: '비밀번호가 변경되었습니다. 다시 로그인해주세요.',
+                    requireRelogin: true
+                });
+            }
+
+            console.log('✅ 새 세션 생성 성공');
+            res.json({
+                success: true,
+                message: '비밀번호가 성공적으로 변경되었습니다.',
+                session: newSessionData.session // 새 세션 정보 반환
+            });
+        } catch (error) {
+            console.error('❌ 비밀번호 변경 오류:', error);
+            res.status(500).json({
+                success: false,
+                error: '비밀번호 변경 중 오류가 발생했습니다.',
+                details: error.message
+            });
         }
     }
 
