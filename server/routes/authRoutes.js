@@ -14,6 +14,11 @@ class AuthRoutes {
             process.env.SUPABASE_URL,
             process.env.SUPABASE_ANON_KEY
         );
+        // Service Role Key for admin operations (server-side only)
+        this.supabaseAdmin = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
 
         this.setupRoutes();
     }
@@ -116,6 +121,22 @@ class AuthRoutes {
                 });
             }
 
+            // game_creators 테이블에 사용자 정보 삽입 (Service Role Key 사용)
+            const { error: creatorError } = await this.supabaseAdmin
+                .from('game_creators')
+                .insert({
+                    id: data.user.id,
+                    name: name,
+                    nickname: nickname,
+                    games_created: 0
+                });
+
+            if (creatorError) {
+                console.error('Creator insert error:', creatorError);
+                // Auth 사용자는 생성되었지만 creator 테이블 삽입 실패
+                // 로그만 남기고 계속 진행 (나중에 수동으로 추가 가능)
+            }
+
             // 회원가입 성공
             res.status(201).json({
                 message: '회원가입이 완료되었습니다.',
@@ -167,17 +188,43 @@ class AuthRoutes {
             }
 
             // 제작자 정보 조회
-            const { data: creator } = await this.supabase
+            let { data: creator, error: creatorError } = await this.supabase
                 .from('game_creators')
                 .select('name, nickname, games_created')
                 .eq('id', data.user.id)
                 .single();
 
+            // game_creators 테이블에 데이터가 없으면 생성 (기존 사용자 대응)
+            if (creatorError || !creator) {
+                const userName = data.user.user_metadata?.name || data.user.email.split('@')[0];
+                const userNickname = data.user.user_metadata?.nickname || userName;
+
+                const { data: newCreator, error: insertError } = await this.supabaseAdmin
+                    .from('game_creators')
+                    .insert({
+                        id: data.user.id,
+                        name: userName,
+                        nickname: userNickname,
+                        games_created: 0
+                    })
+                    .select('name, nickname, games_created')
+                    .single();
+
+                if (!insertError) {
+                    creator = newCreator;
+                }
+            }
+
             // 로그인 시간 업데이트
             if (creator) {
-                await this.supabase.rpc('update_creator_login', {
-                    creator_id: data.user.id
-                });
+                try {
+                    await this.supabase.rpc('update_creator_login', {
+                        creator_id: data.user.id
+                    });
+                } catch (rpcError) {
+                    // RPC 함수가 없어도 로그인은 계속 진행
+                    console.log('update_creator_login RPC not available');
+                }
             }
 
             // 로그인 성공
