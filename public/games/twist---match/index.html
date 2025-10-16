@@ -424,8 +424,8 @@
         };
 
         const ROTATION_ANGLES = [0, 90, 180, 270];
-        const SENSOR_THRESHOLD = 15; // 센서 감지 임계값
-        const ROTATION_COOLDOWN = 300; // 회전 쿨다운 (ms)
+        const SENSOR_THRESHOLD = 8; // 센서 감지 임계값 (15 → 8로 민감도 향상)
+        const ROTATION_COOLDOWN = 150; // 회전 쿨다운 (ms) (300 → 150으로 반응속도 향상)
         const HINT_DURATION = 3000; // 힌트 표시 시간 (ms)
 
         // ==================== 게임 변수 ====================

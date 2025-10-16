@@ -1068,9 +1068,20 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
 
             } catch (error) {
                 console.error('버그 리포트 처리 실패:', error);
+
+                // 더 상세한 에러 메시지 제공
+                let errorMessage = error.message;
+                if (error.message.includes('timeout') || error.message.includes('10 minutes')) {
+                    errorMessage = '처리 시간이 너무 오래 걸립니다. 더 간단한 설명으로 다시 시도해주세요.';
+                } else if (error.message.includes('ENOENT')) {
+                    errorMessage = '게임 파일을 찾을 수 없습니다. 게임이 삭제되었거나 경로가 잘못되었습니다.';
+                } else if (error.message.includes('API key')) {
+                    errorMessage = 'AI 서비스 인증 오류입니다. 관리자에게 문의해주세요.';
+                }
+
                 res.status(500).json({
                     success: false,
-                    error: error.message
+                    error: errorMessage
                 });
             }
         });
@@ -1104,9 +1115,20 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
 
             } catch (error) {
                 console.error('기능 추가 요청 처리 실패:', error);
+
+                // 더 상세한 에러 메시지 제공
+                let errorMessage = error.message;
+                if (error.message.includes('timeout') || error.message.includes('10 minutes')) {
+                    errorMessage = '처리 시간이 너무 오래 걸립니다. 더 간단한 설명으로 다시 시도해주세요.';
+                } else if (error.message.includes('ENOENT')) {
+                    errorMessage = '게임 파일을 찾을 수 없습니다. 게임이 삭제되었거나 경로가 잘못되었습니다.';
+                } else if (error.message.includes('API key')) {
+                    errorMessage = 'AI 서비스 인증 오류입니다. 관리자에게 문의해주세요.';
+                }
+
                 res.status(500).json({
                     success: false,
-                    error: error.message
+                    error: errorMessage
                 });
             }
         });
@@ -1309,13 +1331,16 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             this.aiGameGenerator = new AIGameGenerator();
             await this.aiGameGenerator.initialize();
 
-            // GameMaintenanceManager 초기화
+            // GameMaintenanceManager 초기화 (GameScanner 주입)
             const maintenanceConfig = {
                 claudeApiKey: process.env.CLAUDE_API_KEY,
-                claudeModel: 'claude-3-5-sonnet-20241022'
+                claudeModel: 'claude-sonnet-4-5-20250929'  // Sonnet 4.5 (더 긴 출력 지원)
             };
-            this.gameMaintenanceManager = new GameMaintenanceManager(maintenanceConfig);
-            console.log('✅ GameMaintenanceManager 초기화 완료');
+            this.gameMaintenanceManager = new GameMaintenanceManager(
+                maintenanceConfig,
+                this.gameScanner  // ✅ GameScanner 주입 (자동 재스캔용)
+            );
+            console.log('✅ GameMaintenanceManager 초기화 완료 (GameScanner 주입됨)');
 
             // GameMaintenanceManager를 InteractiveGameGenerator에 주입
             if (this.interactiveGameGenerator) {

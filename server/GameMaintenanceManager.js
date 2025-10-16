@@ -16,13 +16,14 @@ const { ChatAnthropic } = require('@langchain/anthropic');
 const { createClient } = require('@supabase/supabase-js');
 
 class GameMaintenanceManager {
-    constructor(config) {
+    constructor(config, gameScanner = null) {
         this.config = config;
         this.llm = new ChatAnthropic({
             anthropicApiKey: config.claudeApiKey,
             model: config.claudeModel,
-            maxTokens: 64000,  // Claude Sonnet 4.5의 최대 출력 토큰 (64K)
-            temperature: 0.2  // 유지보수는 정확성 최우선
+            maxTokens: 64000,  // Claude Sonnet 4.5의 최대 출력 토큰 (공식 문서 확인)
+            temperature: 0.2,  // 유지보수는 정확성 최우선
+            streaming: true  // ✅ 스트리밍 활성화 (타임아웃 방지)
         });
 
         // Supabase 클라이언트 초기화
@@ -30,6 +31,9 @@ class GameMaintenanceManager {
             process.env.SUPABASE_URL,
             process.env.SUPABASE_ANON_KEY
         );
+
+        // GameScanner 주입 (자동 재스캔용)
+        this.gameScanner = gameScanner;
 
         // 활성 게임 세션 (gameId → 게임 정보)
         this.activeSessions = new Map();
@@ -40,6 +44,11 @@ class GameMaintenanceManager {
 
         // 자동 정리 타이머
         this.startSessionCleaner();
+
+        console.log('🔧 GameMaintenanceManager 초기화 완료', {
+            hasGameScanner: !!this.gameScanner,
+            streamingEnabled: true
+        });
     }
 
     /**
@@ -124,6 +133,20 @@ class GameMaintenanceManager {
             // 6. DB에 버전 정보 저장
             await this.saveGameVersionToDB(gameId, session);
 
+            // 7. 🔄 GameScanner 자동 재스캔 (게임 허브에 즉시 반영)
+            if (this.gameScanner) {
+                try {
+                    console.log('🔄 GameScanner 재스캔 중...');
+                    await this.gameScanner.scanGames();
+                    console.log('✅ GameScanner 재스캔 완료 - 허브에 반영됨');
+                } catch (scanError) {
+                    console.error('⚠️ GameScanner 재스캔 실패:', scanError.message);
+                    // 게임은 수정되었으므로 오류로 처리하지 않음
+                }
+            } else {
+                console.log('⚠️ GameScanner 없음 - 서버 재시작 시 반영됨');
+            }
+
             console.log(`✅ 버그 수정 완료: ${gameId} (v${session.version})`);
 
             return {
@@ -149,81 +172,66 @@ class GameMaintenanceManager {
         const codeLength = currentCode.length;
         console.log(`📏 원본 코드 길이: ${codeLength} 문자`);
 
-        const prompt = `당신은 Claude Sonnet 4.5 모델로, 64,000 토큰의 긴 출력이 가능한 HTML5 Canvas 게임 버그 수정 전문가입니다.
+        const prompt = `당신은 HTML5 Canvas 게임 버그 수정 전문가입니다.
 
 **사용자 버그 리포트:**
 "${bugDescription}"
 
 ${userContext ? `**추가 정보:**\n${userContext}\n` : ''}
 
-**현재 게임 코드 (${codeLength}자):**
+**현재 게임 코드:**
 \`\`\`html
 ${currentCode}
 \`\`\`
 
-**분석 및 수정 작업:**
-1. 버그의 정확한 원인을 JavaScript 코드에서 찾으세요
-2. 버그를 수정한 **완전한** HTML 파일을 생성하세요 (코드를 절대 잘라내지 마세요!)
-3. 변경사항을 명확히 설명하세요
+**작업 지침:**
+1. 버그의 정확한 원인을 찾아 최소한의 변경으로 수정하세요
+2. SessionSDK, QR코드, 센서 연결 로직은 절대 건드리지 마세요
+3. 전체 HTML 코드를 반환하되, 수정된 부분을 명확히 표시하세요
 
-**필수 준수 사항:**
-✅ SessionSDK, QR코드, 센서 연결 로직은 **절대 변경 금지**
-✅ <!DOCTYPE html>부터 </html>까지 **전체 코드 반환 필수** (${codeLength}자 이상)
-✅ 버그 수정에 필요한 최소한의 변경만 하세요
-✅ 기존 CSS 스타일, 게임 로직은 최대한 유지하세요
-
-**일반적인 버그 패턴 및 해결책:**
-- "공이 움직이지 않아요"
-  → \`gameStarted\` 플래그 확인, \`ball.dx\`, \`ball.dy\` 초기 속도 설정 확인
-  → \`startGame()\` 함수에서 \`ball.stuck = false\` 및 속도 설정 확인
-
-- "레벨 클리어 후 센서 입력 안돼요"
-  → \`showOverlay()\` 대신 토스트 메시지 사용
-  → 센서 데이터 처리 시 \`!gameOver\` 조건만 확인 (\`gamePaused\` 무시)
-
-- "타이머가 작동 안해요"
-  → \`setInterval()\` 또는 \`requestAnimationFrame()\` 호출 확인
-  → \`gameStarted\` 플래그 확인
-
-- "센서 반응 없어요"
-  → \`sensor-data\` 이벤트 핸들러에서 \`event.detail || event\` 패턴 확인
-  → \`processSensorData()\` 함수 호출 확인
+**버그 패턴별 해결책:**
+- "센서 민감도가 낮아요" / "반응이 둔해요":
+  → SENSOR_THRESHOLD 값 낮추기 (15-20 → 5-10)
+  → sensitivity 계수 높이기 (1.0 → 1.5-2.0)
+  → 센서 데이터 곱셈 계수 증가 (gamma * 0.5 → gamma * 1.5)
+  → ROTATION_COOLDOWN 감소 (300ms → 100ms)
 
 **출력 형식:**
-반드시 아래 형식으로 응답하세요.
+먼저 변경사항을 간단히 설명하고, 그 다음 전체 HTML 코드를 반환하세요.
 
-1. **변경 사항 요약** (간단히):
-- [수정한 부분 1]
-- [수정한 부분 2]
+변경 사항:
+- [수정 1]
+- [수정 2]
 
-2. **수정된 전체 코드**:
+수정된 전체 코드:
 \`\`\`html
 <!DOCTYPE html>
-<html lang="ko">
-<head>
-    ... (전체 head 내용) ...
-</head>
-<body>
-    ... (전체 body 내용, SessionSDK 포함) ...
-</body>
+... 전체 코드 ...
 </html>
-\`\`\`
-
-**중요 - 코드 완성도:**
-- 원본 코드 길이: ${codeLength}자
-- 반환해야 할 최소 길이: ${codeLength}자 이상
-- 코드를 절대 잘라내거나 생략하지 마세요!
-- "... 생략 ..." 같은 표시 사용 금지!
-- SessionSDK 스크립트, QR 코드 생성 함수, 센서 이벤트 핸들러는 **필수 유지**
-
-지금 버그를 수정한 **완전한** HTML 코드를 생성하세요. 64K 토큰을 활용하여 전체 코드를 반환하세요!`;
+\`\`\``;
 
         try {
-            console.log('🤖 LLM 호출 중...');
-            const response = await this.llm.invoke(prompt);
-            console.log('✅ LLM 응답 받음:', response.content?.substring(0, 100) + '...');
+            console.log('🤖 LLM 스트리밍 호출 중... (타임아웃 방지)');
 
-            const fixedCode = this.extractHTML(response.content);
+            // ✅ 스트리밍으로 응답 받기 (10분+ 타임아웃 방지)
+            let fullResponse = '';
+            let chunkCount = 0;
+
+            const stream = await this.llm.stream(prompt);
+
+            for await (const chunk of stream) {
+                fullResponse += chunk.content;
+                chunkCount++;
+
+                // 진행 상황 로깅 (1000청크마다)
+                if (chunkCount % 1000 === 0) {
+                    console.log(`📦 청크 ${chunkCount}개 받음, 현재 길이: ${fullResponse.length}자`);
+                }
+            }
+
+            console.log(`✅ LLM 스트리밍 완료: 총 ${chunkCount}개 청크, ${fullResponse.length}자`);
+
+            const fixedCode = this.extractHTML(fullResponse);
             console.log('📝 HTML 추출 완료, 길이:', fixedCode.length);
 
             // 간단한 검증: 기본 구조가 있는지 확인
@@ -300,6 +308,20 @@ ${currentCode}
             // 6. DB에 버전 정보 저장
             await this.saveGameVersionToDB(gameId, session);
 
+            // 7. 🔄 GameScanner 자동 재스캔 (게임 허브에 즉시 반영)
+            if (this.gameScanner) {
+                try {
+                    console.log('🔄 GameScanner 재스캔 중...');
+                    await this.gameScanner.scanGames();
+                    console.log('✅ GameScanner 재스캔 완료 - 허브에 반영됨');
+                } catch (scanError) {
+                    console.error('⚠️ GameScanner 재스캔 실패:', scanError.message);
+                    // 게임은 수정되었으므로 오류로 처리하지 않음
+                }
+            } else {
+                console.log('⚠️ GameScanner 없음 - 서버 재시작 시 반영됨');
+            }
+
             console.log(`✅ 기능 추가 완료: ${gameId} (v${session.version})`);
 
             return {
@@ -325,69 +347,58 @@ ${currentCode}
         const codeLength = currentCode.length;
         console.log(`📏 원본 코드 길이: ${codeLength} 문자`);
 
-        const prompt = `당신은 Claude Sonnet 4.5 모델로, 64,000 토큰 출력이 가능한 게임 기능 추가 전문가입니다.
+        const prompt = `당신은 게임 기능 추가 전문가입니다.
 
 **사용자 기능 요청:**
 ${featureDescription}
 
 ${userContext ? `**추가 컨텍스트:**\n${userContext}\n` : ''}
 
-**현재 게임 코드 (${codeLength}자):**
+**현재 게임 코드:**
 \`\`\`html
 ${currentCode}
 \`\`\`
 
 **작업 지침:**
-1. 요청된 기능을 게임에 **점진적으로 추가**하세요
-2. 기존 로직과 충돌하지 않도록 **호환성 있게 통합**하세요
-3. 추가된 기능의 **사용 방법**을 주석으로 설명하세요
-
-**필수 준수 사항:**
-✅ 기존 게임 로직을 **최대한 보존** (불필요한 변경 금지)
-✅ SessionSDK 통합, QR 코드, 센서 연결 로직은 **절대 건드리지 말 것**
-✅ 새 기능이 기존 기능과 충돌하지 않도록 **주의 깊게 통합**
-✅ CSS 스타일은 기존 스타일과 **일관성 유지**
-✅ <!DOCTYPE html>부터 </html>까지 **전체 코드 반환 필수** (${codeLength}자 이상)
-
-**일반적인 기능 추가 예시:**
-- "점수 시스템 추가" → 전역 변수 \`score = 0\`, UI에 \`<div id="score">점수: 0</div>\`, 이벤트 발생 시 증가
-- "파워업 아이템 추가" → 아이템 배열 생성, 렌더링 함수, 충돌 감지 로직 추가
-- "난이도 조절" → \`difficulty\` 변수 추가, 속도/빈도 조절 로직 통합
-- "사운드 이펙트 추가" → Audio 객체 생성, 이벤트 발생 시 재생
+1. 요청된 기능을 최소한의 변경으로 추가하세요
+2. SessionSDK, QR코드, 센서 연결 로직은 절대 건드리지 마세요
+3. 전체 HTML 코드를 반환하되, 추가된 부분을 명확히 표시하세요
 
 **출력 형식:**
-반드시 아래 형식으로 응답하세요.
+먼저 추가된 기능을 간단히 설명하고, 그 다음 전체 HTML 코드를 반환하세요.
 
-1. **추가된 기능 설명** (간단히):
+추가된 기능:
 - [기능 1]
 - [기능 2]
-- [사용 방법]
 
-2. **기능이 추가된 전체 코드**:
+기능이 추가된 전체 코드:
 \`\`\`html
 <!DOCTYPE html>
-<html lang="ko">
-<head>
-    ... (전체 head 내용) ...
-</head>
-<body>
-    ... (전체 body 내용, SessionSDK + 새 기능 포함) ...
-</body>
+... 전체 코드 ...
 </html>
-\`\`\`
-
-**중요 - 코드 완성도:**
-- 원본 코드 길이: ${codeLength}자
-- 반환해야 할 최소 길이: ${codeLength}자 이상 (기능 추가로 더 길어질 수 있음)
-- 코드를 절대 잘라내거나 생략하지 마세요!
-- "... 생략 ..." 같은 표시 사용 금지!
-- SessionSDK 스크립트, QR 코드 생성 함수, 센서 이벤트 핸들러는 **필수 유지**
-
-지금 기능을 추가한 **완전한** HTML 코드를 생성하세요. 64K 토큰을 활용하여 전체 코드를 반환하세요!`;
+\`\`\``;
 
         try {
-            const response = await this.llm.invoke(prompt);
-            const enhancedCode = this.extractHTML(response.content);
+            console.log('🤖 LLM 스트리밍 호출 중... (기능 추가)');
+
+            // ✅ 스트리밍으로 응답 받기
+            let fullResponse = '';
+            let chunkCount = 0;
+
+            const stream = await this.llm.stream(prompt);
+
+            for await (const chunk of stream) {
+                fullResponse += chunk.content;
+                chunkCount++;
+
+                if (chunkCount % 1000 === 0) {
+                    console.log(`📦 청크 ${chunkCount}개 받음, 현재 길이: ${fullResponse.length}자`);
+                }
+            }
+
+            console.log(`✅ LLM 스트리밍 완료: 총 ${chunkCount}개 청크, ${fullResponse.length}자`);
+
+            const enhancedCode = this.extractHTML(fullResponse);
 
             // 간단한 검증
             if (!enhancedCode.includes('<!DOCTYPE html>') || !enhancedCode.includes('SessionSDK')) {
@@ -401,6 +412,7 @@ ${currentCode}
             };
 
         } catch (error) {
+            console.error('❌ 기능 추가 실패:', error.message);
             return {
                 success: false,
                 analysis: `기능 추가 실패: ${error.message}`
