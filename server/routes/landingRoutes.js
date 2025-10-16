@@ -38,6 +38,11 @@ class LandingRoutes {
         this.router.get('/game-manager', (req, res) => {
             this.getGameManagerPage(req, res);
         });
+
+        // 계정 관리 페이지
+        this.router.get('/account-management', (req, res) => {
+            this.getAccountManagementPage(req, res);
+        });
     }
 
     /**
@@ -97,6 +102,22 @@ class LandingRoutes {
         } catch (error) {
             console.error('게임 관리 페이지 생성 실패:', error);
             res.status(500).send('게임 관리 페이지 로딩 중 오류가 발생했습니다.');
+        }
+    }
+
+    /**
+     * 계정 관리 페이지
+     */
+    async getAccountManagementPage(req, res) {
+        try {
+            const html = this.htmlGenerator.generateAccountManagementPage({
+                title: '계정 관리 - Sensor Game Hub'
+            });
+
+            res.send(html);
+        } catch (error) {
+            console.error('계정 관리 페이지 생성 실패:', error);
+            res.status(500).send('계정 관리 페이지 로딩 중 오류가 발생했습니다.');
         }
     }
 
