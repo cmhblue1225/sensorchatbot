@@ -1900,6 +1900,26 @@ class DeveloperRoutes {
             // 게임 목록 로드
             async function loadManagerGames() {
                 try {
+                    // 현재 사용자 정보 가져오기
+                    const token = localStorage.getItem('auth_token');
+                    let currentUser = null;
+                    let isAdmin = false;
+
+                    if (token) {
+                        try {
+                            const userResponse = await fetch('/api/auth/user', {
+                                headers: { 'Authorization': \`Bearer \${token}\` }
+                            });
+                            const userData = await userResponse.json();
+                            if (userData.success) {
+                                currentUser = userData.user;
+                                isAdmin = currentUser.email === 'admin@admin.com';
+                            }
+                        } catch (error) {
+                            console.error('사용자 정보 조회 실패:', error);
+                        }
+                    }
+
                     const response = await fetch('/api/games');
                     const data = await response.json();
 
@@ -1912,11 +1932,26 @@ class DeveloperRoutes {
                             return;
                         }
 
-                        gamesGrid.innerHTML = games.map(game => \`
+                        gamesGrid.innerHTML = games.map(game => {
+                            // 현재 사용자가 이 게임의 소유자인지 확인
+                            const isOwner = currentUser && game.creator_id === currentUser.id;
+                            const canModify = isAdmin || isOwner;
+
+                            // 권한 배지
+                            const permissionBadge = isAdmin
+                                ? '<span style="padding: 0.25rem 0.5rem; margin-left: 0.5rem; border-radius: 8px; font-size: 0.7rem; font-weight: 600; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid #EF4444;">👑 관리자</span>'
+                                : isOwner
+                                    ? '<span style="padding: 0.25rem 0.5rem; margin-left: 0.5rem; border-radius: 8px; font-size: 0.7rem; font-weight: 600; background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid #10B981;">✓ 내 게임</span>'
+                                    : '<span style="padding: 0.25rem 0.5rem; margin-left: 0.5rem; border-radius: 8px; font-size: 0.7rem; font-weight: 600; background: rgba(71, 85, 105, 0.2); color: #94A3B8; border: 1px solid #64748B;">🔒 읽기 전용</span>';
+
+                            return \`
                             <div class="game-card" data-game-id="\${game.id}" style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 16px; padding: 1.5rem; transition: all 0.3s;">
                                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                                     <div>
-                                        <div style="font-size: 1.25rem; font-weight: 600; color: #E2E8F0; margin-bottom: 0.25rem;">\${game.title || game.id}</div>
+                                        <div style="display: flex; align-items: center;">
+                                            <div style="font-size: 1.25rem; font-weight: 600; color: #E2E8F0; margin-bottom: 0.25rem;">\${game.title || game.id}</div>
+                                            \${permissionBadge}
+                                        </div>
                                         <div style="font-size: 0.875rem; color: #94A3B8;">\${game.id}</div>
                                     </div>
                                     <span style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid #10B981;">v\${game.version || '1.0'}</span>
@@ -1924,13 +1959,14 @@ class DeveloperRoutes {
                                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 1rem;">
                                     <button onclick="playManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">▶️ 플레이</button>
                                     <button onclick="downloadManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(59, 130, 246, 0.2); color: #3B82F6; border: 1px solid #3B82F6; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">📥 다운로드</button>
-                                    <button onclick="deleteManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid #EF4444; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">🗑️ 삭제</button>
-                                    <button onclick="openManagerBugModal('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">🐛 버그 신고</button>
-                                    <button onclick="openManagerFeatureModal('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">✨ 기능 추가</button>
+                                    <button onclick="deleteManagerGame('\${game.id}')" \${!canModify ? 'disabled' : ''} style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid #EF4444; font-size: 0.875rem; font-weight: 500; cursor: \${canModify ? 'pointer' : 'not-allowed'}; transition: all 0.2s; opacity: \${canModify ? '1' : '0.5'};">🗑️ 삭제</button>
+                                    <button onclick="openManagerBugModal('\${game.id}')" \${!canModify ? 'disabled' : ''} style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: \${canModify ? 'pointer' : 'not-allowed'}; transition: all 0.2s; opacity: \${canModify ? '1' : '0.5'};">🐛 버그 신고</button>
+                                    <button onclick="openManagerFeatureModal('\${game.id}')" \${!canModify ? 'disabled' : ''} style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: \${canModify ? 'pointer' : 'not-allowed'}; transition: all 0.2s; opacity: \${canModify ? '1' : '0.5'};">✨ 기능 추가</button>
                                     <button onclick="viewManagerHistory('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">📜 이력</button>
                                 </div>
                             </div>
-                        \`).join('');
+                        \`;
+                        }).join('');
                     }
                 } catch (error) {
                     console.error('게임 목록 로드 실패:', error);
@@ -1994,9 +2030,13 @@ class DeveloperRoutes {
                 loadingEl.style.display = 'block';
 
                 try {
+                    const token = localStorage.getItem('auth_token');
                     const response = await fetch('/api/maintenance/report-bug', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': \`Bearer \${token}\`
+                        },
                         body: JSON.stringify({
                             gameId: currentManagerGameId,
                             bugDescription: bugDescription
@@ -2032,9 +2072,13 @@ class DeveloperRoutes {
                 loadingEl.style.display = 'block';
 
                 try {
+                    const token = localStorage.getItem('auth_token');
                     const response = await fetch('/api/maintenance/add-feature', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': \`Bearer \${token}\`
+                        },
                         body: JSON.stringify({
                             gameId: currentManagerGameId,
                             featureDescription: featureDescription

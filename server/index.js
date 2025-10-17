@@ -29,6 +29,7 @@ const GameMaintenanceManager = require('./GameMaintenanceManager');
 const LandingRoutes = require('./routes/landingRoutes');
 const DeveloperRoutes = require('./routes/developerRoutes');
 const AuthRoutes = require('./routes/authRoutes');
+const { checkCreatorAuth, checkGameOwnership } = require('./middleware/authMiddleware');
 
 class GameServer {
     constructor() {
@@ -144,9 +145,10 @@ class GameServer {
             try {
                 const games = this.gameScanner.getActiveGames();
 
-                // 각 게임에 버전 정보 추가
+                // 각 게임에 버전 정보 및 creator_id 추가
                 const gamesWithVersion = await Promise.all(games.map(async (game) => {
                     let version = '1.0';
+                    let creator_id = null;
 
                     // GameMaintenanceManager에서 버전 정보 가져오기
                     if (this.gameMaintenanceManager) {
@@ -161,9 +163,27 @@ class GameServer {
                         }
                     }
 
+                    // Supabase에서 creator_id 가져오기
+                    if (this.supabaseClient && game.source === 'remote') {
+                        try {
+                            const { data, error } = await this.supabaseClient
+                                .from('generated_games')
+                                .select('creator_id')
+                                .eq('game_id', game.id)
+                                .single();
+
+                            if (!error && data) {
+                                creator_id = data.creator_id;
+                            }
+                        } catch (error) {
+                            console.log(`게임 ${game.id}의 creator_id를 가져오지 못했습니다:`, error.message);
+                        }
+                    }
+
                     return {
                         ...game,
-                        version: version
+                        version: version,
+                        creator_id: creator_id
                     };
                 }));
 
@@ -214,7 +234,7 @@ class GameServer {
         });
 
         // 생성된 게임 자동 업로드 API (interactive-game-generator용)
-        this.app.post('/api/upload-generated-game', async (req, res) => {
+        this.app.post('/api/upload-generated-game', checkCreatorAuth, async (req, res) => {
             try {
                 const { gameCode, metadata } = req.body;
 
@@ -333,6 +353,7 @@ class GameServer {
                         game_type: metadata.gameType || 'solo',
                         genre: metadata.genre || 'action',
                         storage_path: htmlPath,
+                        creator_id: req.user?.id || null,  // 게임 제작자 ID 저장
                         metadata: {
                             ...metadata,
                             source: 'interactive-generator',
@@ -1245,7 +1266,7 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
         // ================================
 
         // 버그 리포트 처리
-        this.app.post('/api/maintenance/report-bug', async (req, res) => {
+        this.app.post('/api/maintenance/report-bug', checkCreatorAuth, checkGameOwnership, async (req, res) => {
             try {
                 if (!this.gameMaintenanceManager) {
                     return res.json({
@@ -1292,7 +1313,7 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
         });
 
         // 기능 추가 요청 처리
-        this.app.post('/api/maintenance/add-feature', async (req, res) => {
+        this.app.post('/api/maintenance/add-feature', checkCreatorAuth, checkGameOwnership, async (req, res) => {
             try {
                 if (!this.gameMaintenanceManager) {
                     return res.json({
