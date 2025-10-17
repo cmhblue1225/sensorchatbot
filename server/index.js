@@ -235,11 +235,42 @@ class GameServer {
                     });
                 }
 
-                // 게임 ID 생성 (제목 기반)
+                // 게임 ID 생성 (제목 기반, 영문만 허용)
                 const gameTitle = metadata.title || 'sensor-game';
-                const gameId = gameTitle
+
+                // 한글을 영문으로 변환 (간단한 변환)
+                const transliterate = (str) => {
+                    const koreanToEnglish = {
+                        '센서': 'sensor',
+                        '게임': 'game',
+                        '공': 'ball',
+                        '미로': 'maze',
+                        '반응': 'reaction',
+                        '우주': 'space',
+                        '요리': 'cooking',
+                        '벽돌': 'brick',
+                        '기울': 'tilt',
+                        '흔들': 'shake',
+                        '균형': 'balance',
+                        '점프': 'jump',
+                        '피하': 'avoid',
+                        '타겟': 'target',
+                        '경주': 'race',
+                        '레이싱': 'racing'
+                    };
+
+                    let result = str;
+                    for (const [korean, english] of Object.entries(koreanToEnglish)) {
+                        result = result.replace(new RegExp(korean, 'g'), english);
+                    }
+                    return result;
+                };
+
+                const transliteratedTitle = transliterate(gameTitle);
+
+                const gameId = transliteratedTitle
                     .toLowerCase()
-                    .replace(/[^a-z0-9가-힣\s]/g, '')
+                    .replace(/[^a-z0-9\s-]/g, '')  // 영문, 숫자, 공백, 하이픈만 허용
                     .replace(/\s+/g, '-')
                     .replace(/-+/g, '-')
                     .replace(/^-|-$/g, '')
