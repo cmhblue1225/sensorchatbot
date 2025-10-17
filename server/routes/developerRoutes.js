@@ -1901,7 +1901,7 @@ class DeveloperRoutes {
             async function loadManagerGames() {
                 try {
                     // 현재 사용자 정보 가져오기
-                    const token = localStorage.getItem('auth_token');
+                    const token = localStorage.getItem('authToken');
                     let currentUser = null;
                     let isAdmin = false;
 
@@ -2044,7 +2044,7 @@ class DeveloperRoutes {
                 loadingEl.style.display = 'block';
 
                 try {
-                    const token = localStorage.getItem('auth_token');
+                    const token = localStorage.getItem('authToken');
                     const response = await fetch('/api/maintenance/report-bug', {
                         method: 'POST',
                         headers: {
@@ -2086,7 +2086,7 @@ class DeveloperRoutes {
                 loadingEl.style.display = 'block';
 
                 try {
-                    const token = localStorage.getItem('auth_token');
+                    const token = localStorage.getItem('authToken');
                     const response = await fetch('/api/maintenance/add-feature', {
                         method: 'POST',
                         headers: {
