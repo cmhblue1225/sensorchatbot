@@ -212,7 +212,132 @@ class GameServer {
                 });
             }
         });
-        
+
+        // 생성된 게임 자동 업로드 API (interactive-game-generator용)
+        this.app.post('/api/upload-generated-game', async (req, res) => {
+            try {
+                const { gameCode, metadata } = req.body;
+
+                if (!gameCode || !metadata) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'gameCode와 metadata가 필요합니다.'
+                    });
+                }
+
+                console.log('📤 생성된 게임 업로드 시작:', metadata.title || 'Untitled Game');
+
+                // Supabase Admin Client 확인
+                if (!this.supabaseClient) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Supabase 클라이언트가 초기화되지 않았습니다.'
+                    });
+                }
+
+                // 게임 ID 생성 (제목 기반)
+                const gameTitle = metadata.title || 'sensor-game';
+                const gameId = gameTitle
+                    .toLowerCase()
+                    .replace(/[^a-z0-9가-힣\s]/g, '')
+                    .replace(/\s+/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '')
+                    .substring(0, 50) || 'sensor-game';
+
+                const timestamp = Date.now().toString().slice(-6);
+                const finalGameId = `${gameId}-${timestamp}`;
+
+                // 1. Supabase Storage에 업로드
+                console.log(`☁️ Storage에 업로드 중: ${finalGameId}`);
+
+                // index.html 업로드
+                const htmlPath = `${finalGameId}/index.html`;
+                const { error: htmlError } = await this.supabaseClient
+                    .storage
+                    .from('games')
+                    .upload(htmlPath, gameCode, {
+                        contentType: 'text/html',
+                        upsert: true
+                    });
+
+                if (htmlError) {
+                    console.error('❌ index.html 업로드 실패:', htmlError);
+                    throw new Error(`Storage 업로드 실패: ${htmlError.message}`);
+                }
+
+                console.log('✅ index.html 업로드 완료');
+
+                // game.json 업로드
+                const gameJson = {
+                    id: finalGameId,
+                    ...metadata,
+                    createdAt: new Date().toISOString(),
+                    version: '1.0.0',
+                    source: 'interactive-generator'
+                };
+
+                const jsonPath = `${finalGameId}/game.json`;
+                const { error: jsonError } = await this.supabaseClient
+                    .storage
+                    .from('games')
+                    .upload(jsonPath, JSON.stringify(gameJson, null, 2), {
+                        contentType: 'application/json',
+                        upsert: true
+                    });
+
+                if (jsonError) {
+                    console.error('❌ game.json 업로드 실패:', jsonError);
+                }
+
+                // 2. DB에 등록
+                console.log('💾 DB에 게임 등록 중...');
+
+                const { error: dbError } = await this.supabaseClient
+                    .from('generated_games')
+                    .upsert({
+                        game_id: finalGameId,
+                        title: metadata.title || 'Generated Game',
+                        description: metadata.description || '대화형 AI로 생성된 센서 게임',
+                        game_type: metadata.gameType || 'solo',
+                        genre: metadata.genre || 'action',
+                        storage_path: htmlPath,
+                        metadata: {
+                            ...metadata,
+                            source: 'interactive-generator',
+                            uploadedAt: new Date().toISOString()
+                        }
+                    }, { onConflict: 'game_id' });
+
+                if (dbError) {
+                    console.error('❌ DB 등록 실패:', dbError);
+                    throw new Error(`DB 등록 실패: ${dbError.message}`);
+                }
+
+                console.log('✅ DB 등록 완료');
+
+                // 3. GameScanner 재스캔
+                console.log('🔄 게임 재스캔 중...');
+                await this.gameScanner.scanGames();
+                console.log('✅ 게임 재스캔 완료');
+
+                // 4. 성공 응답
+                res.json({
+                    success: true,
+                    gameId: finalGameId,
+                    gameUrl: `/games/${finalGameId}`,
+                    message: '게임이 원격 스토리지에 저장되고 게임 허브에 등록되었습니다!'
+                });
+
+            } catch (error) {
+                console.error('❌ 게임 업로드 실패:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
         // 기존 정적 홈페이지 (백업용)
         this.app.get('/static', (req, res) => {
             res.send(`
