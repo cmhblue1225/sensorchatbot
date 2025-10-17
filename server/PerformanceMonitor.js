@@ -263,7 +263,22 @@ class PerformanceMonitor {
         const tracking = this.activeSessions.get(sessionId);
         if (!tracking) {
             console.warn(`⚠️ 완료할 세션을 찾을 수 없음: ${sessionId}`);
-            return;
+            // 기본 tracking 객체 반환 (undefined 방지)
+            return {
+                sessionId,
+                startTime: Date.now(),
+                endTime: Date.now(),
+                totalDuration: 0,
+                success,
+                finalMetrics,
+                stages: {},
+                metrics: {
+                    aiRequests: 0,
+                    validationAttempts: 0,
+                    memoryUsageStart: process.memoryUsage(),
+                    errors: []
+                }
+            };
         }
 
         const endTime = Date.now();
