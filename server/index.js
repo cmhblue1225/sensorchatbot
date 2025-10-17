@@ -163,8 +163,8 @@ class GameServer {
                         }
                     }
 
-                    // Supabase에서 creator_id 가져오기
-                    if (this.supabaseClient && game.source === 'remote') {
+                    // Supabase에서 creator_id 가져오기 (모든 게임)
+                    if (this.supabaseClient) {
                         try {
                             const { data, error } = await this.supabaseClient
                                 .from('generated_games')
@@ -176,6 +176,7 @@ class GameServer {
                                 creator_id = data.creator_id;
                             }
                         } catch (error) {
+                            // DB에 없는 게임은 무시 (로컬 전용 게임)
                             console.log(`게임 ${game.id}의 creator_id를 가져오지 못했습니다:`, error.message);
                         }
                     }
