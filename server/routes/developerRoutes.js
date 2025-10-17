@@ -1911,13 +1911,21 @@ class DeveloperRoutes {
                                 headers: { 'Authorization': \`Bearer \${token}\` }
                             });
                             const userData = await userResponse.json();
+                            console.log('🔍 사용자 정보 조회:', userData);
+
                             if (userData.success) {
                                 currentUser = userData.user;
                                 isAdmin = currentUser.email === 'admin@admin.com';
+                                console.log('👤 현재 사용자:', currentUser.email);
+                                console.log('👑 관리자 여부:', isAdmin);
+                            } else {
+                                console.error('❌ 사용자 정보 조회 실패:', userData);
                             }
                         } catch (error) {
-                            console.error('사용자 정보 조회 실패:', error);
+                            console.error('❌ 사용자 정보 조회 오류:', error);
                         }
+                    } else {
+                        console.warn('⚠️ 토큰이 없습니다.');
                     }
 
                     const response = await fetch('/api/games');
@@ -1932,10 +1940,16 @@ class DeveloperRoutes {
                             return;
                         }
 
+                        console.log('🎮 전체 게임 목록:', games.length, '개');
+                        console.log('📋 현재 사용자 ID:', currentUser?.id);
+                        console.log('👑 관리자 여부:', isAdmin);
+
                         gamesGrid.innerHTML = games.map(game => {
                             // 현재 사용자가 이 게임의 소유자인지 확인
                             const isOwner = currentUser && game.creator_id === currentUser.id;
                             const canModify = isAdmin || isOwner;
+
+                            console.log(\`🎯 게임: \${game.id}, creator_id: \${game.creator_id}, isOwner: \${isOwner}, canModify: \${canModify}\`);
 
                             // 권한 배지
                             const permissionBadge = isAdmin
