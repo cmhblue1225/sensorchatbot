@@ -1,0 +1,144 @@
+Kimchi Fest — Pause‑Friendly Implementation Plan v0.1
+
+Intent
+- 언제든 중단/재개가 가능하도록 작은 단계와 종료 조건(Stop check)을 둔 계획입니다.
+- 승인 전에는 구현을 시작하지 않습니다.
+
+Phases (12)
+1) 계획 승인 대기
+- Deliverable: 본 계획/설계 확정. 구현 없음.
+- Stop check: 승인 지시 수신.
+
+2) 게임 폴더 생성만
+- Task: public/games/kimchi-fest/ 빈 폴더 생성.
+- Stop check: 서버/목록에 영향 없음(파일 미생성).
+
+3) 최소 index 셸 추가
+- Task: index.html 기본 스켈레톤, 캔버스/HUD 컨테이너만.
+- Stop check: 정적 로드 OK, 기능 없음.
+
+4) SessionSDK + QR 폴백 연결
+- Task: /socket.io/socket.io.js, /js/SessionSDK.js 로드, connected 대기 후 createSession, event.detail || event 패턴, QR 폴백 처리.
+- Stop check: 센서 연결/해제 표식만 동작.
+
+5) 메트로놈 + 타이머
+- Task: 내부 BPM(110) 비주얼/비프, 45s 카운트다운.
+- Stop check: 박자/타이머 동작만 검증(판정 없음).
+
+6) 센서 파이프라인
+- Task: accel 기반 흔들기 검출(이동평균 300ms, 임계 3.5, 스로틀 33ms, 리프랙터리 120ms).
+- Stop check: 흔들기 이벤트 로그만 출력.
+
+7) 판정 + 스코어링
+- Task: Nice ±70ms, Off ±160ms, Miss 그 외. 단계 일치 시에만 유효.
+- Stop check: 점수 증가/라벨 표시 확인.
+
+8) HUD + 피드백 UI
+- Task: 타이머/점수/플레이어 수, 타이밍 링, Nice/Off/Miss 이펙트, 재시작 버튼.
+- Stop check: 60fps 안정, 누수 없음.
+
+9) 솔로 플레이 테스트/튜닝
+- Task: THRESH/윈도우 소폭 조정(±0.5 m/s^2, ±20ms). 손맛 확보.
+- Stop check: Nice 재현성 ≥80% 목표.
+
+10) 듀얼/멀티 추가 (선택)
+- Task: sensorId별 PlayerState, 합산 점수, 간단 레이아웃 확장.
+- Stop check: 2대 동시 입력에서 안정 동작.
+
+11) SFX + 폴리시 (선택)
+- Task: 비프/“Nice!” 톤(WebAudio), 간단 애니메이션/색상 정제.
+- Stop check: 오디오 지연/중첩 없음.
+
+12) 문서 작성 + 핸드오프
+- Task: game.json 메타, 튜닝 가이드, 사용법 요약. 변경점 기록.
+- Stop check: /api/games 노출, 문서 링크 제공.
+
+Parameters (initial)
+- BPM 110, NICE_MS 70, OFF_MS 160, REFRACTORY_MS 120
+- THRESH_SHAKE 3.5, SENSOR_THROTTLE_MS 33, ROUND_TIME_SEC 45
+
+Controls & Rules to Honor
+- connected 이후 createSession, 모든 이벤트는 event.detail || event.
+- 절대 경로 로드, QR 폴백 구현.
+- 성능: 스로틀, requestAnimationFrame, 리스너 정리, 입력 검증.
+
+Resumption Guide
+- 각 단계는 독립 산출물과 Stop check가 있음. 마지막 완료된 단계 번호를 기록 후 재개.
+- 예시: “2–4단계 완료, 5단계부터 재개”.
+
+Scope Note
+- 본 문서는 스냅샷이며, 코드 구현을 포함하지 않습니다.
+
+Repo Guidelines Summary (지침 요약)
+- 게임 구조: `public/games/<game-id>/index.html`(필수) + `game.json`(선택 메타). 서버는 GameScanner로 자동 감지.
+- SessionSDK 규칙: `connected` 이벤트 이후 `createSession()` 호출. 모든 SDK 이벤트는 `event.detail || event` 패턴으로 처리.
+- 경로/리소스: `/socket.io/socket.io.js`, `/js/SessionSDK.js` 등 절대 경로 사용.
+- QR 코드: 라이브러리 미존재 시 이미지 API로 폴백(네트워크 실패 시도 감안한 예외 처리 권장).
+- 성능: 센서 스로틀(기본 33ms), `requestAnimationFrame` 렌더 루프, 이벤트/타이머/오디오 리소스 해제 필수.
+- 안정성/보안: 세션 코드/게임 ID 입력 검증, HTML 이스케이프, 허용 Origin/메서드만 노출, 간단한 레이트 리밋 권장.
+- 협업: `main` 보호, `develop` 통합, 개인 브랜치→PR. 컨벤셔널 커밋 사용, `.env`/비밀키 커밋 금지.
+- 테스트/유지보수: TEST_SCENARIOS 체크리스트 기반 수동 테스트, 필요 시 GameMaintenanceManager 플로우로 버그/기능 증분.
+
+Compliance Checklist (준수 체크리스트)
+- [ ] 폴더/파일 구조가 레포 규칙을 준수한다.
+- [ ] 스크립트 로드는 절대 경로이며, CSP/보안 정책을 위반하지 않는다.
+- [ ] `connected` 이후에만 `createSession()`을 호출한다.
+- [ ] 모든 SDK 이벤트에서 `event.detail || event` 패턴을 사용한다.
+- [ ] QR 생성은 라이브러리/폴백 모두 동작한다.
+- [ ] 센서 파이프라인은 스로틀/임계/리프랙터리를 갖고, 누수가 없다.
+- [ ] 입력값(세션 코드/ID)은 검증·이스케이프 처리한다.
+- [ ] 타이머/리스너/오디오는 언마운트 시 정리된다.
+- [ ] 수동 테스트 시나리오(솔로 기준)를 통과한다.
+- [ ] 문서를 갱신하고 변경 이력을 기록한다.
+
+Reference Docs (관련 문서)
+- 프로젝트 개요/빠른 시작: `sensorchatbot/README.md`
+- 개발 가이드(게임 추가·SDK·문제 해결): `sensorchatbot/DEVELOPER_GUIDE.md`
+- 협업/브랜치/커밋: `sensorchatbot/COLLABORATION_GUIDE.md`
+- UI/정보구조/보안/성능 기준: `sensorchatbot/interface.md`
+- 품질/자동화 전략: `sensorchatbot/GAME_QUALITY_IMPROVEMENT.md`
+- 테스트 체크리스트: `sensorchatbot/TEST_SCENARIOS.md`
+- 에이전트 지침/프롬프트: `sensorchatbot/AI_ASSISTANT_PROMPTS.md`
+
+Progress Log (작업 일지 템플릿)
+- 목적: 중단/재개 지점 기록. 단계별 산출물과 Stop check 결과를 남깁니다.
+- 규칙: 각 항목은 ISO 시각, 단계 범위, 파일, 확인 방법, 다음 재개 지점(RESUME_FROM)을 포함합니다.
+
+예시 항목
+```
+## 2025-10-17T12:34:56Z
+- 완료 단계: 1–3 (계획 승인 대기, 폴더 생성, 최소 index 셸)
+- 변경 파일/경로: 
+  - public/games/kimchi-fest/ (폴더)
+  - public/games/kimchi-fest/index.html (기본 셸)
+- Stop check: 정적 로드 OK, 기능 미구현.
+- RESUME_FROM: 4 (SessionSDK + QR 폴백)
+```
+
+Handoff Summary (3-line 요약 템플릿)
+- What we did: [핵심 변경 1–2줄]
+- How to verify: [URL/동작 방법]
+- What’s next: [다음 단계 번호와 간단 설명]
+
+## 2025-10-17T12:43:27+09:00
+- 완료 단계: 1 (계획 승인 대기)
+- 변경 파일/경로:
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
+- Stop check: 계획 승인 완료. 구현 작업 없음.
+- RESUME_FROM: 2 (게임 폴더 생성만)
+
+## 2025-10-17T12:44:19+09:00
+- 완료 단계: 2 (게임 폴더 생성만)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/ (폴더 생성)
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
+- Stop check: 폴더만 생성, 파일 없음. GameScanner 영향 없음.
+- RESUME_FROM: 3 (최소 index 셸 추가)
+
+## 2025-10-17T12:46:40+09:00
+- 완료 단계: 3 (최소 index 셸 추가)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (정적 셸 생성)
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
+- Stop check: 정적 레이아웃만 존재. 스크립트/SDK 미포함.
+- RESUME_FROM: 4 (SessionSDK + QR 폴백)
