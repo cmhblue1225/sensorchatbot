@@ -176,7 +176,7 @@ class DeveloperRoutes {
         });
 
         // 게임 삭제 (Storage + DB)
-        this.router.delete('/api/delete-game/:gameId', checkCreatorAuth, async (req, res) => {
+        this.router.delete('/api/delete-game/:gameId', async (req, res) => {
             await this.handleDeleteGame(req, res);
         });
 
@@ -2165,7 +2165,7 @@ class DeveloperRoutes {
                         }
                     }, 100);
 
-                    const response = await fetch('/api/upload-game', {
+                    const response = await fetch('/developer/api/upload-game', {
                         method: 'POST',
                         body: formData
                     });
@@ -2201,7 +2201,7 @@ class DeveloperRoutes {
             // 🆕 게임 다운로드
             async function downloadManagerGame(gameId) {
                 try {
-                    const response = await fetch(\`/api/download-game/\${gameId}\`);
+                    const response = await fetch(\`/developer/api/download-game/\${gameId}\`);
 
                     if (!response.ok) {
                         const errorData = await response.json();
@@ -2234,7 +2234,7 @@ class DeveloperRoutes {
                 }
 
                 try {
-                    const response = await fetch(\`/api/delete-game/\${gameId}\`, {
+                    const response = await fetch(\`/developer/api/delete-game/\${gameId}\`, {
                         method: 'DELETE'
                     });
 

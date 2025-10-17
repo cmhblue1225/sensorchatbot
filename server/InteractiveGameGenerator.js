@@ -330,10 +330,19 @@ class InteractiveGameGenerator {
 
         if (extracted.readyForNext || hasGameIdea) {
             newStage = 'details';
+
+            // 제목 결정 로직 (폴백 포함)
+            let gameTitle = extracted.title || genreAnalysis.suggestedTitle || this.generateTitle(userMessage);
+
+            // 제목이 여전히 undefined이거나 빈 문자열이면 기본값 설정
+            if (!gameTitle || gameTitle === 'undefined' || gameTitle === '') {
+                gameTitle = '센서 게임';
+            }
+
             requirements = {
                 gameType: extracted.gameType || genreAnalysis.gameType || this.inferGameType(userMessage),
                 genre: extracted.genre || genreAnalysis.primaryGenre || this.inferGenre(userMessage),
-                title: extracted.title || genreAnalysis.suggestedTitle || this.generateTitle(userMessage),
+                title: gameTitle,
                 description: userMessage,
                 // 장르 분류 결과도 저장
                 genreAnalysis: genreAnalysis
@@ -2603,13 +2612,28 @@ ${requirements.specialRequirements?.length > 0 ?
      * 제목 생성
      */
     generateTitle(userMessage) {
+        if (!userMessage || typeof userMessage !== 'string') {
+            return '센서 게임';
+        }
+
         const message = userMessage.toLowerCase();
+
+        // 키워드 기반 제목 생성
         if (message.includes('미로')) return '센서 미로 게임';
         if (message.includes('공')) return '센서 볼 게임';
         if (message.includes('반응')) return '센서 반응속도 게임';
         if (message.includes('우주')) return '센서 우주선 게임';
         if (message.includes('요리')) return '센서 요리 게임';
         if (message.includes('벽돌')) return '센서 벽돌깨기';
+        if (message.includes('기울')) return '센서 기울기 게임';
+        if (message.includes('흔들')) return '센서 흔들기 게임';
+        if (message.includes('균형')) return '센서 균형 게임';
+        if (message.includes('점프')) return '센서 점프 게임';
+        if (message.includes('피하')) return '센서 피하기 게임';
+        if (message.includes('타겟')) return '센서 타겟 게임';
+        if (message.includes('경주') || message.includes('레이싱')) return '센서 레이싱 게임';
+
+        // 기본 제목 (절대 undefined 반환 안 함)
         return '센서 게임';
     }
 
@@ -2865,18 +2889,27 @@ ${requirements.specialRequirements?.length > 0 ?
      * 게임 ID 생성 (제목을 기반으로 안전한 폴더명 생성)
      */
     generateGameId(title) {
+        // 제목이 없거나 유효하지 않으면 기본값 사용
+        let safeTitle = title;
+        if (!safeTitle || typeof safeTitle !== 'string' || safeTitle === 'undefined' || safeTitle.trim() === '') {
+            safeTitle = 'sensor-game';
+        }
+
         // 제목을 안전한 폴더명으로 변환
-        const baseId = title
+        const baseId = safeTitle
             .toLowerCase()
             .replace(/[^a-z0-9가-힣\s]/g, '') // 알파벳, 숫자, 한글, 공백만 허용
             .replace(/\s+/g, '-') // 공백을 하이픈으로 변경
             .replace(/-+/g, '-') // 연속 하이픈 제거
             .replace(/^-|-$/g, '') // 시작/끝 하이픈 제거
             .substring(0, 50); // 최대 50자
-            
+
+        // 만약 변환 후에도 빈 문자열이면 기본값 사용
+        const finalBaseId = baseId || 'sensor-game';
+
         // 타임스탬프 추가로 고유성 보장
         const timestamp = Date.now().toString().slice(-6);
-        return `${baseId}-${timestamp}`;
+        return `${finalBaseId}-${timestamp}`;
     }
 
     /**

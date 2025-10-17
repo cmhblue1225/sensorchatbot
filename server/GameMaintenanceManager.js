@@ -664,28 +664,91 @@ ${currentCode}
 
     /**
      * 기존 게임에서 세션 생성 (세션 없이도 유지보수 가능)
+     * ☁️ Storage 우선, 로컬 폴백
      */
     async createSessionFromExistingGame(gameId) {
         try {
-            const gamePath = path.join(__dirname, '../public/games', gameId, 'index.html');
+            let gameExists = false;
 
-            // 게임 파일 존재 확인
-            await fs.access(gamePath);
+            // 1. ☁️ Storage에서 게임 존재 확인 (원격 게임)
+            if (this.supabaseAdmin) {
+                try {
+                    const { data, error } = await this.supabaseAdmin
+                        .storage
+                        .from('games')
+                        .download(`${gameId}/index.html`);
 
-            // 1. DB에서 버전 정보 로드 시도
-            const dbSession = await this.loadSessionFromDB(gameId);
-
-            // 2. game.json에서 메타데이터 읽기 (있으면)
-            let gameInfo = { title: gameId };
-            try {
-                const gameJsonPath = path.join(__dirname, '../public/games', gameId, 'game.json');
-                const gameJsonContent = await fs.readFile(gameJsonPath, 'utf-8');
-                gameInfo = JSON.parse(gameJsonContent);
-            } catch (e) {
-                // game.json 없으면 기본값 사용
+                    if (!error && data) {
+                        gameExists = true;
+                        console.log(`☁️ Storage에서 게임 발견: ${gameId}`);
+                    }
+                } catch (storageError) {
+                    console.log(`⚠️ Storage 확인 실패, 로컬 시도: ${storageError.message}`);
+                }
             }
 
-            // 3. 세션 등록 (DB 정보 우선, 없으면 기본값)
+            // 2. 📁 로컬에서 게임 존재 확인 (로컬 게임)
+            if (!gameExists) {
+                try {
+                    const gamePath = path.join(__dirname, '../public/games', gameId, 'index.html');
+                    await fs.access(gamePath);
+                    gameExists = true;
+                    console.log(`📁 로컬에서 게임 발견: ${gameId}`);
+                } catch (localError) {
+                    // 로컬에도 없음
+                }
+            }
+
+            // 게임이 어디에도 없으면 에러
+            if (!gameExists) {
+                throw new Error(`게임을 찾을 수 없습니다: ${gameId}`);
+            }
+
+            // 3. 💾 DB에서 버전 정보 로드 시도
+            const dbSession = await this.loadSessionFromDB(gameId);
+
+            // 4. 📝 DB나 generated_games 테이블에서 메타데이터 로드
+            let gameInfo = { title: gameId };
+
+            // 4-1. generated_games 테이블에서 메타데이터 가져오기
+            try {
+                const { data, error } = await this.supabase
+                    .from('generated_games')
+                    .select('title, description, game_type')
+                    .eq('game_id', gameId)
+                    .single();
+
+                if (!error && data) {
+                    gameInfo = {
+                        title: data.title || gameId,
+                        description: data.description || '기존 게임',
+                        gameType: data.game_type || 'solo'
+                    };
+                    console.log(`💾 DB에서 메타데이터 로드: ${gameInfo.title}`);
+                }
+            } catch (dbError) {
+                console.log(`⚠️ DB 메타데이터 없음, 로컬 시도`);
+            }
+
+            // 4-2. 로컬 game.json에서 메타데이터 읽기 (폴백)
+            if (!gameInfo.gameType || gameInfo.title === gameId) {
+                try {
+                    const gameJsonPath = path.join(__dirname, '../public/games', gameId, 'game.json');
+                    const gameJsonContent = await fs.readFile(gameJsonPath, 'utf-8');
+                    const localGameInfo = JSON.parse(gameJsonContent);
+                    gameInfo = {
+                        title: localGameInfo.title || gameInfo.title || gameId,
+                        description: localGameInfo.description || gameInfo.description || '기존 게임',
+                        gameType: localGameInfo.gameType || localGameInfo.category || gameInfo.gameType || 'solo'
+                    };
+                    console.log(`📁 로컬 game.json에서 메타데이터 로드: ${gameInfo.title}`);
+                } catch (e) {
+                    // game.json 없으면 기본값 사용
+                    console.log(`⚠️ game.json 없음, 기본값 사용`);
+                }
+            }
+
+            // 5. ✅ 세션 등록 (DB 정보 우선, 없으면 기본값)
             this.registerGameSession(gameId, {
                 title: (dbSession && dbSession.title) || gameInfo.title || gameId,
                 description: (dbSession && dbSession.description) || gameInfo.description || '기존 게임',
