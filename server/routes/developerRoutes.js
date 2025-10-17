@@ -13,6 +13,9 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const archiver = require('archiver');
+const multer = require('multer');
+const AdmZip = require('adm-zip');
+const { createClient } = require('@supabase/supabase-js');
 const MarkdownRenderer = require('../utils/markdownRenderer');
 const { checkCreatorAuth, optionalAuth } = require('../middleware/authMiddleware');
 
@@ -81,6 +84,27 @@ class DeveloperRoutes {
             ]
         };
 
+        // Multer 설정 (파일 업로드)
+        this.upload = multer({
+            storage: multer.memoryStorage(),  // 메모리에 임시 저장
+            limits: {
+                fileSize: 50 * 1024 * 1024  // 50MB 제한
+            },
+            fileFilter: (req, file, cb) => {
+                // 모든 파일 타입 허용 (ZIP 포함)
+                cb(null, true);
+            }
+        });
+
+        // Supabase Admin 클라이언트 (Storage 관리용)
+        this.supabaseAdmin = null;
+        if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            this.supabaseAdmin = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY
+            );
+        }
+
         this.setupRoutes();
         console.log('👨‍💻 DeveloperRoutes 초기화 완료');
     }
@@ -138,6 +162,22 @@ class DeveloperRoutes {
         // 🆕 게임 미리보기
         this.router.get('/api/preview-game/:gameId', async (req, res) => {
             await this.handlePreviewGame(req, res);
+        });
+
+        // 🆕 게임 관리 API
+        // 게임 업로드 (ZIP 파일 또는 개별 파일)
+        this.router.post('/api/upload-game', this.upload.array('files', 100), async (req, res) => {
+            await this.handleUploadGame(req, res);
+        });
+
+        // 게임 다운로드 (ZIP 형태)
+        this.router.get('/api/download-game/:gameId', async (req, res) => {
+            await this.handleDownloadGame(req, res);
+        });
+
+        // 게임 삭제 (Storage + DB)
+        this.router.delete('/api/delete-game/:gameId', checkCreatorAuth, async (req, res) => {
+            await this.handleDeleteGame(req, res);
         });
 
         // 🆕 계정 관리 API
@@ -1752,10 +1792,17 @@ class DeveloperRoutes {
         return `
         <div class="game-manager-container">
             <div class="manager-header">
-                <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; background: linear-gradient(135deg, #A78BFA, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                    🛠️ 게임 관리
-                </h2>
-                <p style="color: #94A3B8; margin-bottom: 2rem;">생성된 게임을 관리하고 개선하세요</p>
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 2rem;">
+                    <div>
+                        <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; background: linear-gradient(135deg, #A78BFA, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                            🛠️ 게임 관리
+                        </h2>
+                        <p style="color: #94A3B8;">생성된 게임을 관리하고 개선하세요</p>
+                    </div>
+                    <button onclick="openUploadModal()" style="padding: 0.75rem 1.5rem; border-radius: 8px; background: linear-gradient(135deg, #10B981, #059669); color: white; border: none; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);">
+                        📤 게임 업로드
+                    </button>
+                </div>
             </div>
 
             <div class="search-bar" style="margin-bottom: 2rem;">
@@ -1812,6 +1859,41 @@ class DeveloperRoutes {
             </div>
         </div>
 
+        <!-- 게임 업로드 모달 -->
+        <div id="upload-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
+            <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 16px; padding: 2rem; max-width: 500px; width: 90%;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.5rem; font-weight: 600; color: #E2E8F0;">📤 게임 업로드</h3>
+                    <button class="modal-close" onclick="closeUploadModal()" style="background: none; border: none; font-size: 1.5rem; color: #94A3B8; cursor: pointer;">×</button>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; color: #CBD5E1; margin-bottom: 0.5rem; font-weight: 500;">게임 파일 선택</label>
+                    <div style="background: rgba(15, 23, 42, 0.6); border: 2px dashed rgba(16, 185, 129, 0.5); border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s;" onclick="document.getElementById('upload-file-input').click()">
+                        <div style="font-size: 3rem; margin-bottom: 0.5rem;">📁</div>
+                        <div style="color: #10B981; font-weight: 500; margin-bottom: 0.25rem;">클릭하여 파일 선택</div>
+                        <div style="color: #94A3B8; font-size: 0.875rem;">ZIP 파일 또는 여러 개의 게임 파일</div>
+                        <div style="color: #94A3B8; font-size: 0.75rem; margin-top: 0.5rem;">최대 50MB</div>
+                    </div>
+                    <input
+                        type="file"
+                        id="upload-file-input"
+                        multiple
+                        accept=".zip,.html,.js,.css,.json,.png,.jpg,.jpeg,.svg,.mp3,.wav"
+                        style="display: none;"
+                        onchange="handleFileSelect(this.files)"
+                    />
+                </div>
+                <div id="upload-file-list" style="margin-bottom: 1rem; max-height: 200px; overflow-y: auto;"></div>
+                <button id="upload-submit-btn" onclick="handleUploadSubmit()" disabled style="width: 100%; padding: 0.75rem 1.5rem; border-radius: 8px; background: linear-gradient(135deg, #10B981, #059669); color: white; border: none; font-weight: 500; cursor: pointer; transition: all 0.2s; opacity: 0.5;">업로드</button>
+                <div id="upload-progress" style="display: none; margin-top: 1rem;">
+                    <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; height: 8px; overflow: hidden;">
+                        <div id="upload-progress-bar" style="background: linear-gradient(135deg, #10B981, #059669); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <div id="upload-status" style="text-align: center; color: #10B981; margin-top: 0.5rem; font-size: 0.875rem;">업로드 중...</div>
+                </div>
+            </div>
+        </div>
+
         <script>
             let currentManagerGameId = null;
 
@@ -1839,8 +1921,10 @@ class DeveloperRoutes {
                                     </div>
                                     <span style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid #10B981;">v\${game.version || '1.0'}</span>
                                 </div>
-                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-top: 1rem;">
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 1rem;">
                                     <button onclick="playManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">▶️ 플레이</button>
+                                    <button onclick="downloadManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(59, 130, 246, 0.2); color: #3B82F6; border: 1px solid #3B82F6; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">📥 다운로드</button>
+                                    <button onclick="deleteManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid #EF4444; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">🗑️ 삭제</button>
                                     <button onclick="openManagerBugModal('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">🐛 버그 신고</button>
                                     <button onclick="openManagerFeatureModal('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">✨ 기능 추가</button>
                                     <button onclick="viewManagerHistory('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">📜 이력</button>
@@ -2005,6 +2089,166 @@ class DeveloperRoutes {
                 } catch (error) {
                     console.error('이력 조회 실패:', error);
                     document.getElementById('manager-history-content').innerHTML = '<p style="text-align: center; color: #EF4444;">이력을 불러올 수 없습니다.</p>';
+                }
+            }
+
+            // 🆕 업로드 모달 관련 함수들
+            let selectedFiles = null;
+
+            function openUploadModal() {
+                document.getElementById('upload-modal').style.display = 'flex';
+                selectedFiles = null;
+                document.getElementById('upload-file-list').innerHTML = '';
+                document.getElementById('upload-submit-btn').disabled = true;
+                document.getElementById('upload-submit-btn').style.opacity = '0.5';
+                document.getElementById('upload-file-input').value = '';
+                document.getElementById('upload-progress').style.display = 'none';
+            }
+
+            function closeUploadModal() {
+                document.getElementById('upload-modal').style.display = 'none';
+                selectedFiles = null;
+            }
+
+            function handleFileSelect(files) {
+                if (!files || files.length === 0) return;
+
+                selectedFiles = files;
+                const fileListEl = document.getElementById('upload-file-list');
+                const submitBtn = document.getElementById('upload-submit-btn');
+
+                // 파일 목록 표시
+                const fileItems = Array.from(files).map(file => \`
+                    <div style="padding: 0.5rem; background: rgba(15, 23, 42, 0.6); border-radius: 8px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="color: #E2E8F0; font-size: 0.875rem;">\${file.name}</div>
+                            <div style="color: #64748B; font-size: 0.75rem;">\${(file.size / 1024).toFixed(1)} KB</div>
+                        </div>
+                        <div style="color: #10B981;">✓</div>
+                    </div>
+                \`).join('');
+
+                fileListEl.innerHTML = fileItems;
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+            }
+
+            async function handleUploadSubmit() {
+                if (!selectedFiles || selectedFiles.length === 0) {
+                    alert('파일을 선택해주세요.');
+                    return;
+                }
+
+                const submitBtn = document.getElementById('upload-submit-btn');
+                const progressEl = document.getElementById('upload-progress');
+                const progressBar = document.getElementById('upload-progress-bar');
+                const statusEl = document.getElementById('upload-status');
+
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.5';
+                progressEl.style.display = 'block';
+                progressBar.style.width = '0%';
+                statusEl.textContent = '업로드 중...';
+
+                try {
+                    const formData = new FormData();
+                    for (let i = 0; i < selectedFiles.length; i++) {
+                        formData.append('files', selectedFiles[i]);
+                    }
+
+                    // 진행률 시뮬레이션 (실제 진행률은 서버에서 추적)
+                    let progress = 0;
+                    const progressInterval = setInterval(() => {
+                        progress += 5;
+                        if (progress <= 90) {
+                            progressBar.style.width = progress + '%';
+                        }
+                    }, 100);
+
+                    const response = await fetch('/api/upload-game', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    clearInterval(progressInterval);
+                    progressBar.style.width = '100%';
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        statusEl.textContent = '✅ 업로드 완료!';
+                        statusEl.style.color = '#10B981';
+
+                        setTimeout(() => {
+                            closeUploadModal();
+                            loadManagerGames();
+                        }, 1000);
+                    } else {
+                        statusEl.textContent = '❌ ' + (data.error || '업로드 실패');
+                        statusEl.style.color = '#EF4444';
+                        submitBtn.disabled = false;
+                        submitBtn.style.opacity = '1';
+                    }
+                } catch (error) {
+                    console.error('업로드 실패:', error);
+                    statusEl.textContent = '❌ 오류 발생';
+                    statusEl.style.color = '#EF4444';
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                }
+            }
+
+            // 🆕 게임 다운로드
+            async function downloadManagerGame(gameId) {
+                try {
+                    const response = await fetch(\`/api/download-game/\${gameId}\`);
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        alert('❌ ' + (errorData.error || '다운로드 실패'));
+                        return;
+                    }
+
+                    // Blob으로 변환하여 다운로드
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = \`\${gameId}.zip\`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+
+                    alert('✅ 게임이 다운로드되었습니다!');
+                } catch (error) {
+                    console.error('다운로드 실패:', error);
+                    alert('❌ 다운로드 중 오류가 발생했습니다.');
+                }
+            }
+
+            // 🆕 게임 삭제
+            async function deleteManagerGame(gameId) {
+                if (!confirm(\`정말로 "\${gameId}" 게임을 삭제하시겠습니까?\\n\\n⚠️ 이 작업은 되돌릴 수 없습니다.\`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(\`/api/delete-game/\${gameId}\`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert('✅ 게임이 삭제되었습니다!');
+                        loadManagerGames();
+                    } else {
+                        alert('❌ ' + (data.error || '삭제 실패'));
+                    }
+                } catch (error) {
+                    console.error('삭제 실패:', error);
+                    alert('❌ 삭제 중 오류가 발생했습니다.');
                 }
             }
 
@@ -2891,6 +3135,386 @@ class DeveloperRoutes {
                 success: false,
                 error: '비밀번호 변경 중 오류가 발생했습니다.',
                 details: error.message
+            });
+        }
+    }
+
+    /**
+     * 🆕 게임 업로드 핸들러
+     * ZIP 파일 또는 개별 파일들을 업로드하여 Storage에 저장
+     */
+    async handleUploadGame(req, res) {
+        try {
+            const files = req.files;
+
+            if (!files || files.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: '업로드할 파일이 없습니다.'
+                });
+            }
+
+            console.log(`📤 게임 업로드 요청 [파일 수: ${files.length}]`);
+
+            // 게임 ID 추출 (body에서 받거나 자동 생성)
+            let gameId = req.body.gameId;
+            let gameFiles = [];
+
+            // ZIP 파일인 경우
+            if (files.length === 1 && files[0].originalname.endsWith('.zip')) {
+                console.log(`📦 ZIP 파일 압축 해제 중...`);
+
+                const zip = new AdmZip(files[0].buffer);
+                const zipEntries = zip.getEntries();
+
+                // 게임 ID 추출 (ZIP 내부 최상위 폴더명)
+                if (!gameId && zipEntries.length > 0) {
+                    const firstEntry = zipEntries[0].entryName;
+                    gameId = firstEntry.split('/')[0];
+                }
+
+                // ZIP 내부 파일들 추출
+                zipEntries.forEach(entry => {
+                    if (!entry.isDirectory) {
+                        const relativePath = entry.entryName.replace(`${gameId}/`, '');
+                        gameFiles.push({
+                            path: relativePath,
+                            content: entry.getData()
+                        });
+                    }
+                });
+            }
+            // 개별 파일들인 경우
+            else {
+                // 게임 ID가 없으면 자동 생성
+                if (!gameId) {
+                    gameId = `game-${Date.now()}`;
+                }
+
+                // 파일 경로 파싱 (webkitRelativePath 사용)
+                files.forEach(file => {
+                    const relativePath = file.originalname;
+                    gameFiles.push({
+                        path: relativePath,
+                        content: file.buffer
+                    });
+                });
+            }
+
+            console.log(`🎮 게임 ID: ${gameId}`);
+            console.log(`📁 파일 수: ${gameFiles.length}`);
+
+            // index.html 검증
+            const hasIndexHtml = gameFiles.some(f => f.path === 'index.html' || f.path.endsWith('/index.html'));
+            if (!hasIndexHtml) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'index.html 파일이 필요합니다.'
+                });
+            }
+
+            // Supabase Storage에 업로드
+            if (!this.supabaseAdmin) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Storage 클라이언트가 초기화되지 않았습니다.'
+                });
+            }
+
+            console.log(`☁️  Supabase Storage 업로드 중...`);
+
+            for (const file of gameFiles) {
+                const storagePath = `${gameId}/${file.path}`;
+
+                // MIME 타입 결정
+                let contentType = 'application/octet-stream';
+                if (file.path.endsWith('.html')) contentType = 'text/html';
+                else if (file.path.endsWith('.json')) contentType = 'application/json';
+                else if (file.path.endsWith('.js')) contentType = 'text/javascript';
+                else if (file.path.endsWith('.css')) contentType = 'text/css';
+                else if (file.path.endsWith('.png')) contentType = 'image/png';
+                else if (file.path.endsWith('.jpg') || file.path.endsWith('.jpeg')) contentType = 'image/jpeg';
+                else if (file.path.endsWith('.svg')) contentType = 'image/svg+xml';
+
+                const { error: uploadError } = await this.supabaseAdmin
+                    .storage
+                    .from('games')
+                    .upload(storagePath, file.content, {
+                        contentType,
+                        upsert: true
+                    });
+
+                if (uploadError) {
+                    console.error(`❌ 업로드 실패: ${storagePath}`, uploadError);
+                    throw uploadError;
+                }
+
+                console.log(`  ✓ ${file.path}`);
+            }
+
+            console.log(`✅ Storage 업로드 완료`);
+
+            // game.json 파싱 (메타데이터)
+            const gameJsonFile = gameFiles.find(f => f.path === 'game.json' || f.path.endsWith('/game.json'));
+            let metadata = {
+                title: gameId,
+                description: `${gameId} 게임`,
+                gameType: 'solo',
+                genre: 'action'
+            };
+
+            if (gameJsonFile) {
+                try {
+                    const gameJson = JSON.parse(gameJsonFile.content.toString('utf-8'));
+                    metadata = {
+                        title: gameJson.title || gameId,
+                        description: gameJson.description || `${gameId} 게임`,
+                        gameType: gameJson.gameType || gameJson.category || 'solo',
+                        genre: gameJson.genre || 'action'
+                    };
+                } catch (e) {
+                    console.warn(`⚠️  game.json 파싱 실패, 기본값 사용`);
+                }
+            }
+
+            // DB 등록
+            console.log(`💾 DB 등록 중...`);
+
+            const { error: dbError } = await this.supabaseAdmin
+                .from('generated_games')
+                .upsert({
+                    game_id: gameId,
+                    title: metadata.title,
+                    description: metadata.description,
+                    game_type: metadata.gameType,
+                    genre: metadata.genre,
+                    storage_path: `${gameId}/index.html`,
+                    thumbnail_url: null,
+                    play_count: 0,
+                    metadata: {
+                        version: '1.0',
+                        source: 'manual_upload',
+                        uploadedAt: new Date().toISOString()
+                    }
+                }, {
+                    onConflict: 'game_id'
+                });
+
+            if (dbError) {
+                throw dbError;
+            }
+
+            console.log(`✅ DB 등록 완료`);
+
+            // GameScanner 재스캔
+            if (this.gameScanner) {
+                await this.gameScanner.scanGames();
+            }
+
+            res.json({
+                success: true,
+                gameId,
+                metadata,
+                filesUploaded: gameFiles.length
+            });
+
+        } catch (error) {
+            console.error('❌ 게임 업로드 실패:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * 🆕 게임 다운로드 핸들러
+     * Storage에서 게임 파일을 다운로드하여 ZIP으로 압축해서 전송
+     */
+    async handleDownloadGame(req, res) {
+        try {
+            const { gameId } = req.params;
+
+            if (!gameId) {
+                return res.status(400).json({
+                    success: false,
+                    error: '게임 ID가 필요합니다.'
+                });
+            }
+
+            console.log(`📥 게임 다운로드 요청 [게임 ID: ${gameId}]`);
+
+            if (!this.supabaseAdmin) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Storage 클라이언트가 초기화되지 않았습니다.'
+                });
+            }
+
+            // Storage에서 파일 목록 조회
+            const { data: fileList, error: listError } = await this.supabaseAdmin
+                .storage
+                .from('games')
+                .list(gameId);
+
+            if (listError) {
+                throw listError;
+            }
+
+            if (!fileList || fileList.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: '게임 파일을 찾을 수 없습니다.'
+                });
+            }
+
+            console.log(`📦 ZIP 압축 시작 [파일 수: ${fileList.length}]`);
+
+            // ZIP 다운로드 헤더 설정
+            res.setHeader('Content-Type', 'application/zip');
+            res.setHeader('Content-Disposition', `attachment; filename="${gameId}.zip"`);
+
+            // archiver 인스턴스 생성
+            const archive = archiver('zip', {
+                zlib: { level: 9 }
+            });
+
+            // 오류 처리
+            archive.on('error', (err) => {
+                console.error('❌ ZIP 압축 오류:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({
+                        success: false,
+                        error: 'ZIP 압축 중 오류 발생'
+                    });
+                }
+            });
+
+            // 완료 로깅
+            archive.on('end', () => {
+                console.log(`✅ ZIP 압축 완료 [${gameId}.zip]`);
+            });
+
+            // 스트림 연결
+            archive.pipe(res);
+
+            // Storage에서 파일 다운로드 후 ZIP에 추가
+            for (const file of fileList) {
+                const storagePath = `${gameId}/${file.name}`;
+
+                const { data: fileData, error: downloadError } = await this.supabaseAdmin
+                    .storage
+                    .from('games')
+                    .download(storagePath);
+
+                if (downloadError) {
+                    console.error(`❌ 다운로드 실패: ${storagePath}`, downloadError);
+                    continue;
+                }
+
+                // ZIP에 파일 추가
+                archive.append(Buffer.from(await fileData.arrayBuffer()), {
+                    name: `${gameId}/${file.name}`
+                });
+
+                console.log(`  ✓ ${file.name}`);
+            }
+
+            // ZIP 생성 완료
+            await archive.finalize();
+
+        } catch (error) {
+            console.error('❌ 게임 다운로드 오류:', error);
+            if (!res.headersSent) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        }
+    }
+
+    /**
+     * 🆕 게임 삭제 핸들러
+     * Storage와 DB에서 게임 완전 삭제
+     */
+    async handleDeleteGame(req, res) {
+        try {
+            const { gameId } = req.params;
+
+            if (!gameId) {
+                return res.status(400).json({
+                    success: false,
+                    error: '게임 ID가 필요합니다.'
+                });
+            }
+
+            console.log(`🗑️  게임 삭제 요청 [게임 ID: ${gameId}]`);
+
+            if (!this.supabaseAdmin) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Storage 클라이언트가 초기화되지 않았습니다.'
+                });
+            }
+
+            // Storage에서 파일 목록 조회
+            const { data: fileList, error: listError } = await this.supabaseAdmin
+                .storage
+                .from('games')
+                .list(gameId);
+
+            if (listError) {
+                throw listError;
+            }
+
+            // Storage에서 파일 삭제
+            if (fileList && fileList.length > 0) {
+                console.log(`☁️  Storage 파일 삭제 중 [${fileList.length}개 파일]...`);
+
+                const filePaths = fileList.map(file => `${gameId}/${file.name}`);
+
+                const { error: deleteError } = await this.supabaseAdmin
+                    .storage
+                    .from('games')
+                    .remove(filePaths);
+
+                if (deleteError) {
+                    throw deleteError;
+                }
+
+                console.log(`✅ Storage 파일 삭제 완료`);
+            }
+
+            // DB에서 레코드 삭제
+            console.log(`💾 DB 레코드 삭제 중...`);
+
+            const { error: dbError } = await this.supabaseAdmin
+                .from('generated_games')
+                .delete()
+                .eq('game_id', gameId);
+
+            if (dbError) {
+                throw dbError;
+            }
+
+            console.log(`✅ DB 레코드 삭제 완료`);
+
+            // GameScanner 재스캔
+            if (this.gameScanner) {
+                await this.gameScanner.scanGames();
+            }
+
+            res.json({
+                success: true,
+                message: `게임 "${gameId}"이(가) 완전히 삭제되었습니다.`
+            });
+
+        } catch (error) {
+            console.error('❌ 게임 삭제 오류:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
             });
         }
     }
