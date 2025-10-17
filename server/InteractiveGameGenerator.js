@@ -267,8 +267,8 @@ class InteractiveGameGenerator {
                 message: response.message,
                 stage: session.stage,
                 progress: this.getStageProgress(session.stage),
-                requirements: session.gameRequirements,
-                canGenerate: session.stage === 'confirmation'
+                requirements: session.gameRequirements
+                // ✅ canGenerate 제거: 프론트엔드에서 stage === 'confirmation' 체크로 충분
             };
 
         } catch (error) {
@@ -351,15 +351,11 @@ class InteractiveGameGenerator {
 
         // JSON 제거하여 깔끔한 메시지 반환
         const cleanMessage = this.removeJSONFromMessage(response.content);
-        
-        // 진행 안내 메시지 추가 (장르 분류 정보 포함)
+
+        // ✅ 간소화된 진행 안내 메시지 (불필요한 분석 정보 제거)
         let finalMessage = cleanMessage;
         if (newStage === 'details') {
-            finalMessage += `\n\n✅ 게임 아이디어가 확인되었습니다! 
-📊 분석 결과: "${genreAnalysis.primaryGenre}" 장르로 분류되었으며, ${genreAnalysis.gameType} 타입이 적합합니다.
-🎮 세부사항을 정의해보겠습니다.`;
-        } else if (genreAnalysis.confidence > 0.3) {
-            finalMessage += `\n\n💡 예상 장르: "${genreAnalysis.primaryGenre}" (${Math.round(genreAnalysis.confidence * 100)}% 확신도)`;
+            finalMessage += `\n\n✅ 아이디어 확인되었습니다! 세부사항을 정의해보겠습니다.`;
         }
 
         return {
@@ -1468,13 +1464,11 @@ ${context}
 
         // JSON 제거하여 깔끔한 메시지 반환
         const cleanMessage = this.removeJSONFromMessage(response.content);
-        
-        // 진행 안내 메시지 추가
+
+        // ✅ 간소화된 진행 안내 메시지
         let finalMessage = cleanMessage;
         if (shouldProgress) {
-            finalMessage += '\n\n✅ 세부사항이 정리되었습니다! 게임 메커니즘 단계로 넘어가겠습니다.';
-        } else if (!hasProgressKeyword) {
-            finalMessage += '\n\n💡 더 추가하고 싶은 내용이 있으시면 말씀해주세요. 준비가 되면 "다음으로 진행해줘"라고 말씀해주세요.';
+            finalMessage += '\n\n✅ 세부사항이 정리되었습니다! 다음 단계로 넘어가겠습니다.';
         }
 
         return {
@@ -1547,13 +1541,11 @@ ${context}
 
         // JSON 제거하여 깔끔한 메시지 반환
         const cleanMessage = this.removeJSONFromMessage(response.content);
-        
-        // 진행 안내 메시지 추가
+
+        // ✅ 간소화된 진행 안내 메시지
         let finalMessage = cleanMessage;
         if (shouldProgress) {
-            finalMessage += '\n\n✅ 충분한 정보가 수집되었습니다! 최종 확인 단계로 넘어가겠습니다.';
-        } else if (!hasProgressKeyword) {
-            finalMessage += '\n\n💡 더 추가하고 싶은 내용이 있으시면 말씀해주세요. 준비가 되면 "다음 단계로 진행해줘"라고 말씀해주세요.';
+            finalMessage += '\n\n✅ 정보 수집 완료! 최종 확인 단계로 넘어가겠습니다.';
         }
 
         return {
@@ -1601,47 +1593,28 @@ ${context}
             };
         }
 
-        // 최종 확인 및 정리
-        const finalSummary = `🎯 **게임 개발 요구사항 최종 정리**
+        // ✅ 간소화된 최종 확인 메시지
+        const finalSummary = `✨ **게임 사양 정리 완료!**
 
-📋 **"${requirements.title}" 게임 사양:**
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**${requirements.title}**
+• 타입: ${requirements.gameType}
+• 장르: ${requirements.genre}
+• 난이도: ${requirements.difficulty || '보통'}
+• 센서: ${requirements.sensorMechanics?.join(', ') || '기울기'}
 
-🎮 **기본 정보**
-• **게임 타입**: ${requirements.gameType} ${requirements.gameType === 'solo' ? '(1인용)' : requirements.gameType === 'dual' ? '(2인 협력)' : '(다중 플레이어)'}
-• **장르**: ${requirements.genre}
-• **난이도**: ${requirements.difficulty || '보통'}
+🎮 **이제 게임을 생성할 준비가 되었습니다!**
 
-📱 **센서 활용**
-• **센서 메커니즘**: ${requirements.sensorMechanics?.join(', ') || '기울기 센서'}
-
-🎯 **게임 목표**
-• **주요 목표**: ${requirements.objectives || '기본 게임 목표 달성'}
-
-⭐ **특별 기능**
-${requirements.specialRequirements?.length > 0 ? 
-    requirements.specialRequirements.map(req => `• ${req}`).join('\n') : 
-    '• 기본 게임 기능'}
-
-🏆 **점수 시스템**
-• ${requirements.gameplayElements?.scoring || '기본 점수 획득 시스템'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✨ **모든 요구사항이 정리되었습니다!**
-
-🎮 이제 **"게임 생성하기"** 버튼을 눌러서 실제 게임을 제작해보세요!
-
-💡 **참고**: 수정하고 싶은 부분이 있다면 언제든 말씀해주세요.`;
+아래 **"게임 생성하기"** 버튼을 눌러주세요.
+수정이 필요하면 언제든 말씀해주세요.`;
 
         // 요구사항 최종 확정
         session.gameRequirements.confirmed = true;
-        
+
         return {
             message: finalSummary,
-            newStage: 'confirmation', // 확인 단계 유지 (generating으로 자동 전환하지 않음)
-            requirements: { confirmed: true },
-            canGenerate: true // 게임 생성 버튼 활성화
+            newStage: 'confirmation',
+            requirements: { confirmed: true }
+            // ✅ canGenerate 제거: 프론트엔드에서 stage === 'confirmation'으로 판단
         };
     }
 

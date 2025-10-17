@@ -675,12 +675,12 @@
                     addMessageToChat(result.message, 'ai');
                     updateProgress(result.stage, result.progress);
                     updateRequirements(result.requirements);
-                    
-                    // 생성 준비 확인 - confirmation 단계에서 활성화
-                    if (result.canGenerate || result.stage === 'confirmation') {
+
+                    // ✅ 생성 준비 확인 - 최종 확인 단계에서만 활성화
+                    if (result.stage === 'confirmation') {
                         enableGenerateButton();
                     }
-                    
+
                     currentSession = result;
                 } else {
                     showError(result.error || '메시지 처리에 실패했습니다.');
