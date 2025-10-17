@@ -26,11 +26,21 @@ class GameMaintenanceManager {
             streaming: true  // ✅ 스트리밍 활성화 (타임아웃 방지)
         });
 
-        // Supabase 클라이언트 초기화
+        // Supabase 클라이언트 초기화 (읽기용 - Anon Key)
         this.supabase = createClient(
             process.env.SUPABASE_URL,
             process.env.SUPABASE_ANON_KEY
         );
+
+        // Supabase Admin 클라이언트 초기화 (Storage 쓰기용 - Service Role Key)
+        this.supabaseAdmin = null;
+        if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            this.supabaseAdmin = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY
+            );
+            console.log('✅ Supabase Admin Client 초기화 (Storage 쓰기 가능)');
+        }
 
         // GameScanner 주입 (자동 재스캔용)
         this.gameScanner = gameScanner;
@@ -85,6 +95,113 @@ class GameMaintenanceManager {
     }
 
     /**
+     * 🌐 Supabase Storage 또는 로컬에서 게임 코드 읽기
+     */
+    async readGameCode(gameId) {
+        // 1. Storage에서 먼저 시도 (원격 게임)
+        if (this.supabaseAdmin) {
+            try {
+                console.log(`☁️  Storage에서 게임 읽기 시도: ${gameId}`);
+                const storagePath = `${gameId}/index.html`;
+
+                const { data, error } = await this.supabaseAdmin
+                    .storage
+                    .from('games')
+                    .download(storagePath);
+
+                if (!error && data) {
+                    const code = await data.text();
+                    console.log(`✅ Storage에서 읽기 성공: ${code.length} 문자`);
+                    return { code, source: 'storage' };
+                }
+            } catch (storageError) {
+                console.log(`⚠️ Storage 읽기 실패, 로컬 시도: ${storageError.message}`);
+            }
+        }
+
+        // 2. 로컬 파일 시스템에서 시도
+        try {
+            const gamePath = path.join(__dirname, '../public/games', gameId, 'index.html');
+            const code = await fs.readFile(gamePath, 'utf-8');
+            console.log(`✅ 로컬에서 읽기 성공: ${code.length} 문자`);
+            return { code, source: 'local' };
+        } catch (localError) {
+            throw new Error(`게임 코드를 찾을 수 없습니다: ${gameId}`);
+        }
+    }
+
+    /**
+     * 🌐 Supabase Storage와 로컬에 게임 코드 저장
+     */
+    async saveGameCode(gameId, code, version) {
+        const results = { storage: false, local: false };
+
+        // 1. Storage에 저장 (우선순위 높음)
+        if (this.supabaseAdmin) {
+            try {
+                console.log(`☁️  Storage에 게임 저장 중: ${gameId}`);
+                const storagePath = `${gameId}/index.html`;
+
+                const { error: uploadError } = await this.supabaseAdmin
+                    .storage
+                    .from('games')
+                    .upload(storagePath, code, {
+                        contentType: 'text/html',
+                        upsert: true  // 덮어쓰기
+                    });
+
+                if (!uploadError) {
+                    console.log(`✅ Storage 저장 성공`);
+                    results.storage = true;
+
+                    // DB 메타데이터도 업데이트
+                    await this.updateGeneratedGamesDB(gameId, version);
+                } else {
+                    console.error(`❌ Storage 저장 실패:`, uploadError.message);
+                }
+            } catch (storageError) {
+                console.error(`❌ Storage 저장 오류:`, storageError.message);
+            }
+        }
+
+        // 2. 로컬에도 저장 (백업 및 개발용)
+        try {
+            const gamePath = path.join(__dirname, '../public/games', gameId, 'index.html');
+            await fs.writeFile(gamePath, code, 'utf-8');
+            console.log(`✅ 로컬 저장 성공`);
+            results.local = true;
+        } catch (localError) {
+            console.warn(`⚠️ 로컬 저장 실패: ${localError.message}`);
+        }
+
+        return results;
+    }
+
+    /**
+     * 🌐 generated_games DB 테이블 업데이트
+     */
+    async updateGeneratedGamesDB(gameId, version) {
+        try {
+            const { error } = await this.supabaseAdmin
+                .from('generated_games')
+                .update({
+                    metadata: {
+                        version: version,
+                        lastModified: new Date().toISOString()
+                    },
+                    updated_at: new Date().toISOString()
+                })
+                .eq('game_id', gameId);
+
+            if (!error) {
+                console.log(`✅ generated_games DB 업데이트 성공: ${gameId}`);
+            }
+        } catch (error) {
+            console.warn(`⚠️ DB 업데이트 실패: ${error.message}`);
+        }
+    }
+
+    /**
      * 버그 리포트 처리
      */
     async handleBugReport(gameId, bugDescription, userContext = '') {
@@ -98,11 +215,12 @@ class GameMaintenanceManager {
         }
 
         const session = this.getSession(gameId);
-        const gamePath = path.join(__dirname, '../public/games', gameId, 'index.html');
 
         try {
-            // 1. 현재 게임 코드 읽기
-            const currentCode = await fs.readFile(gamePath, 'utf-8');
+            // 1. 현재 게임 코드 읽기 (Storage 우선)
+            const { code: currentCode, source } = await this.readGameCode(gameId);
+            console.log(`📖 게임 코드 읽기 완료 (source: ${source})`);
+
 
             // 2. 버그 분석 및 수정 코드 생성
             const fixResult = await this.analyzeBugAndFix(currentCode, bugDescription, userContext);
@@ -115,22 +233,26 @@ class GameMaintenanceManager {
                 };
             }
 
-            // 3. 버전 백업 (현재 버전 저장)
-            await this.backupVersion(gameId, session.version);
+            // 3. 버전 증가
+            const newVersion = this.incrementVersion(session.version);
 
-            // 4. 수정된 코드 저장
-            await fs.writeFile(gamePath, fixResult.fixedCode, 'utf-8');
+            // 4. 버전 백업 (Storage 지원)
+            await this.backupVersion(gameId, session.version, currentCode);
 
-            // 5. 버전 증가
-            session.version = this.incrementVersion(session.version);
+            // 5. 수정된 코드 저장 (Storage + Local)
+            const saveResults = await this.saveGameCode(gameId, fixResult.fixedCode, newVersion);
+            console.log(`💾 저장 결과:`, saveResults);
+
+            // 6. 세션 정보 업데이트
+            session.version = newVersion;
             session.modifications.push({
                 type: 'bug_fix',
                 description: bugDescription,
                 timestamp: Date.now(),
-                version: session.version
+                version: newVersion
             });
 
-            // 6. DB에 버전 정보 저장
+            // 7. DB에 버전 정보 저장
             await this.saveGameVersionToDB(gameId, session);
 
             // 7. 🔄 GameScanner 자동 재스캔 (게임 허브에 즉시 반영)
@@ -273,11 +395,11 @@ ${currentCode}
         }
 
         const session = this.getSession(gameId);
-        const gamePath = path.join(__dirname, '../public/games', gameId, 'index.html');
 
         try {
-            // 1. 현재 게임 코드 읽기
-            const currentCode = await fs.readFile(gamePath, 'utf-8');
+            // 1. 현재 게임 코드 읽기 (Storage 우선)
+            const { code: currentCode, source } = await this.readGameCode(gameId);
+            console.log(`📖 게임 코드 읽기 완료 (source: ${source})`);
 
             // 2. 기능 추가 코드 생성
             const addResult = await this.addFeatureToGame(currentCode, featureDescription, userContext);
@@ -290,22 +412,26 @@ ${currentCode}
                 };
             }
 
-            // 3. 버전 백업
-            await this.backupVersion(gameId, session.version);
+            // 3. 버전 증가
+            const newVersion = this.incrementVersion(session.version);
 
-            // 4. 수정된 코드 저장
-            await fs.writeFile(gamePath, addResult.enhancedCode, 'utf-8');
+            // 4. 버전 백업 (Storage 지원)
+            await this.backupVersion(gameId, session.version, currentCode);
 
-            // 5. 버전 증가
-            session.version = this.incrementVersion(session.version);
+            // 5. 수정된 코드 저장 (Storage + Local)
+            const saveResults = await this.saveGameCode(gameId, addResult.enhancedCode, newVersion);
+            console.log(`💾 저장 결과:`, saveResults);
+
+            // 6. 세션 정보 업데이트
+            session.version = newVersion;
             session.modifications.push({
                 type: 'feature_add',
                 description: featureDescription,
                 timestamp: Date.now(),
-                version: session.version
+                version: newVersion
             });
 
-            // 6. DB에 버전 정보 저장
+            // 7. DB에 버전 정보 저장
             await this.saveGameVersionToDB(gameId, session);
 
             // 7. 🔄 GameScanner 자동 재스캔 (게임 허브에 즉시 반영)
@@ -421,24 +547,41 @@ ${currentCode}
     }
 
     /**
-     * 버전 백업
+     * 버전 백업 (Storage + Local)
      */
-    async backupVersion(gameId, version) {
-        const gamePath = path.join(__dirname, '../public/games', gameId, 'index.html');
-        const backupDir = path.join(__dirname, '../public/games', gameId, 'backups');
-        const backupPath = path.join(backupDir, `index.v${version}.html`);
+    async backupVersion(gameId, version, currentCode) {
+        // 1. Storage에 백업 (우선순위)
+        if (this.supabaseAdmin) {
+            try {
+                const backupPath = `${gameId}/backups/index.v${version}.html`;
 
+                const { error } = await this.supabaseAdmin
+                    .storage
+                    .from('games')
+                    .upload(backupPath, currentCode, {
+                        contentType: 'text/html',
+                        upsert: false  // 덮어쓰기 안함
+                    });
+
+                if (!error) {
+                    console.log(`💾 Storage 백업 완료: v${version}`);
+                }
+            } catch (storageError) {
+                console.warn(`⚠️ Storage 백업 실패: ${storageError.message}`);
+            }
+        }
+
+        // 2. 로컬에도 백업
         try {
-            // 백업 디렉토리 생성
-            await fs.mkdir(backupDir, { recursive: true });
+            const backupDir = path.join(__dirname, '../public/games', gameId, 'backups');
+            const backupPath = path.join(backupDir, `index.v${version}.html`);
 
-            // 현재 버전 백업
-            const currentCode = await fs.readFile(gamePath, 'utf-8');
+            await fs.mkdir(backupDir, { recursive: true });
             await fs.writeFile(backupPath, currentCode, 'utf-8');
 
-            console.log(`💾 백업 완료: ${backupPath}`);
+            console.log(`💾 로컬 백업 완료: ${backupPath}`);
         } catch (error) {
-            console.error(`⚠️ 백업 실패: ${error.message}`);
+            console.warn(`⚠️ 로컬 백업 실패: ${error.message}`);
         }
     }
 

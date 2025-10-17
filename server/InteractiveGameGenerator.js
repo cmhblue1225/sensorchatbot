@@ -2635,24 +2635,29 @@ ${requirements.specialRequirements?.length > 0 ?
     }
 
     /**
-     * 게임 파일 저장
+     * 게임 파일 저장 (Storage 우선, 로컬은 옵션)
      */
     async saveGameToFiles(gameCode, metadata) {
         try {
             const gameId = this.generateGameId(metadata.title);
-            const gamePath = path.join(process.cwd(), 'public', 'games', gameId);
-            
-            console.log(`📁 게임 폴더 생성: ${gamePath}`);
-            
-            // 게임 폴더 생성
-            await fs.mkdir(gamePath, { recursive: true });
-            
-            // index.html 파일 저장
-            const indexPath = path.join(gamePath, 'index.html');
-            await fs.writeFile(indexPath, gameCode, 'utf8');
-            console.log(`✅ index.html 저장 완료: ${indexPath}`);
-            
-            // game.json 메타데이터 파일 저장
+
+            // 🌐 Storage 우선 정책: 로컬 저장은 개발 환경에서만
+            const saveToLocal = process.env.SAVE_GAMES_LOCALLY === 'true' || process.env.NODE_ENV === 'development';
+
+            let gamePath = null;
+
+            // 로컬 저장 (옵션)
+            if (saveToLocal) {
+                gamePath = path.join(process.cwd(), 'public', 'games', gameId);
+                console.log(`📁 게임 폴더 생성: ${gamePath}`);
+                await fs.mkdir(gamePath, { recursive: true });
+            } else {
+                console.log(`☁️  Storage 전용 모드: 로컬 저장 건너뜀`);
+                // 임시 경로 설정 (검증 보고서용)
+                gamePath = path.join(process.cwd(), 'public', 'games', gameId);
+            }
+
+            // game.json 메타데이터 생성 (Storage 업로드용)
             const gameJson = {
                 ...metadata,
                 gameId: gameId,
@@ -2662,58 +2667,113 @@ ${requirements.specialRequirements?.length > 0 ?
                 createdAt: new Date().toISOString(),
                 version: '1.0.0'
             };
-            
-            const metadataPath = path.join(gamePath, 'game.json');
-            await fs.writeFile(metadataPath, JSON.stringify(gameJson, null, 2), 'utf8');
-            console.log(`✅ game.json 저장 완료: ${metadataPath}`);
-            
-            // README.md 파일 생성
-            const readme = this.generateReadme(metadata);
-            const readmePath = path.join(gamePath, 'README.md');
-            await fs.writeFile(readmePath, readme, 'utf8');
-            console.log(`✅ README.md 저장 완료: ${readmePath}`);
+
+            // 로컬 파일 저장 (옵션)
+            let indexPath, metadataPath, readmePath;
+
+            if (saveToLocal) {
+                // index.html 파일 저장
+                indexPath = path.join(gamePath, 'index.html');
+                await fs.writeFile(indexPath, gameCode, 'utf8');
+                console.log(`✅ index.html 로컬 저장 완료: ${indexPath}`);
+
+                // game.json 메타데이터 파일 저장
+                metadataPath = path.join(gamePath, 'game.json');
+                await fs.writeFile(metadataPath, JSON.stringify(gameJson, null, 2), 'utf8');
+                console.log(`✅ game.json 로컬 저장 완료: ${metadataPath}`);
+
+                // README.md 파일 생성
+                const readme = this.generateReadme(metadata);
+                readmePath = path.join(gamePath, 'README.md');
+                await fs.writeFile(readmePath, readme, 'utf8');
+                console.log(`✅ README.md 로컬 저장 완료: ${readmePath}`);
+            } else {
+                console.log(`☁️  로컬 파일 저장 건너뜀 (Storage 전용)`);
+                // 경로만 설정 (반환용)
+                indexPath = path.join(gamePath, 'index.html');
+                metadataPath = path.join(gamePath, 'game.json');
+                readmePath = path.join(gamePath, 'README.md');
+            }
             
             // 🔍 게임 자동 검증 실행 (메타데이터 포함)
             console.log(`🔍 게임 검증 시작: ${gameId}`);
             const validationResult = await this.gameValidator.validateGame(gameId, gamePath, metadata);
-            
+
             // 검증 보고서 생성 및 출력
             const validationReport = this.gameValidator.generateReport(validationResult);
             console.log(validationReport);
-            
-            // 검증 결과를 파일로 저장 (개발자용)
-            const reportPath = path.join(gamePath, 'VALIDATION_REPORT.md');
-            await fs.writeFile(reportPath, validationReport, 'utf8');
-            console.log(`📋 검증 보고서 저장: ${reportPath}`);
+
+            // 검증 결과를 파일로 저장 (로컬 저장 시에만)
+            let reportPath = null;
+            if (saveToLocal) {
+                reportPath = path.join(gamePath, 'VALIDATION_REPORT.md');
+                await fs.writeFile(reportPath, validationReport, 'utf8');
+                console.log(`📋 검증 보고서 로컬 저장: ${reportPath}`);
+            }
 
             // 🌐 Supabase Storage에 업로드 (프로덕션 배포용)
             let storageUrl = null;
             if (this.supabaseAdminClient) {
                 try {
-                    console.log('☁️  Supabase Storage에 게임 업로드 중...');
+                    console.log('☁️  Supabase Storage에 게임 파일 업로드 중...');
 
-                    // Storage 경로: games/{gameId}/index.html
-                    const storagePath = `${gameId}/index.html`;
-
-                    // HTML 파일 업로드
-                    const { data: uploadData, error: uploadError } = await this.supabaseAdminClient
+                    // 1. index.html 업로드
+                    const htmlStoragePath = `${gameId}/index.html`;
+                    const { error: htmlError } = await this.supabaseAdminClient
                         .storage
                         .from('games')
-                        .upload(storagePath, gameCode, {
+                        .upload(htmlStoragePath, gameCode, {
                             contentType: 'text/html',
-                            upsert: true  // 같은 경로에 파일이 있으면 덮어쓰기
+                            upsert: true
                         });
 
-                    if (uploadError) {
-                        console.error('❌ Storage 업로드 실패:', uploadError);
+                    if (htmlError) {
+                        console.error('❌ index.html 업로드 실패:', htmlError);
                     } else {
-                        console.log('✅ Storage 업로드 완료:', storagePath);
+                        console.log('✅ index.html 업로드 완료');
+                    }
+
+                    // 2. game.json 업로드
+                    const jsonStoragePath = `${gameId}/game.json`;
+                    const { error: jsonError } = await this.supabaseAdminClient
+                        .storage
+                        .from('games')
+                        .upload(jsonStoragePath, JSON.stringify(gameJson, null, 2), {
+                            contentType: 'application/json',
+                            upsert: true
+                        });
+
+                    if (jsonError) {
+                        console.error('❌ game.json 업로드 실패:', jsonError);
+                    } else {
+                        console.log('✅ game.json 업로드 완료');
+                    }
+
+                    // 3. README.md 업로드
+                    const readme = this.generateReadme(metadata);
+                    const readmeStoragePath = `${gameId}/README.md`;
+                    const { error: readmeError } = await this.supabaseAdminClient
+                        .storage
+                        .from('games')
+                        .upload(readmeStoragePath, readme, {
+                            contentType: 'text/markdown',
+                            upsert: true
+                        });
+
+                    if (readmeError) {
+                        console.error('❌ README.md 업로드 실패:', readmeError);
+                    } else {
+                        console.log('✅ README.md 업로드 완료');
+                    }
+
+                    // Storage 업로드 완료
+                    if (!htmlError) {
 
                         // Public URL 생성
                         const { data: urlData } = this.supabaseAdminClient
                             .storage
                             .from('games')
-                            .getPublicUrl(storagePath);
+                            .getPublicUrl(htmlStoragePath);
 
                         storageUrl = urlData.publicUrl;
                         console.log('🔗 Public URL:', storageUrl);
@@ -2727,8 +2787,8 @@ ${requirements.specialRequirements?.length > 0 ?
                                 description: metadata.description || '',
                                 game_type: metadata.gameType || 'solo',
                                 genre: metadata.genre || '',
-                                storage_path: storagePath,
-                                thumbnail_url: null,  // 향후 썸네일 추가 가능
+                                storage_path: htmlStoragePath,  // index.html 경로
+                                thumbnail_url: null,
                                 play_count: 0,
                                 metadata: {
                                     requirements: metadata.requirements,
@@ -2751,7 +2811,7 @@ ${requirements.specialRequirements?.length > 0 ?
                                     .update({
                                         title: metadata.title,
                                         description: metadata.description || '',
-                                        storage_path: storagePath,
+                                        storage_path: htmlStoragePath,  // index.html 경로
                                         metadata: {
                                             requirements: metadata.requirements,
                                             validation: validationResult,

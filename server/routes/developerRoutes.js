@@ -135,11 +135,6 @@ class DeveloperRoutes {
             await this.handleFinalizeGame(req, res);
         });
 
-        // 게임 다운로드 (선택적 인증)
-        this.router.get('/api/download-game/:gameId', optionalAuth, async (req, res) => {
-            await this.handleDownloadGame(req, res);
-        });
-
         // 🆕 게임 미리보기
         this.router.get('/api/preview-game/:gameId', async (req, res) => {
             await this.handlePreviewGame(req, res);
@@ -1505,46 +1500,6 @@ class DeveloperRoutes {
             document.getElementById('result-modal').classList.add('hidden');
         });
 
-        // 게임 다운로드
-        document.getElementById('download-game-btn').addEventListener('click', async () => {
-            if (!currentGameData || !currentGameData.gameId) {
-                alert('다운로드할 게임 정보가 없습니다.');
-                return;
-            }
-
-            try {
-                // 게임 파일 다운로드 API 호출
-                const response = await fetch('/developer/api/download-game/' + currentGameData.gameId);
-
-                if (!response.ok) {
-                    throw new Error('게임 다운로드 실패');
-                }
-
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = currentGameData.gameId + '.zip';  // ZIP 파일로 다운로드
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-
-                // 안내 메시지 표시
-                alert(\`✅ 게임 ZIP 파일이 다운로드되었습니다!
-
-📦 다운로드한 ZIP 파일 사용 방법:
-1. \${currentGameData.gameId}.zip 압축 해제
-2. 압축 해제된 폴더를 'public/games/' 경로에 복사
-3. 서버가 자동으로 게임을 감지합니다
-
-💡 Tip: 게임이 자동 등록되어 바로 플레이 가능합니다!\`);
-            } catch (error) {
-                console.error('다운로드 오류:', error);
-                alert('❌ 게임 다운로드 중 오류가 발생했습니다.');
-            }
-        });
-
         // 새 게임 만들기
         document.getElementById('new-game-btn').addEventListener('click', () => {
             document.getElementById('result-modal').classList.add('hidden');
@@ -1780,9 +1735,6 @@ class DeveloperRoutes {
                         <a id="play-game-btn" class="result-btn primary" href="#" target="_blank">
                             🎮 바로 플레이하기
                         </a>
-                        <button id="download-game-btn" class="result-btn secondary">
-                            💾 게임 다운로드
-                        </button>
                         <button id="new-game-btn" class="result-btn secondary">
                             🔄 새 게임 만들기
                         </button>
@@ -2304,88 +2256,6 @@ class DeveloperRoutes {
     }
 
     /**
-     * 🆕 게임 다운로드 (Phase 3)
-     */
-    async handleDownloadGame(req, res) {
-        try {
-            const { gameId } = req.params;
-
-            if (!gameId) {
-                return res.status(400).json({
-                    success: false,
-                    error: '게임 ID가 필요합니다.'
-                });
-            }
-
-            console.log(`📥 게임 다운로드 요청 [게임 ID: ${gameId}]`);
-
-            // 게임 폴더 경로
-            const gameFolderPath = path.join(__dirname, '../../public/games', gameId);
-
-            // 폴더 존재 확인
-            if (!fsSync.existsSync(gameFolderPath)) {
-                console.error(`❌ 게임 폴더를 찾을 수 없음: ${gameFolderPath}`);
-                return res.status(404).json({
-                    success: false,
-                    error: '게임 폴더를 찾을 수 없습니다.'
-                });
-            }
-
-            console.log(`✅ 게임 폴더 발견: ${gameFolderPath}`);
-            console.log(`📦 ZIP 압축 시작...`);
-
-            // ZIP 다운로드 헤더 설정
-            res.setHeader('Content-Type', 'application/zip');
-            res.setHeader('Content-Disposition', `attachment; filename="${gameId}.zip"`);
-
-            // archiver 인스턴스 생성
-            const archive = archiver('zip', {
-                zlib: { level: 9 }  // 최대 압축
-            });
-
-            // 오류 처리
-            archive.on('error', (err) => {
-                console.error('❌ ZIP 압축 오류:', err);
-                if (!res.headersSent) {
-                    res.status(500).json({
-                        success: false,
-                        error: 'ZIP 압축 중 오류 발생'
-                    });
-                }
-            });
-
-            // 진행 상황 로깅
-            archive.on('progress', (progress) => {
-                console.log(`📦 압축 진행: ${progress.entries.processed}개 파일 처리됨`);
-            });
-
-            // 완료 로깅
-            archive.on('end', () => {
-                console.log(`✅ ZIP 압축 완료 [${gameId}.zip] - ${archive.pointer()} bytes`);
-            });
-
-            // 스트림 연결 (파일 → archive → response)
-            archive.pipe(res);
-
-            // 게임 폴더 전체를 ZIP에 추가 (폴더명 포함)
-            // 결과: {gameId}/index.html, {gameId}/game.json 등의 구조
-            archive.directory(gameFolderPath, gameId);
-
-            // ZIP 생성 완료
-            await archive.finalize();
-
-        } catch (error) {
-            console.error('❌ 게임 다운로드 오류:', error);
-            if (!res.headersSent) {
-                res.status(500).json({
-                    success: false,
-                    error: error.message
-                });
-            }
-        }
-    }
-
-    /**
      * 🆕 게임 미리보기 핸들러
      * 생성된 게임을 iframe으로 미리볼 수 있는 HTML 페이지 제공
      */
@@ -2651,9 +2521,6 @@ class DeveloperRoutes {
             <button onclick="refreshGame()" class="btn btn-primary">
                 🔄 새로고침
             </button>
-            <a href="/developer/api/download-game/${gameId}" class="btn btn-success">
-                ⬇️ 다운로드
-            </a>
         </div>
     </div>
 

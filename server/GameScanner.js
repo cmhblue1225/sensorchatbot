@@ -51,7 +51,7 @@ class GameScanner {
                 console.log(`✅ 원격 게임 ${remoteGames.length}개 발견`);
             }
 
-            // 3. 게임 병합 (로컬 우선, 중복 제거)
+            // 3. 게임 병합 (원격 우선, 중복 제거)
             const mergedGames = this.mergeGames(localGames, remoteGames);
 
             // 4. Map에 저장
@@ -160,22 +160,23 @@ class GameScanner {
     }
 
     /**
-     * 로컬 게임과 원격 게임 병합 (로컬 우선)
+     * 로컬 게임과 원격 게임 병합 (원격 우선)
+     * 온라인 스토리지에 저장된 게임이 항상 우선됩니다.
      */
     mergeGames(localGames, remoteGames) {
         const merged = new Map();
 
-        // 1. 로컬 게임 추가 (우선순위 높음)
-        localGames.forEach(game => {
+        // 1. 원격 게임 추가 (우선순위 높음) ☁️
+        remoteGames.forEach(game => {
             merged.set(game.id, game);
         });
 
-        // 2. 원격 게임 추가 (로컬에 없는 것만)
-        remoteGames.forEach(game => {
+        // 2. 로컬 게임 추가 (원격에 없는 것만) 📁
+        localGames.forEach(game => {
             if (!merged.has(game.id)) {
                 merged.set(game.id, game);
             } else {
-                console.log(`⚠️  중복 게임 무시 (로컬 우선): ${game.id}`);
+                console.log(`⚠️  중복 게임 무시 (원격 우선): ${game.id}`);
             }
         });
 
