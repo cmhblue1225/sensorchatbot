@@ -924,7 +924,7 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                 }
 
                 const { sessionId, message } = req.body;
-                
+
                 if (!sessionId || !message) {
                     return res.status(400).json({
                         success: false,
