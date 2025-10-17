@@ -66,6 +66,11 @@ Resumption Guide
 - 각 단계는 독립 산출물과 Stop check가 있음. 마지막 완료된 단계 번호를 기록 후 재개.
 - 예시: “2–4단계 완료, 5단계부터 재개”.
 
+Language Preference
+- Implementation-required artifacts (코드, 주석, 로그 메시지 등)는 영어 사용.
+- 설명, 문서 해설, 진행 보고 등 작업 이해에 지장 없는 커뮤니케이션은 한국어 사용.
+- 문서/주석에서 한국어가 필요한 경우 괄호로 보조 설명 가능.
+
 Scope Note
 - 본 문서는 스냅샷이며, 코드 구현을 포함하지 않습니다.
 
@@ -142,3 +147,21 @@ Handoff Summary (3-line 요약 템플릿)
   - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
 - Stop check: 정적 레이아웃만 존재. 스크립트/SDK 미포함.
 - RESUME_FROM: 4 (SessionSDK + QR 폴백)
+
+## 2025-10-17T13:49:06+09:00
+- 완료 단계: 4 (SessionSDK + QR 폴백)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (SessionSDK 연결, QR 폴백, 센서 카운트 표시)
+  - public/games/kimchi-fest/CHANGELOG.md (Unreleased 항목 갱신)
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
+- Stop check: SDK 로드 실패 시 안내 메시지 표시, 세션 생성/QR 표시/센서 카운트 정상 동작 확인 필요.
+- RESUME_FROM: 5 (메트로놈 + 타이머)
+
+## 2025-10-17T14:12:01+09:00
+- 완료 단계: 5 (메트로놈 + 타이머)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (메트로놈 110 BPM, WebAudio 비프, 45초 라운드 타이머 및 UI 업데이트)
+  - public/games/kimchi-fest/CHANGELOG.md (Unreleased 항목에 메트로놈/타이머 추가)
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트, Language Preference 반영)
+- Stop check: 라운드 시작 시 타이머 카운트다운, 박자 비프 + 시각 플래시 정상 동작 여부 확인.
+- RESUME_FROM: 6 (센서 파이프라인)

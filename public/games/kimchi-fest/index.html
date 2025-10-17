@@ -60,6 +60,52 @@
             align-items: center;
             justify-content: center;
             color: rgba(148, 163, 184, 0.8);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .placeholder.beat-active::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: rgba(248, 113, 113, 0.25);
+            animation: beat-pulse 180ms ease-out;
+        }
+
+        @keyframes beat-pulse {
+            from {
+                opacity: 0.8;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+
+        .session-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .session-code {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .qr-placeholder {
+            min-width: 220px;
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed rgba(148, 163, 184, 0.4);
+            border-radius: 1rem;
+            padding: 1rem;
+            text-align: center;
+            color: rgba(148, 163, 184, 0.8);
+            background: rgba(15, 23, 42, 0.4);
         }
 
         button {
@@ -72,11 +118,40 @@
             color: #0f172a;
             background: linear-gradient(135deg, #f97316, #22c55e);
             cursor: pointer;
+            transition: transform 0.2s ease;
         }
 
         button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
+        }
+
+        button:not(:disabled):hover {
+            transform: translateY(-2px);
+        }
+
+        #qr-container[data-state="error"] {
+            color: #fca5a5;
+            border-color: rgba(248, 113, 113, 0.6);
+        }
+
+        #metronome-indicator {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #f97316;
+        }
+
+        #metronome-indicator span {
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 0.5rem;
+            color: rgba(248, 250, 252, 0.7);
+        }
+
+        #timer-card p {
+            font-size: 1.75rem;
+            font-weight: 700;
         }
     </style>
 </head>
@@ -106,19 +181,323 @@
         </section>
 
         <section class="stage-board" aria-label="Game board">
-            <div class="placeholder" id="metronome-placeholder">메트로놈 / 타이밍 표시 영역</div>
+            <div class="placeholder" id="metronome-placeholder">
+                <div id="metronome-indicator">
+                    Ready
+                    <span>110 BPM</span>
+                </div>
+            </div>
             <div class="placeholder" id="playfield-placeholder">플레이필드(양념 &amp; 배추) 영역</div>
             <div class="placeholder" id="feedback-placeholder">판정 &amp; 피드백 영역</div>
         </section>
 
         <section class="card" aria-label="Controls">
             <h2>제어</h2>
-            <p>이 섹션은 이후 단계에서 SessionSDK와 연동되어 센서 연결 및 재시작 버튼을 제공합니다.</p>
-            <button id="start-button" disabled>준비 중...</button>
+            <p>이 섹션은 SessionSDK와 연동되어 세션 연결, QR 코드, 라운드 타이머를 관리합니다.</p>
+            <div class="session-info" aria-live="polite">
+                <div class="session-code">세션 코드: <span id="session-code">----</span></div>
+                <div id="qr-container" class="qr-placeholder">QR 코드가 여기에 표시됩니다.</div>
+            </div>
+            <button id="start-button" disabled>SDK 준비 중...</button>
         </section>
     </main>
     <footer>
         <small>Kimchi Fest Prototype &bull; Sensor Game Hub v6.0</small>
     </footer>
+    <script src="/socket.io/socket.io.js" defer></script>
+    <script src="/js/SessionSDK.js" defer></script>
+    <script>
+        (function () {
+            const CONFIG = {
+                bpm: 110,
+                roundDurationMs: 45_000,
+                metronomeVolume: 0.15,
+                metronomeFrequency: 880
+            };
+
+            const startButton = document.getElementById('start-button');
+            const playerCountEl = document.getElementById('player-count');
+            const stageEl = document.getElementById('stage');
+            const timerEl = document.getElementById('timer');
+            const sessionCodeEl = document.getElementById('session-code');
+            const qrContainer = document.getElementById('qr-container');
+            const metronomePlaceholder = document.getElementById('metronome-placeholder');
+            const metronomeIndicator = document.getElementById('metronome-indicator');
+
+            const state = {
+                sdk: null,
+                session: null,
+                players: new Set(),
+                roundActive: false,
+                roundStartTime: 0,
+                timerFrame: null,
+                metronomeInterval: null,
+                audioContext: null,
+                metronomeGain: null
+            };
+
+            function showStatus(message, type = 'info') {
+                qrContainer.textContent = message;
+                qrContainer.dataset.state = type;
+            }
+
+            function renderQRCode(url) {
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+                const img = document.createElement('img');
+                img.alt = '센서 연결용 QR 코드';
+                img.src = qrApiUrl;
+                img.width = 220;
+                img.height = 220;
+                img.loading = 'lazy';
+                qrContainer.replaceChildren(img);
+                qrContainer.removeAttribute('data-state');
+            }
+
+            function ensureSDK() {
+                if (typeof window.SessionSDK !== 'function') {
+                    startButton.textContent = 'SDK 로드 실패';
+                    showStatus('SessionSDK를 불러올 수 없습니다. 새로고침 후 다시 시도하세요.', 'error');
+                    return false;
+                }
+                return true;
+            }
+
+            function updatePlayerCount() {
+                playerCountEl.textContent = state.players.size.toString();
+            }
+
+            function formatTime(ms) {
+                const seconds = Math.max(0, Math.ceil(ms / 1000));
+                const minutes = Math.floor(seconds / 60)
+                    .toString()
+                    .padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                return `${minutes}:${secs}`;
+            }
+
+            function stopTimerLoop() {
+                if (state.timerFrame !== null) {
+                    cancelAnimationFrame(state.timerFrame);
+                    state.timerFrame = null;
+                }
+            }
+
+            function stopMetronome() {
+                if (state.metronomeInterval !== null) {
+                    clearInterval(state.metronomeInterval);
+                    state.metronomeInterval = null;
+                }
+                metronomePlaceholder.classList.remove('beat-active');
+                metronomeIndicator.textContent = 'Ready';
+                const span = document.createElement('span');
+                span.textContent = `${CONFIG.bpm} BPM`;
+                metronomeIndicator.appendChild(span);
+            }
+
+            function playClick() {
+                try {
+                    if (!state.audioContext) {
+                        state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const gain = state.audioContext.createGain();
+                        gain.gain.value = CONFIG.metronomeVolume;
+                        gain.connect(state.audioContext.destination);
+                        state.metronomeGain = gain;
+                    }
+
+                    if (state.audioContext.state === 'suspended') {
+                        state.audioContext.resume().catch(() => {});
+                    }
+
+                    const osc = state.audioContext.createOscillator();
+                    osc.type = 'sine';
+                    osc.frequency.value = CONFIG.metronomeFrequency;
+                    osc.connect(state.metronomeGain);
+                    const now = state.audioContext.currentTime;
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } catch (error) {
+                    console.warn('Metronome audio failed:', error);
+                }
+            }
+
+            function flashMetronome(beatCount) {
+                metronomePlaceholder.classList.add('beat-active');
+                metronomeIndicator.textContent = beatCount % 4 === 0 ? 'Beat 1' : `Beat ${beatCount % 4 + 1}`;
+                const span = document.createElement('span');
+                span.textContent = `${CONFIG.bpm} BPM`;
+                metronomeIndicator.appendChild(span);
+                setTimeout(() => {
+                    metronomePlaceholder.classList.remove('beat-active');
+                }, 120);
+            }
+
+            function startMetronome() {
+                let beatCount = 0;
+                const interval = 60000 / CONFIG.bpm;
+                playClick();
+                flashMetronome(beatCount);
+                state.metronomeInterval = setInterval(() => {
+                    beatCount += 1;
+                    playClick();
+                    flashMetronome(beatCount);
+                }, interval);
+            }
+
+            function updateTimerLoop() {
+                const now = performance.now();
+                const elapsed = now - state.roundStartTime;
+                const remaining = CONFIG.roundDurationMs - elapsed;
+                timerEl.textContent = formatTime(remaining);
+
+                if (remaining <= 0) {
+                    endRound('라운드 종료');
+                    return;
+                }
+
+                state.timerFrame = requestAnimationFrame(updateTimerLoop);
+            }
+
+            function startRound() {
+                if (state.roundActive) {
+                    return;
+                }
+                state.roundActive = true;
+                state.roundStartTime = performance.now();
+                stageEl.textContent = '라운드 진행 중';
+                startButton.disabled = true;
+                startButton.textContent = '라운드 진행 중...';
+                timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+
+                startMetronome();
+                state.timerFrame = requestAnimationFrame(updateTimerLoop);
+            }
+
+            function endRound(reason = '라운드 종료') {
+                if (!state.roundActive) {
+                    return;
+                }
+                state.roundActive = false;
+                stopTimerLoop();
+                stopMetronome();
+                timerEl.textContent = '00:00';
+                stageEl.textContent = reason;
+                startButton.disabled = false;
+                startButton.textContent = '라운드 다시 시작';
+            }
+
+            function resetRoundState() {
+                state.roundActive = false;
+                stopTimerLoop();
+                stopMetronome();
+                timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+                stageEl.textContent = '라운드 준비';
+                startButton.disabled = false;
+                startButton.textContent = '라운드 시작';
+            }
+
+            function registerSDKEvents() {
+                const sdk = state.sdk;
+
+                sdk.on('connected', (event) => {
+                    const detail = event?.detail || event;
+                    console.debug('[SessionSDK] connected', detail);
+                    startButton.disabled = false;
+                    startButton.textContent = state.session ? '라운드 시작' : '세션 생성';
+                    stageEl.textContent = state.session ? '라운드 준비' : '연결 대기';
+                    showStatus('세션을 생성하면 QR 코드가 표시됩니다.', 'info');
+                });
+
+                sdk.on('session-created', (event) => {
+                    const detail = event?.detail || event;
+                    console.debug('[SessionSDK] session-created', detail);
+                    state.session = detail;
+                    sessionCodeEl.textContent = detail.sessionCode || '----';
+                    stageEl.textContent = '라운드 준비';
+                    startButton.disabled = false;
+                    startButton.textContent = '라운드 시작';
+
+                    const url = `${window.location.origin}/sensor.html?session=${detail.sessionCode}`;
+                    renderQRCode(url);
+                    timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+                });
+
+                sdk.on('session-error', (event) => {
+                    const detail = event?.detail || event;
+                    console.warn('[SessionSDK] session-error', detail);
+                    resetRoundState();
+                    startButton.textContent = '세션 생성';
+                    showStatus('세션 생성 중 오류가 발생했습니다. 다시 시도해주세요.', 'error');
+                });
+
+                sdk.on('sensor-connected', (event) => {
+                    const detail = event?.detail || event;
+                    console.debug('[SessionSDK] sensor-connected', detail);
+                    if (detail?.sensorId) {
+                        state.players.add(detail.sensorId);
+                        updatePlayerCount();
+                    }
+                    if (!state.roundActive) {
+                        stageEl.textContent = '라운드 준비';
+                    }
+                });
+
+                if (typeof sdk.on === 'function') {
+                    sdk.on('sensor-disconnected', (event) => {
+                        const detail = event?.detail || event;
+                        console.debug('[SessionSDK] sensor-disconnected', detail);
+                        if (detail?.sensorId) {
+                            state.players.delete(detail.sensorId);
+                            updatePlayerCount();
+                        }
+                        if (state.players.size === 0 && state.roundActive) {
+                            endRound('센서 연결 해제');
+                        }
+                    });
+                }
+            }
+
+            function attachHandlers() {
+                startButton.addEventListener('click', async () => {
+                    if (!state.sdk) {
+                        return;
+                    }
+
+                    if (!state.session) {
+                        startButton.disabled = true;
+                        startButton.textContent = '세션 생성 중...';
+                        showStatus('세션을 생성하는 중입니다...', 'info');
+                        try {
+                            await state.sdk.createSession({ gameType: 'solo' });
+                        } catch (error) {
+                            console.error('Failed to create session', error);
+                            startButton.disabled = false;
+                            startButton.textContent = '세션 생성';
+                            showStatus('세션 생성 실패. 콘솔을 확인해주세요.', 'error');
+                        }
+                        return;
+                    }
+
+                    if (!state.roundActive) {
+                        startRound();
+                    }
+                });
+            }
+
+            function init() {
+                if (!ensureSDK()) {
+                    return;
+                }
+
+                state.sdk = new window.SessionSDK({ debug: true });
+                showStatus('SDK 연결을 기다리는 중입니다...', 'info');
+                timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+
+                registerSDKEvents();
+                attachHandlers();
+            }
+
+            window.addEventListener('DOMContentLoaded', init);
+        })();
+    </script>
 </body>
 </html>

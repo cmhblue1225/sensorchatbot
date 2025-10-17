@@ -1,4 +1,4 @@
-﻿# Kimchi Fest ??CHANGELOG (Template)
+﻿# Kimchi Fest — CHANGELOG (Template)
 
 This file follows the "Keep a Changelog" style and Semantic Versioning when applicable.
 It records user-visible changes for the game folder `public/games/kimchi-fest/`.
@@ -10,6 +10,8 @@ Notes
 ## [Unreleased]
 ### Added
 - Changelog template and folder scaffold for documentation only.
+- Initial `index.html` shell with static layout placeholders.
+- SessionSDK wiring with QR fallback, session status, and sensor connection count.
 
 ### Changed
 - N/A
@@ -30,4 +32,3 @@ Conventions
 - Categorize changes under Added/Changed/Fixed/Removed.
 - Reference files by path, e.g., `public/games/kimchi-fest/index.html:42`.
 - Keep entries concise and task-focused. Larger context lives in `docs/kimchi-fest-PLAN.md` Progress Log.
-
