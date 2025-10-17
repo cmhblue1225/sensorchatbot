@@ -28,6 +28,7 @@ class InteractiveGameGenerator {
             openaiApiKey: process.env.OPENAI_API_KEY,
             supabaseUrl: process.env.SUPABASE_URL,
             supabaseKey: process.env.SUPABASE_ANON_KEY,
+            supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,  // Storage 업로드용
             // 🚀 V4 UPGRADE: Claude Sonnet 4.5 (최신 모델)
             claudeModel: 'claude-sonnet-4-5-20250929',  // Claude Sonnet 4.5 (2025.09.29)
             claudeOpusModel: 'claude-opus-4-1-20250805',  // Claude Opus 4.1 (32k max)
@@ -43,6 +44,7 @@ class InteractiveGameGenerator {
 
         // 컴포넌트 초기화
         this.supabaseClient = null;
+        this.supabaseAdminClient = null;  // Storage 업로드용 (Service Role)
         this.vectorStore = null;
         this.embeddings = null;
         this.llm = null;
@@ -111,6 +113,15 @@ class InteractiveGameGenerator {
                     this.config.supabaseUrl,
                     this.config.supabaseKey
                 );
+            }
+
+            // Supabase Admin 클라이언트 초기화 (Storage 업로드용)
+            if (this.config.supabaseUrl && this.config.supabaseServiceKey) {
+                this.supabaseAdminClient = createClient(
+                    this.config.supabaseUrl,
+                    this.config.supabaseServiceKey
+                );
+                console.log('✅ Supabase Admin Client 초기화 완료 (Storage 업로드용)');
             }
 
             // OpenAI 임베딩 초기화
@@ -2674,14 +2685,103 @@ ${requirements.specialRequirements?.length > 0 ?
             const reportPath = path.join(gamePath, 'VALIDATION_REPORT.md');
             await fs.writeFile(reportPath, validationReport, 'utf8');
             console.log(`📋 검증 보고서 저장: ${reportPath}`);
-            
+
+            // 🌐 Supabase Storage에 업로드 (프로덕션 배포용)
+            let storageUrl = null;
+            if (this.supabaseAdminClient) {
+                try {
+                    console.log('☁️  Supabase Storage에 게임 업로드 중...');
+
+                    // Storage 경로: games/{gameId}/index.html
+                    const storagePath = `${gameId}/index.html`;
+
+                    // HTML 파일 업로드
+                    const { data: uploadData, error: uploadError } = await this.supabaseAdminClient
+                        .storage
+                        .from('games')
+                        .upload(storagePath, gameCode, {
+                            contentType: 'text/html',
+                            upsert: true  // 같은 경로에 파일이 있으면 덮어쓰기
+                        });
+
+                    if (uploadError) {
+                        console.error('❌ Storage 업로드 실패:', uploadError);
+                    } else {
+                        console.log('✅ Storage 업로드 완료:', storagePath);
+
+                        // Public URL 생성
+                        const { data: urlData } = this.supabaseAdminClient
+                            .storage
+                            .from('games')
+                            .getPublicUrl(storagePath);
+
+                        storageUrl = urlData.publicUrl;
+                        console.log('🔗 Public URL:', storageUrl);
+
+                        // 💾 DB에 메타데이터 저장
+                        const { data: dbData, error: dbError } = await this.supabaseAdminClient
+                            .from('generated_games')
+                            .insert({
+                                game_id: gameId,
+                                title: metadata.title,
+                                description: metadata.description || '',
+                                game_type: metadata.gameType || 'solo',
+                                genre: metadata.genre || '',
+                                storage_path: storagePath,
+                                thumbnail_url: null,  // 향후 썸네일 추가 가능
+                                play_count: 0,
+                                metadata: {
+                                    requirements: metadata.requirements,
+                                    validation: validationResult,
+                                    version: '1.0.0',
+                                    createdAt: new Date().toISOString()
+                                }
+                            })
+                            .select()
+                            .single();
+
+                        if (dbError) {
+                            // 중복 키 에러는 무시 (이미 존재하는 게임)
+                            if (dbError.code === '23505') {
+                                console.log('⚠️  게임이 이미 DB에 존재합니다. 업데이트...');
+
+                                // 기존 레코드 업데이트
+                                await this.supabaseAdminClient
+                                    .from('generated_games')
+                                    .update({
+                                        title: metadata.title,
+                                        description: metadata.description || '',
+                                        storage_path: storagePath,
+                                        metadata: {
+                                            requirements: metadata.requirements,
+                                            validation: validationResult,
+                                            version: '1.0.0',
+                                            updatedAt: new Date().toISOString()
+                                        }
+                                    })
+                                    .eq('game_id', gameId);
+                            } else {
+                                console.error('❌ DB 저장 실패:', dbError);
+                            }
+                        } else {
+                            console.log('✅ DB에 게임 메타데이터 저장 완료');
+                        }
+                    }
+                } catch (storageError) {
+                    console.error('❌ Supabase 업로드 중 오류:', storageError);
+                }
+            } else {
+                console.log('⚠️  Supabase Admin Client가 없습니다. 로컬 저장만 수행됨.');
+            }
+
             const playUrl = `/games/${gameId}/`;
-            
+
             return {
                 success: true,
                 gameId: gameId,
                 gamePath: gamePath,
                 playUrl: playUrl,
+                storageUrl: storageUrl,  // Supabase Storage URL 추가
                 validation: validationResult,
                 files: {
                     index: indexPath,

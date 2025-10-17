@@ -17,6 +17,7 @@ const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const { createClient } = require('@supabase/supabase-js');
 
 const SessionManager = require('./SessionManager');
 const GameScanner = require('./GameScanner');
@@ -40,7 +41,17 @@ class GameServer {
             },
             transports: ['websocket', 'polling']
         });
-        
+
+        // Supabase 클라이언트 초기화 (Storage에서 원격 게임 서빙용)
+        this.supabaseClient = null;
+        if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+            this.supabaseClient = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_ANON_KEY
+            );
+            console.log('✅ Supabase 클라이언트 초기화 (원격 게임 서빙)');
+        }
+
         this.sessionManager = new SessionManager();
         this.gameScanner = new GameScanner();
         this.aiAssistant = null; // 지연 초기화
@@ -347,11 +358,11 @@ class GameServer {
             `);
         });
         
-        // 게임 라우트 (동적)
-        this.app.get('/games/:gameId', (req, res) => {
+        // 게임 라우트 (동적 - 로컬/원격 하이브리드)
+        this.app.get('/games/:gameId', async (req, res) => {
             const { gameId } = req.params;
             const game = this.gameScanner.getGame(gameId);
-            
+
             if (!game || game.status !== 'active') {
                 return res.status(404).send(`
                     <h1>🎮 게임을 찾을 수 없습니다</h1>
@@ -359,13 +370,51 @@ class GameServer {
                     <p><a href="/">게임 허브로 돌아가기</a></p>
                 `);
             }
-            
+
             try {
+                // 로컬 게임인 경우: 파일 시스템에서 서빙
+                if (game.source === 'local') {
+                    console.log(`📁 [로컬] 게임 서빙: ${gameId}`);
+                    return res.sendFile(path.join(__dirname, `../public/games/${gameId}/index.html`));
+                }
+
+                // 원격 게임인 경우: Supabase Storage에서 서빙
+                if (game.source === 'remote' && this.supabaseClient) {
+                    console.log(`☁️  [원격] 게임 서빙: ${gameId}`);
+
+                    // Storage에서 HTML 파일 다운로드
+                    const { data, error } = await this.supabaseClient
+                        .storage
+                        .from('games')
+                        .download(`${gameId}/index.html`);
+
+                    if (error) {
+                        console.error('❌ Storage 다운로드 실패:', error);
+                        return res.status(500).send(`
+                            <h1>🚨 게임 로드 오류</h1>
+                            <p>원격 게임을 불러오는 중 오류가 발생했습니다.</p>
+                            <p>오류: ${error.message}</p>
+                            <p><a href="/">게임 허브로 돌아가기</a></p>
+                        `);
+                    }
+
+                    // Blob을 텍스트로 변환
+                    const htmlContent = await data.text();
+
+                    // HTML 응답
+                    return res.send(htmlContent);
+                }
+
+                // 기본 폴백 (source가 없거나 알 수 없는 경우)
+                console.log(`📁 [폴백] 게임 서빙: ${gameId}`);
                 res.sendFile(path.join(__dirname, `../public/games/${gameId}/index.html`));
+
             } catch (error) {
+                console.error('❌ 게임 서빙 오류:', error);
                 res.status(500).send(`
                     <h1>🚨 게임 로드 오류</h1>
                     <p>게임을 불러오는 중 오류가 발생했습니다.</p>
+                    <p>오류: ${error.message}</p>
                     <p><a href="/">게임 허브로 돌아가기</a></p>
                 `);
             }

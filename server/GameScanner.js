@@ -1,55 +1,185 @@
 /**
- * 🔍 GameScanner v1.0
- * 
- * 게임 폴더를 자동으로 스캔하여 메타데이터를 수집하는 시스템
- * - games 폴더 내 모든 게임 자동 감지
+ * 🔍 GameScanner v2.0
+ *
+ * 게임 폴더 + Supabase DB를 스캔하여 메타데이터를 수집하는 시스템
+ * - games 폴더 내 모든 게임 자동 감지 (로컬)
+ * - Supabase DB에서 원격 게임 자동 감지 (프로덕션)
  * - game.json 메타데이터 파싱
  * - 동적 게임 등록 및 라우팅
  */
 
 const fs = require('fs').promises;
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
 class GameScanner {
     constructor(gamesDirectory = '../public/games') {
         this.gamesDir = path.join(__dirname, gamesDirectory);
         this.games = new Map();
         this.categories = new Set(['solo', 'dual', 'multi', 'experimental']);
-        
-        console.log('🔍 GameScanner v1.0 초기화');
+
+        // Supabase 클라이언트 초기화
+        this.supabaseClient = null;
+        if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            this.supabaseClient = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY
+            );
+            console.log('✅ Supabase 클라이언트 초기화 (원격 게임 스캔 가능)');
+        }
+
+        console.log('🔍 GameScanner v2.0 초기화 (Hybrid 모드)');
     }
     
     /**
-     * 모든 게임 스캔 및 등록
+     * 모든 게임 스캔 및 등록 (로컬 + 원격 병합)
      */
     async scanGames() {
         try {
-            console.log(`📂 게임 디렉토리 스캔 중: ${this.gamesDir}`);
-            
+            this.games.clear();
+
+            // 1. 로컬 게임 스캔
+            console.log(`📂 로컬 게임 디렉토리 스캔 중: ${this.gamesDir}`);
+            const localGames = await this.scanLocalGames();
+            console.log(`✅ 로컬 게임 ${localGames.length}개 발견`);
+
+            // 2. 원격 게임 스캔 (Supabase DB)
+            let remoteGames = [];
+            if (this.supabaseClient) {
+                console.log(`☁️  Supabase DB에서 원격 게임 스캔 중...`);
+                remoteGames = await this.scanRemoteGames();
+                console.log(`✅ 원격 게임 ${remoteGames.length}개 발견`);
+            }
+
+            // 3. 게임 병합 (로컬 우선, 중복 제거)
+            const mergedGames = this.mergeGames(localGames, remoteGames);
+
+            // 4. Map에 저장
+            for (const game of mergedGames) {
+                this.games.set(game.id, game);
+            }
+
+            console.log(`🎮 총 ${this.games.size}개 게임이 등록되었습니다.`);
+            console.log(`   - 로컬: ${localGames.length}개`);
+            console.log(`   - 원격: ${remoteGames.length}개`);
+
+            return Array.from(this.games.values());
+
+        } catch (error) {
+            console.error('❌ 게임 스캔 실패:', error.message);
+            return [];
+        }
+    }
+
+    /**
+     * 로컬 게임 디렉토리 스캔
+     */
+    async scanLocalGames() {
+        try {
             const entries = await fs.readdir(this.gamesDir, { withFileTypes: true });
             const gameDirectories = entries.filter(entry => entry.isDirectory());
-            
-            this.games.clear();
-            
+
+            const games = [];
             for (const dir of gameDirectories) {
                 try {
                     const gameData = await this.scanGameDirectory(dir.name);
                     if (gameData) {
-                        this.games.set(dir.name, gameData);
-                        console.log(`✅ 게임 등록됨: ${gameData.title} (${dir.name})`);
+                        gameData.source = 'local';  // 출처 표시
+                        games.push(gameData);
+                        console.log(`✅ [로컬] ${gameData.title} (${dir.name})`);
                     }
                 } catch (error) {
                     console.warn(`⚠️  게임 스캔 실패: ${dir.name} - ${error.message}`);
                 }
             }
-            
-            console.log(`🎮 총 ${this.games.size}개 게임이 등록되었습니다.`);
-            return Array.from(this.games.values());
-            
+
+            return games;
         } catch (error) {
-            console.error('❌ 게임 스캔 실패:', error.message);
+            console.error('❌ 로컬 게임 스캔 실패:', error.message);
             return [];
         }
+    }
+
+    /**
+     * Supabase DB에서 원격 게임 스캔
+     */
+    async scanRemoteGames() {
+        try {
+            const { data, error } = await this.supabaseClient
+                .from('generated_games')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('❌ DB 쿼리 실패:', error);
+                return [];
+            }
+
+            if (!data || data.length === 0) {
+                console.log('ℹ️  DB에 원격 게임이 없습니다.');
+                return [];
+            }
+
+            // DB 데이터를 GameScanner 형식으로 변환
+            const games = data.map(dbGame => ({
+                id: dbGame.game_id,
+                title: dbGame.title,
+                description: dbGame.description || `${dbGame.title} 게임`,
+                category: dbGame.game_type || 'solo',
+                icon: this.inferIcon(dbGame.game_id),
+                sensors: this.inferSensorType(dbGame.game_id),
+                maxPlayers: this.getMaxPlayersByCategory(dbGame.game_type),
+                difficulty: dbGame.metadata?.difficulty || 'medium',
+                version: dbGame.metadata?.version || '1.0.0',
+                author: dbGame.metadata?.author || 'AI Generator',
+                created: dbGame.created_at,
+                updated: dbGame.updated_at,
+                status: 'active',
+                featured: false,
+                experimental: true,  // AI 생성 게임은 실험적
+                path: `/games/${dbGame.game_id}`,
+                folder: dbGame.game_id,
+                storageUrl: dbGame.storage_path ?
+                    `${process.env.SUPABASE_URL}/storage/v1/object/public/games/${dbGame.storage_path}` : null,
+                source: 'remote',  // 출처 표시
+                playCount: dbGame.play_count || 0,
+                ...(dbGame.thumbnail_url && { thumbnail: dbGame.thumbnail_url }),
+                ...(dbGame.metadata?.tags && { tags: dbGame.metadata.tags })
+            }));
+
+            games.forEach(game => {
+                console.log(`✅ [원격] ${game.title} (${game.id})`);
+            });
+
+            return games;
+
+        } catch (error) {
+            console.error('❌ 원격 게임 스캔 실패:', error.message);
+            return [];
+        }
+    }
+
+    /**
+     * 로컬 게임과 원격 게임 병합 (로컬 우선)
+     */
+    mergeGames(localGames, remoteGames) {
+        const merged = new Map();
+
+        // 1. 로컬 게임 추가 (우선순위 높음)
+        localGames.forEach(game => {
+            merged.set(game.id, game);
+        });
+
+        // 2. 원격 게임 추가 (로컬에 없는 것만)
+        remoteGames.forEach(game => {
+            if (!merged.has(game.id)) {
+                merged.set(game.id, game);
+            } else {
+                console.log(`⚠️  중복 게임 무시 (로컬 우선): ${game.id}`);
+            }
+        });
+
+        return Array.from(merged.values());
     }
     
     /**
