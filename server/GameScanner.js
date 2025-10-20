@@ -111,17 +111,30 @@ class GameScanner {
      * 메타데이터 검증 및 보완
      */
     validateAndEnhanceMetadata(gameFolderName, metadata) {
+        // category 또는 gameType을 우선 사용 (AI 생성 게임 호환)
+        // category가 유효한 게임 타입이 아니면 gameType 사용
+        const validCategories = ['solo', 'dual', 'multi', 'experimental'];
+        let category = metadata.category;
+
+        if (!category || !validCategories.includes(category)) {
+            category = metadata.gameType;
+        }
+
+        if (!category || !validCategories.includes(category)) {
+            category = this.inferCategory(gameFolderName);
+        }
+
         const enhanced = {
             // 필수 필드
             id: metadata.id || gameFolderName,
             title: metadata.title || this.generateDefaultMetadata(gameFolderName).title,
             description: metadata.description || `${metadata.title || gameFolderName} 게임`,
-            category: metadata.category || this.inferCategory(gameFolderName),
+            category: category,
             icon: metadata.icon || this.inferIcon(gameFolderName),
-            
+
             // 게임 설정
             sensors: metadata.sensors || this.inferSensorType(gameFolderName),
-            maxPlayers: metadata.maxPlayers || this.getMaxPlayersByCategory(metadata.category),
+            maxPlayers: metadata.maxPlayers || this.getMaxPlayersByCategory(category),
             difficulty: metadata.difficulty || 'medium',
             
             // 메타 정보

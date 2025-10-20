@@ -1172,6 +1172,19 @@ class HtmlGenerator {
                     transform: translateY(-2px);
                 }
 
+                .account-btn {
+                    background: rgba(139, 92, 246, 0.2);
+                    color: #8B5CF6;
+                    border: 2px solid #8B5CF6;
+                    padding: 8px 16px;
+                    font-size: 0.9rem;
+                }
+
+                .account-btn:hover {
+                    background: #8B5CF6;
+                    color: white;
+                }
+
                 .logout-btn {
                     background: rgba(239, 68, 68, 0.2);
                     color: #EF4444;
@@ -1456,6 +1469,7 @@ class HtmlGenerator {
                     <!-- User Info (hidden by default) -->
                     <div class="user-info" id="userInfo" style="display: none;">
                         <span class="user-greeting">안녕하세요, <span id="userName"></span>님!</span>
+                        <button class="auth-btn account-btn" onclick="navigateToAccount()">계정 관리</button>
                         <button class="auth-btn logout-btn" onclick="logout()">로그아웃</button>
                     </div>
 
@@ -1496,13 +1510,13 @@ class HtmlGenerator {
                         <span class="nav-card-badge">Mobile Controller</span>
                     </a>
 
-                    <a href="javascript:void(0)" onclick="navigateToAIGenerator()" class="nav-card" style="border-color: rgba(139, 92, 246, 0.5); background: rgba(139, 92, 246, 0.1);">
+                    <a href="javascript:void(0)" onclick="navigateToAIGenerator()" class="nav-card">
                         <span class="nav-card-icon">🤖</span>
                         <h2 class="nav-card-title">AI 게임 생성기</h2>
                         <p class="nav-card-description">
                             Multi-Stage Generation으로 A+ 게임 자동 생성
                         </p>
-                        <span class="nav-card-badge" style="background: rgba(139, 92, 246, 0.3); border-color: #8B5CF6;">95% Quality Guaranteed</span>
+                        <span class="nav-card-badge">95% Quality Guaranteed</span>
                     </a>
 
                     <!-- 게임 관리 섹션 숨김 - 개발자 센터에 통합됨
@@ -1818,6 +1832,11 @@ class HtmlGenerator {
                     submitButton.textContent = '회원가입';
                 }
             });
+
+            // 계정 관리 페이지로 이동
+            function navigateToAccount() {
+                window.location.href = '/account-management';
+            }
 
             // 로그아웃
             async function logout() {
@@ -2143,15 +2162,15 @@ class HtmlGenerator {
                         <div class="stat-label">전체 게임</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">${games.filter(g => g.type === 'solo').length}</div>
+                        <div class="stat-value">${games.filter(g => g.category === 'solo').length}</div>
                         <div class="stat-label">솔로 게임</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">${games.filter(g => g.type === 'dual').length}</div>
+                        <div class="stat-value">${games.filter(g => g.category === 'dual').length}</div>
                         <div class="stat-label">듀얼 게임</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">${games.filter(g => g.type === 'multi').length}</div>
+                        <div class="stat-value">${games.filter(g => g.category === 'multi').length}</div>
                         <div class="stat-label">멀티 게임</div>
                     </div>
                 </div>
@@ -2160,9 +2179,9 @@ class HtmlGenerator {
                     ${games.map(game => `
                         <a href="/games/${game.id}/" class="game-card">
                             <span class="game-icon">${game.icon || '🎮'}</span>
-                            <h2 class="game-title">${game.name || game.id}</h2>
+                            <h2 class="game-title">${game.title || game.name || game.id}</h2>
                             <div class="game-id">${game.id}</div>
-                            <div class="game-type">${this.getGameTypeLabel(game.type)}</div>
+                            <div class="game-type">${this.getGameTypeLabel(game.category)}</div>
                             <p class="game-description">
                                 ${game.description || '센서를 이용한 재미있는 게임입니다.'}
                             </p>
@@ -2673,6 +2692,498 @@ class HtmlGenerator {
             window.addEventListener('DOMContentLoaded', loadGameVersions);
 
             console.log('🛠️ Game Manager loaded. Total games: ${games.length}');
+        `;
+
+        return this.getBaseTemplate(title, content + styles, scripts);
+    }
+
+    /**
+     * 계정 관리 페이지 생성
+     */
+    generateAccountManagementPage(options = {}) {
+        const { title = '계정 관리 - Sensor Game Hub' } = options;
+
+        const styles = `
+            <style>
+                body {
+                    background: linear-gradient(135deg, #0F172A 0%, #581C87 50%, #0F172A 100%);
+                    min-height: 100vh;
+                    margin: 0;
+                    padding: 0;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    color: #F8FAFC;
+                }
+
+                .account-page-container {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 3rem 2rem;
+                }
+
+                .page-header {
+                    text-align: center;
+                    margin-bottom: 3rem;
+                }
+
+                .page-header h1 {
+                    font-size: 2.5rem;
+                    font-weight: 700;
+                    margin-bottom: 0.5rem;
+                    background: linear-gradient(135deg, #6366F1, #EC4899);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                }
+
+                .page-header p {
+                    font-size: 1.125rem;
+                    color: #94A3B8;
+                }
+
+                .back-button {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.75rem 1.5rem;
+                    background: rgba(100, 116, 139, 0.2);
+                    border: 1px solid rgba(100, 116, 139, 0.3);
+                    border-radius: 8px;
+                    color: #E2E8F0;
+                    text-decoration: none;
+                    transition: all 0.2s;
+                    margin-bottom: 2rem;
+                }
+
+                .back-button:hover {
+                    background: rgba(100, 116, 139, 0.3);
+                    border-color: rgba(100, 116, 139, 0.5);
+                }
+
+                .account-section {
+                    background: rgba(30, 41, 59, 0.6);
+                    border: 1px solid rgba(100, 116, 139, 0.3);
+                    border-radius: 16px;
+                    padding: 2rem;
+                    margin-bottom: 1.5rem;
+                }
+
+                .account-section h3 {
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    color: #E2E8F0;
+                    margin-bottom: 1.5rem;
+                    border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+                    padding-bottom: 0.75rem;
+                }
+
+                .form-group {
+                    margin-bottom: 1rem;
+                }
+
+                .form-group label {
+                    display: block;
+                    color: #94A3B8;
+                    font-size: 0.875rem;
+                    margin-bottom: 0.5rem;
+                }
+
+                .form-group input {
+                    width: 100%;
+                    padding: 0.75rem 1rem;
+                    background: rgba(15, 23, 42, 0.6);
+                    border: 1px solid rgba(100, 116, 139, 0.3);
+                    border-radius: 8px;
+                    color: #F8FAFC;
+                    font-size: 1rem;
+                    box-sizing: border-box;
+                }
+
+                .form-group input:focus {
+                    outline: none;
+                    border-color: #8B5CF6;
+                }
+
+                .info-display {
+                    padding: 0.75rem 1rem;
+                    background: rgba(15, 23, 42, 0.6);
+                    border: 1px solid rgba(100, 116, 139, 0.3);
+                    border-radius: 8px;
+                    color: #E2E8F0;
+                }
+
+                .submit-button {
+                    width: 100%;
+                    padding: 0.75rem 1.5rem;
+                    background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+
+                .submit-button:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+                }
+
+                .message {
+                    margin-top: 1rem;
+                    text-align: center;
+                    display: none;
+                }
+
+                .message.success {
+                    color: #10B981;
+                }
+
+                .message.error {
+                    color: #EF4444;
+                }
+
+                .message.info {
+                    color: #8B5CF6;
+                }
+            </style>
+        `;
+
+        const content = `
+            <div class="account-page-container">
+                <a href="/" class="back-button">
+                    ← 홈으로 돌아가기
+                </a>
+
+                <div class="page-header">
+                    <h1>👤 계정 관리</h1>
+                    <p>사용자 정보를 관리하고 수정하세요</p>
+                </div>
+
+                <div id="account-loading" style="text-align: center; color: #94A3B8; padding: 2rem;">
+                    사용자 정보를 불러오는 중...
+                </div>
+
+                <div id="account-content" style="display: none;">
+                    <!-- 기본 정보 -->
+                    <div class="account-section">
+                        <h3>📋 기본 정보</h3>
+
+                        <div class="form-group">
+                            <label>사용자 이름</label>
+                            <div id="account-name" class="info-display">-</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>닉네임</label>
+                            <div id="account-nickname" class="info-display">-</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>이메일</label>
+                            <div id="account-email" class="info-display">-</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>비밀번호</label>
+                            <div class="info-display">••••••••</div>
+                        </div>
+                    </div>
+
+                    <!-- 닉네임 변경 -->
+                    <div class="account-section">
+                        <h3>✏️ 닉네임 변경</h3>
+
+                        <div class="form-group">
+                            <label>새 닉네임</label>
+                            <input
+                                type="text"
+                                id="new-nickname-input"
+                                placeholder="새 닉네임을 입력하세요"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label>현재 비밀번호</label>
+                            <input
+                                type="password"
+                                id="nickname-password-input"
+                                placeholder="비밀번호를 입력하세요"
+                            >
+                        </div>
+
+                        <button onclick="changeNickname()" class="submit-button">
+                            닉네임 변경
+                        </button>
+                        <div id="nickname-change-message" class="message"></div>
+                    </div>
+
+                    <!-- 비밀번호 변경 -->
+                    <div class="account-section">
+                        <h3>🔒 비밀번호 변경</h3>
+
+                        <div class="form-group">
+                            <label>현재 비밀번호</label>
+                            <input
+                                type="password"
+                                id="current-password-input"
+                                placeholder="현재 비밀번호를 입력하세요"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label>새 비밀번호</label>
+                            <input
+                                type="password"
+                                id="new-password-input"
+                                placeholder="새 비밀번호를 입력하세요"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label>새 비밀번호 확인</label>
+                            <input
+                                type="password"
+                                id="confirm-password-input"
+                                placeholder="새 비밀번호를 다시 입력하세요"
+                            >
+                        </div>
+
+                        <button onclick="changePassword()" class="submit-button">
+                            비밀번호 변경
+                        </button>
+                        <div id="password-change-message" class="message"></div>
+                    </div>
+                </div>
+
+                <div id="account-error" style="display: none; text-align: center; color: #EF4444; padding: 2rem;">
+                    사용자 정보를 불러올 수 없습니다. 로그인이 필요합니다.
+                </div>
+            </div>
+        `;
+
+        const scripts = `
+                // 인증 토큰 관리
+                let authToken = localStorage.getItem('authToken');
+
+                // 페이지 로드 시 인증 확인 및 사용자 정보 로드
+                window.addEventListener('DOMContentLoaded', () => {
+                    console.log('🔐 계정 관리 페이지 로드');
+                    console.log('📌 토큰 확인:', authToken ? '있음' : '없음');
+
+                    // 토큰이 없으면 로그인 필요 메시지 표시
+                    if (!authToken) {
+                        console.log('❌ 토큰 없음 - 로그인 필요');
+                        document.getElementById('account-loading').style.display = 'none';
+                        document.getElementById('account-error').style.display = 'block';
+                        document.getElementById('account-error').innerHTML =
+                            '사용자 정보를 불러올 수 없습니다. 로그인이 필요합니다.<br><br>' +
+                            '<a href="/" style="color: #8B5CF6; text-decoration: underline;">홈으로 돌아가기</a>';
+                        return;
+                    }
+
+                    loadAccountInfo();
+                });
+
+                // 사용자 정보 로드
+                async function loadAccountInfo() {
+                    try {
+                        console.log('📡 계정 정보 로딩 시작...');
+                        document.getElementById('account-loading').style.display = 'block';
+                        document.getElementById('account-content').style.display = 'none';
+                        document.getElementById('account-error').style.display = 'none';
+
+                        const response = await fetch('/developer/api/account/info', {
+                            headers: {
+                                'Authorization': 'Bearer ' + authToken
+                            }
+                        });
+
+                        console.log('📡 API 응답 상태:', response.status);
+
+                        if (!response.ok) {
+                            if (response.status === 401) {
+                                // 토큰이 만료되었거나 유효하지 않음
+                                console.log('❌ 인증 실패 - 토큰 만료 또는 유효하지 않음');
+                                localStorage.removeItem('authToken');
+                                authToken = null;
+                                throw new Error('로그인이 만료되었습니다. 다시 로그인해주세요.');
+                            }
+                            throw new Error('Failed to load account info');
+                        }
+
+                        const data = await response.json();
+                        console.log('✅ 계정 정보 로드 성공:', data);
+
+                        if (data.success) {
+                            document.getElementById('account-name').textContent = data.user.name || '-';
+                            document.getElementById('account-nickname').textContent = data.user.nickname || '-';
+                            document.getElementById('account-email').textContent = data.user.email || '-';
+
+                            document.getElementById('account-loading').style.display = 'none';
+                            document.getElementById('account-content').style.display = 'block';
+                        } else {
+                            throw new Error(data.error || 'Failed to load account info');
+                        }
+                    } catch (error) {
+                        console.error('❌ 계정 정보 로드 실패:', error);
+                        document.getElementById('account-loading').style.display = 'none';
+                        document.getElementById('account-error').style.display = 'block';
+                        document.getElementById('account-error').innerHTML =
+                            error.message + '<br><br>' +
+                            '<a href="/" style="color: #8B5CF6; text-decoration: underline;">홈으로 돌아가기</a>';
+                    }
+                }
+
+                // 닉네임 변경
+                async function changeNickname() {
+                    const newNickname = document.getElementById('new-nickname-input').value.trim();
+                    const password = document.getElementById('nickname-password-input').value;
+                    const messageDiv = document.getElementById('nickname-change-message');
+
+                    if (!newNickname) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'message error';
+                        messageDiv.textContent = '새 닉네임을 입력하세요.';
+                        return;
+                    }
+
+                    if (!password) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'message error';
+                        messageDiv.textContent = '비밀번호를 입력하세요.';
+                        return;
+                    }
+
+                    try {
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'message info';
+                        messageDiv.textContent = '처리 중...';
+
+                        const response = await fetch('/developer/api/account/change-nickname', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + authToken
+                            },
+                            body: JSON.stringify({
+                                newNickname: newNickname,
+                                password: password
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            messageDiv.className = 'message success';
+                            messageDiv.textContent = '✅ 닉네임이 성공적으로 변경되었습니다.';
+                            document.getElementById('account-nickname').textContent = newNickname;
+                            document.getElementById('new-nickname-input').value = '';
+                            document.getElementById('nickname-password-input').value = '';
+                        } else {
+                            messageDiv.className = 'message error';
+                            messageDiv.textContent = '❌ ' + (data.error || '닉네임 변경에 실패했습니다.');
+                        }
+                    } catch (error) {
+                        console.error('닉네임 변경 실패:', error);
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'message error';
+                        messageDiv.textContent = '❌ 닉네임 변경 중 오류가 발생했습니다.';
+                    }
+                }
+
+                // 비밀번호 변경
+                async function changePassword() {
+                    const currentPassword = document.getElementById('current-password-input').value;
+                    const newPassword = document.getElementById('new-password-input').value;
+                    const confirmPassword = document.getElementById('confirm-password-input').value;
+                    const messageDiv = document.getElementById('password-change-message');
+
+                    if (!currentPassword) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'message error';
+                        messageDiv.textContent = '현재 비밀번호를 입력하세요.';
+                        return;
+                    }
+
+                    if (!newPassword) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'message error';
+                        messageDiv.textContent = '새 비밀번호를 입력하세요.';
+                        return;
+                    }
+
+                    if (newPassword !== confirmPassword) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'message error';
+                        messageDiv.textContent = '새 비밀번호가 일치하지 않습니다.';
+                        return;
+                    }
+
+                    if (newPassword.length < 6) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'message error';
+                        messageDiv.textContent = '비밀번호는 최소 6자 이상이어야 합니다.';
+                        return;
+                    }
+
+                    try {
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'message info';
+                        messageDiv.textContent = '처리 중...';
+
+                        const response = await fetch('/developer/api/account/change-password', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + authToken
+                            },
+                            body: JSON.stringify({
+                                currentPassword: currentPassword,
+                                newPassword: newPassword
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            // 새 세션 토큰이 있으면 localStorage에 저장
+                            if (data.session && data.session.access_token) {
+                                console.log('🔐 새 토큰 저장 중...');
+                                localStorage.setItem('authToken', data.session.access_token);
+                                authToken = data.session.access_token; // 전역 변수도 업데이트
+                                console.log('✅ 새 토큰 저장 완료');
+                            }
+
+                            // 재로그인 필요한 경우
+                            if (data.requireRelogin) {
+                                messageDiv.className = 'message success';
+                                messageDiv.textContent = '✅ 비밀번호가 변경되었습니다. 다시 로그인해주세요.';
+                                document.getElementById('current-password-input').value = '';
+                                document.getElementById('new-password-input').value = '';
+                                document.getElementById('confirm-password-input').value = '';
+
+                                // 3초 후 홈으로 이동
+                                setTimeout(() => {
+                                    localStorage.removeItem('authToken');
+                                    window.location.href = '/';
+                                }, 3000);
+                            } else {
+                                messageDiv.className = 'message success';
+                                messageDiv.textContent = '✅ 비밀번호가 성공적으로 변경되었습니다.';
+                                document.getElementById('current-password-input').value = '';
+                                document.getElementById('new-password-input').value = '';
+                                document.getElementById('confirm-password-input').value = '';
+                            }
+                        } else {
+                            messageDiv.className = 'message error';
+                            messageDiv.textContent = '❌ ' + (data.error || '비밀번호 변경에 실패했습니다.');
+                        }
+                    } catch (error) {
+                        console.error('비밀번호 변경 실패:', error);
+                        messageDiv.style.display = 'block';
+                        messageDiv.className = 'message error';
+                        messageDiv.textContent = '❌ 비밀번호 변경 중 오류가 발생했습니다.';
+                    }
+                }
         `;
 
         return this.getBaseTemplate(title, content + styles, scripts);

@@ -1,1026 +1,932 @@
-﻿
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>김치 페스티벌</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kimchi Fest | Prototype Shell</title>
     <style>
         :root {
-            --bg: #0f172a;
-            --panel: rgba(17, 24, 39, 0.9);
-            --panel-border: rgba(148, 163, 184, 0.35);
+            color-scheme: dark;
+            font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            --panel: rgba(15, 23, 42, 0.72);
+            --border: rgba(148, 163, 184, 0.25);
+            --muted: rgba(148, 163, 184, 0.75);
             --accent: #f97316;
             --accent-strong: #facc15;
-            --text: #f8fafc;
-            --muted: #94a3b8;
-            --positive: #4ade80;
-            --warning: #fbbf24;
-            --danger: #f87171;
+            --nice: #4ade80;
+            --off: #fbbf24;
+            --miss: #f87171;
         }
 
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
         }
 
         body {
-            font-family: "Noto Sans KR", "Segoe UI", sans-serif;
-            background: radial-gradient(circle at top, rgba(59, 130, 246, 0.22), transparent 42%), var(--bg);
-            color: var(--text);
+            margin: 0;
             min-height: 100vh;
             display: flex;
-            justify-content: center;
-            padding: 32px;
+            flex-direction: column;
+            background: radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 48%), #0f172a;
         }
 
-        .wrapper {
+        header,
+        footer {
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: 0.04em;
+        }
+
+        header .subtitle {
+            margin-top: 0.5rem;
+            font-size: 1rem;
+            color: var(--muted);
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1080px;
             width: 100%;
-            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        .hud {
             display: grid;
-            gap: 24px;
-            grid-template-columns: 320px 1fr 280px;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
         }
 
-        .panel {
+        .card {
+            padding: 1.1rem;
+            border-radius: 1rem;
             background: var(--panel);
-            border: 1px solid var(--panel-border);
-            border-radius: 20px;
-            padding: 24px;
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45);
+            border: 1px solid var(--border);
+            box-shadow: 0 24px 40px rgba(15, 23, 42, 0.35);
         }
 
-        .session-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
+        .card h2 {
+            margin: 0 0 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: rgba(248, 250, 252, 0.86);
         }
 
-        .session-panel h1 {
-            font-size: 1.6rem;
+        .card p {
+            margin: 0;
+            font-size: 1.75rem;
             font-weight: 700;
-            color: var(--accent);
+            letter-spacing: 0.01em;
         }
 
-        .status-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.95rem;
-            color: var(--muted);
-            background: rgba(148, 163, 184, 0.18);
-            padding: 8px 16px;
-            border-radius: 999px;
+        #score-card p {
+            color: var(--accent-strong);
         }
 
-        .session-code {
-            font-family: "Roboto Mono", "Courier New", monospace;
-            font-size: 2.8rem;
-            font-weight: 700;
-            letter-spacing: 0.26rem;
-            text-align: center;
-            padding: 18px;
-            border-radius: 16px;
-            background: rgba(249, 115, 22, 0.25);
-            border: 1px solid rgba(249, 115, 22, 0.38);
+        .stage-board {
+            flex: 1;
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         }
 
-        .qr-wrapper {
+        .placeholder {
+            border: 1px dashed var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            padding: 16px;
-            border-radius: 16px;
-            background: rgba(15, 23, 42, 0.68);
-            border: 1px dashed rgba(148, 163, 184, 0.4);
-        }
-
-        .qr-box {
-            width: 180px;
-            height: 180px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(15, 23, 42, 0.88);
-            border-radius: 14px;
-            padding: 12px;
-        }
-
-        .qr-box canvas,
-        .qr-box img {
-            width: 100%;
-            height: 100%;
-        }
-
-        .qr-hint {
-            font-size: 0.85rem;
+            align-items: stretch;
+            justify-content: flex-start;
+            gap: 1rem;
             color: var(--muted);
-            text-align: center;
-            line-height: 1.5;
-        }
-
-        .tips {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            font-size: 0.9rem;
-            color: var(--muted);
-        }
-
-        .tips li {
-            list-style: disc inside;
-        }
-
-        .meters {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .meter-label {
-            font-size: 0.85rem;
-            color: var(--muted);
-            letter-spacing: 0.1em;
-        }
-
-        .meter-bar {
-            height: 12px;
-            border-radius: 999px;
-            background: rgba(15, 23, 42, 0.55);
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(15, 23, 42, 0.6);
+            position: relative;
             overflow: hidden;
         }
 
-        .meter-bar span {
-            display: block;
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, #f97316, #facc15);
-            transition: width 0.35s ease-out;
+        .placeholder.beat-active::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: rgba(248, 113, 113, 0.25);
+            animation: beat-pulse 180ms ease-out;
         }
 
-        .start-button {
-            padding: 12px 18px;
-            border-radius: 14px;
-            border: none;
-            background: linear-gradient(135deg, #f97316, #facc15);
-            color: #0f172a;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: not-allowed;
-            opacity: 0.55;
-            transition: transform 0.2s ease;
+        @keyframes beat-pulse {
+            from {
+                opacity: 0.8;
+            }
+            to {
+                opacity: 0;
+            }
         }
 
-        .start-button.ready {
-            cursor: pointer;
-            opacity: 1;
-        }
-
-        .start-button.ready:active {
-            transform: translateY(2px);
-        }
-        .stage-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .phase-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(15, 23, 42, 0.68);
-            border-radius: 16px;
-            padding: 14px 18px;
-            border: 1px solid rgba(249, 115, 22, 0.35);
-        }
-
-        .beat-track {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 12px;
-        }
-
-        .beat-dot {
-            height: 22px;
-            border-radius: 999px;
-            background: rgba(148, 163, 184, 0.2);
-            transition: background 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .beat-dot.active {
-            background: rgba(249, 115, 22, 0.45);
-            box-shadow: 0 0 12px rgba(249, 115, 22, 0.45);
-        }
-
-        .beat-dot.success {
-            background: rgba(34, 197, 94, 0.4);
-        }
-
-        .beat-dot.ok {
-            background: rgba(250, 204, 21, 0.36);
-        }
-
-        .beat-dot.miss {
-            background: rgba(239, 68, 68, 0.36);
-        }
-
-        .team-feedback {
-            background: rgba(15, 23, 42, 0.62);
-            border-radius: 14px;
-            padding: 16px;
-            border: 1px solid rgba(148, 163, 184, 0.22);
-            text-align: center;
-            color: var(--muted);
-            line-height: 1.6;
-        }
-
-        .players-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
-
-        .player-card {
-            background: rgba(15, 23, 42, 0.68);
-            border-radius: 18px;
-            border: 1px solid rgba(148, 163, 184, 0.25);
-            padding: 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .player-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .player-status {
-            font-weight: 600;
-            color: var(--muted);
-        }
-
-        .player-status.online {
-            color: var(--positive);
-        }
-
-        .score-value {
-            font-size: 2.4rem;
+        #metronome-indicator {
+            font-size: 1.5rem;
             font-weight: 700;
             color: var(--accent);
         }
 
-        .score-suffix {
-            margin-left: 6px;
-            color: var(--muted);
-        }
-
-        .timing {
+        #metronome-indicator span {
             font-size: 0.95rem;
-            padding: 10px 12px;
-            border-radius: 12px;
-            background: rgba(148, 163, 184, 0.18);
+            display: block;
+            margin-top: 0.5rem;
+            color: rgba(248, 250, 252, 0.65);
+        }
+
+        .log-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .log-head h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        #log-status {
+            margin: 0;
+            font-size: 0.85rem;
             color: var(--muted);
+        }
+
+        .log-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .log-list li {
+            background: rgba(15, 23, 42, 0.55);
+            border: 1px solid var(--border);
+            border-radius: 0.85rem;
+            padding: 0.75rem 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .log-list li[data-rating="nice"] {
+            border-left: 4px solid var(--nice);
+        }
+
+        .log-list li[data-rating="off"] {
+            border-left: 4px solid var(--off);
+        }
+
+        .log-list li[data-rating="miss"] {
+            border-left: 4px solid var(--miss);
+        }
+
+        .log-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .log-line strong {
+            font-size: 0.95rem;
+            color: #f8fafc;
+        }
+
+        .log-line span {
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .log-meta {
+            font-size: 0.82rem;
+            color: rgba(148, 163, 184, 0.82);
+        }
+
+        .session-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .session-code {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        #qr-container {
+            min-width: 220px;
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed var(--border);
+            border-radius: 1rem;
+            padding: 1rem;
             text-align: center;
+            color: var(--muted);
+            background: rgba(15, 23, 42, 0.45);
         }
 
-        .timing.good {
-            background: rgba(34, 197, 94, 0.2);
-            color: var(--positive);
+        #qr-container[data-state="error"] {
+            color: #fca5a5;
+            border-color: rgba(248, 113, 113, 0.55);
         }
 
-        .timing.ok {
-            background: rgba(250, 204, 21, 0.2);
-            color: var(--warning);
+        button {
+            appearance: none;
+            border: none;
+            border-radius: 999px;
+            padding: 0.85rem 1.65rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0f172a;
+            background: linear-gradient(135deg, #f97316, #22c55e);
+            cursor: pointer;
+            transition: transform 0.2s ease;
         }
 
-        .timing.miss {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
-        @media (max-width: 1100px) {
-            .wrapper {
+        button:not(:disabled):hover {
+            transform: translateY(-2px);
+        }
+
+        footer small {
+            color: var(--muted);
+        }
+
+        @media (max-width: 960px) {
+            main {
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .stage-board {
                 grid-template-columns: 1fr;
-            }
-
-            .stage-panel {
-                order: 3;
-            }
-
-            .players-panel {
-                order: 2;
             }
         }
     </style>
 </head>
 <body>
-<div class="wrapper">
-    <section class="panel session-panel">
-        <h1>김치 페스티벌</h1>
-        <p class="status-chip" id="sessionStatus">세션 준비 중...</p>
-        <div class="session-code" id="sessionCode">----</div>
-        <div class="qr-wrapper">
-            <div class="qr-box" id="qrBox"><span id="qrPlaceholder">세션 생성 대기</span></div>
-            <p class="qr-hint">휴대폰에서 센서 페이지를 열고 QR 코드를 스캔하거나<br>세션 코드를 입력해 주세요.</p>
-        </div>
-        <button class="start-button" id="startButton" disabled>게임 시작</button>
-        <ul class="tips">
-            <li>휴대폰으로 센서 페이지를 열고 상단의 세션 코드를 입력하세요.</li>
-            <li>두 명이 참여하면 협동 모드, 한 명이면 솔로 모드로 진행돼요.</li>
-            <li>박자가 빛날 때 휴대폰을 흔들어 <strong>Nice!</strong>를 노려보세요.</li>
-            <li>양념이 가득 차면 배추를 골고루 버무려 완성하세요!</li>
-        </ul>
-        <div class="meters">
-            <div>
-                <span class="meter-label">양념 수집률</span>
-                <div class="meter-bar"><span id="seasoningMeter"></span></div>
+    <header>
+        <h1>Kimchi Fest</h1>
+        <p class="subtitle">리듬에 맞춰 김치 양념을 모으고 배추에 골고루 펴 발라보세요.</p>
+    </header>
+    <main>
+        <section class="hud" aria-label="상태 정보">
+            <div class="card" id="timer-card">
+                <h2>남은 라운드 시간</h2>
+                <p id="timer">00:45</p>
             </div>
-            <div>
-                <span class="meter-label">배추 버무림</span>
-                <div class="meter-bar"><span id="cabbageMeter"></span></div>
+            <div class="card" id="score-card">
+                <h2>총 점수</h2>
+                <p id="score">0</p>
             </div>
-        </div>
-    </section>
+            <div class="card" id="players-card">
+                <h2>연결된 플레이어</h2>
+                <p id="player-count">0</p>
+            </div>
+            <div class="card" id="stage-card">
+                <h2>현재 단계</h2>
+                <p id="stage">라운드 대기 중</p>
+            </div>
+        </section>
 
-    <section class="panel stage-panel">
-        <div class="phase-header">
-            <span id="phaseLabel">플레이어 대기 중</span>
-            <span id="beatCounter">0 / 0</span>
-        </div>
-        <div class="beat-track" id="beatTrack"></div>
-        <div class="team-feedback" id="teamFeedback">휴대폰을 연결하면 바로 김치 버무리기가 시작됩니다.</div>
-    </section>
-
-    <section class="panel players-panel">
-        <article class="player-card" data-player="1">
-            <div class="player-header">
-                <span>플레이어 1</span>
-                <span class="player-status" data-role="status">대기 중</span>
+        <section class="stage-board" aria-label="게임 보드">
+            <div class="placeholder" id="metronome-placeholder">
+                <div id="metronome-indicator">
+                    Ready
+                    <span>110 BPM</span>
+                </div>
             </div>
-            <div>
-                <span class="score-value" data-role="score">0</span>
-                <span class="score-suffix">점</span>
+            <div class="placeholder" id="playfield-placeholder">
+                추후 가상 플레이필드(양념 모으기 &amp; 배추 바르기) 비주얼이 배치됩니다.
             </div>
-            <div class="timing" data-role="timing">리듬을 맞춰볼까요?</div>
-        </article>
-        <article class="player-card" data-player="2">
-            <div class="player-header">
-                <span>플레이어 2</span>
-                <span class="player-status" data-role="status">대기 중</span>
+            <div class="placeholder" id="feedback-placeholder">
+                <div class="log-head">
+                    <h3>센서 로그</h3>
+                    <p id="log-status">라운드 대기 중</p>
+                </div>
+                <ol id="shake-log" class="log-list" aria-live="polite"></ol>
             </div>
-            <div>
-                <span class="score-value" data-role="score">0</span>
-                <span class="score-suffix">점</span>
+        </section>
+
+        <section class="card" aria-label="세션 제어">
+            <h2>세션 제어</h2>
+            <p>SessionSDK를 통해 게임 세션을 생성하고 QR 코드로 센서를 연결합니다.</p>
+            <div class="session-info" aria-live="polite">
+                <div class="session-code">세션 코드: <span id="session-code">----</span></div>
+                <div id="qr-container">QR 코드가 준비되면 여기에 표시됩니다.</div>
             </div>
-            <div class="timing" data-role="timing">리듬을 맞춰볼까요?</div>
-        </article>
-    </section>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script src="/js/SessionSDK.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script>
-(() => {
-    const TEXT = {
-        statusPreparing: '세션 준비 중...',
-        statusReady: '세션이 준비되었습니다!',
-        statusDisconnected: '연결이 끊어졌습니다. 다시 시도 중...',
-        createErrorPrefix: '세션 생성 실패: ',
-        connectionErrorPrefix: '연결 오류: ',
-        qrPlaceholder: '세션 생성 대기',
-        startDefault: '게임 시작',
-        startSolo: '혼자서 버무리기',
-        startDuo: '둘이서 버무리기',
-        startReset: '초기화',
-        startRestart: '다시하기',
-        teamConnect: '휴대폰을 연결하면 바로 김치 버무리기가 시작됩니다.',
-        teamSoloReady: '한 명이 준비되었습니다. 버튼을 눌러 혼자서 버무려보세요!',
-        teamDuoReady: '두 명이 모두 준비됐어요! 함께 박자를 맞춰보세요.',
-        teamAllLeft: '플레이어가 모두 나갔어요. 휴대폰을 다시 연결해 주세요.',
-        teamOneLeft: '한 명이 나갔어요. 다른 친구가 들어오면 협동 모드로 진행돼요.',
-        soloStart: '혼자서도 멋진 김치를 만들 수 있어요! 박자에 맞춰 흔들어 주세요.',
-        duoStart: '두 사람이 힘을 합칠 시간입니다! 동시에 흔들어 주세요.',
-        reset: '게임이 초기화되었습니다. 준비가 되면 다시 시작하세요.',
-        gatherSuccess: '양념이 듬뿍 모였어요! 이제 배추에 정성껏 버무려 봅시다.',
-        gatherLow: '양념이 조금 부족해요. 다음 라운드에서 더 힘껏 흔들어 주세요.',
-        finishHigh: '김치가 반짝반짝! 완벽한 조화를 이뤘어요.',
-        finishMid: '훌륭해요! 조금만 더 힘내면 완벽한 김치를 만들 수 있어요.',
-        finishLow: '아쉬워요. 다음에는 박자를 더 잘 맞춰보세요.',
-        timingDefault: '리듬을 맞춰볼까요?',
-        timingNice: '나이스! 완벽한 타이밍!',
-        timingOk: '좋아요! 살짝 어긋났지만 괜찮아요.',
-        timingLate: '조금 늦었어요. 다음엔 더 빠르게!',
-        timingMiss: '박자를 놓쳤어요. 다시 도전!'
-    };
-    const PHASES = [
-        { key: 'gather', label: '양념 모으기', beats: 6 },
-        { key: 'spread', label: '배추에 버무리기', beats: 6 }
-    ];
-
-    class KimchiFestGame {
-        constructor() {
-            this.sdk = new SessionSDK({ gameId: 'kimchi-fest', gameType: 'dual', debug: true });
-
-            this.dom = {
-                sessionStatus: document.getElementById('sessionStatus'),
-                sessionCode: document.getElementById('sessionCode'),
-                startButton: document.getElementById('startButton'),
-                qrBox: document.getElementById('qrBox'),
-                qrPlaceholder: document.getElementById('qrPlaceholder'),
-                phaseLabel: document.getElementById('phaseLabel'),
-                beatCounter: document.getElementById('beatCounter'),
-                beatTrack: document.getElementById('beatTrack'),
-                teamFeedback: document.getElementById('teamFeedback'),
-                seasoningMeter: document.getElementById('seasoningMeter'),
-                cabbageMeter: document.getElementById('cabbageMeter'),
-                playerCards: {
-                    1: document.querySelector('.player-card[data-player="1"]'),
-                    2: document.querySelector('.player-card[data-player="2"]')
+            <button id="start-button" disabled>SDK 준비 중...</button>
+        </section>
+    </main>
+    <footer>
+        <small>Kimchi Fest Prototype · Sensor Game Hub v6.0</small>
+    </footer>
+    <script src="/socket.io/socket.io.js" defer></script>
+    <script src="/js/SessionSDK.js" defer></script>
+    <script>
+        (function () {
+            const CONFIG = {
+                bpm: 110,
+                roundDurationMs: 45_000,
+                metronomeVolume: 0.15,
+                metronomeFrequency: 880,
+                logLimit: 12,
+                stageOrder: ['gather', 'spread'],
+                stageLabels: {
+                    gather: '양념 모으기',
+                    spread: '배추 바르기'
+                },
+                judgement: {
+                    niceWindowMs: 70,
+                    offWindowMs: 160,
+                    nicePoints: 2,
+                    offPoints: 1
+                },
+                sensor: {
+                    baselineWindowMs: 300,
+                    throttleMs: 33,
+                    threshold: 3.5,
+                    refractoryMs: 120
                 }
             };
 
-            this.config = {
-                phases: PHASES,
-                beatInterval: 1500,
-                targetOffset: 600,
-                niceWindow: 180,
-                okWindow: 420,
-                shakeThreshold: 10.5,
-                shakeCooldown: 450,
-                gatherPointUnit: 100 / (PHASES[0].beats * 2 * 2),
-                spreadPointUnit: 100 / (PHASES[1].beats * 2 * 2)
+            const RATING_LABELS = {
+                nice: 'Nice',
+                off: 'Off',
+                miss: 'Miss'
             };
 
-            this.state = {
-                sessionCode: null,
-                phaseIndex: -1,
-                activeBeat: -1,
-                activeBeatStart: 0,
-                beatTimer: null,
-                isRunning: false,
-                isSoloMode: false,
-                sensorOrder: [],
-                beatRecords: new Map(),
-                mixture: 0,
-                coating: 0,
-                playerData: {
-                    1: { sensorId: null, score: 0, lastShake: 0 },
-                    2: { sensorId: null, score: 0, lastShake: 0 }
-                }
+            const beatIntervalMs = 60000 / CONFIG.bpm;
+
+            const startButton = document.getElementById('start-button');
+            const playerCountEl = document.getElementById('player-count');
+            const stageEl = document.getElementById('stage');
+            const timerEl = document.getElementById('timer');
+            const scoreEl = document.getElementById('score');
+            const sessionCodeEl = document.getElementById('session-code');
+            const qrContainer = document.getElementById('qr-container');
+            const metronomePlaceholder = document.getElementById('metronome-placeholder');
+            const metronomeIndicator = document.getElementById('metronome-indicator');
+            const logList = document.getElementById('shake-log');
+            const logStatus = document.getElementById('log-status');
+
+            const state = {
+                sdk: null,
+                session: null,
+                players: new Set(),
+                roundActive: false,
+                roundStartTime: 0,
+                timerFrame: null,
+                metronomeInterval: null,
+                audioContext: null,
+                metronomeGain: null,
+                sensorStates: new Map(),
+                totalScore: 0,
+                judgements: { nice: 0, off: 0, miss: 0 },
+                beatIndex: 0,
+                currentStage: null,
+                currentBeatStart: 0,
+                currentBeatResolved: true,
+                beatIntervalMs
             };
 
-            this.initializeUI();
-            this.bindUI();
-            this.registerSdkEvents();
-        }
-
-        initializeUI() {
-            this.dom.sessionStatus.textContent = TEXT.statusPreparing;
-            this.renderQrCode(null);
-            this.renderBeatTrack(PHASES[0].beats);
-            this.updateMeters();
-            this.resetPlayers();
-            this.updateStartAvailability();
-        }
-
-        bindUI() {
-            this.dom.startButton.addEventListener('click', () => {
-                if (this.state.isRunning) {
-                    this.resetGame();
-                    this.dom.teamFeedback.textContent = TEXT.reset;
-                    this.updateStartAvailability();
+            function showStatus(message, type = 'info') {
+                qrContainer.textContent = message;
+                if (type === 'error') {
+                    qrContainer.dataset.state = 'error';
                 } else {
-                    this.startGame();
+                    qrContainer.removeAttribute('data-state');
                 }
-            });
-        }
-
-        registerSdkEvents() {
-            this.sdk.on('connected', async () => {
-                this.dom.sessionStatus.textContent = TEXT.statusPreparing;
-                try {
-                    await this.sdk.createSession();
-                } catch (error) {
-                    this.dom.sessionStatus.textContent = TEXT.createErrorPrefix + (error?.message || error);
-                }
-            });
-
-            this.sdk.on('disconnected', () => {
-                this.dom.sessionStatus.textContent = TEXT.statusDisconnected;
-                this.state.sessionCode = null;
-                this.dom.sessionCode.textContent = '----';
-                this.renderQrCode(null);
-                this.resetPlayers();
-                this.stopGame();
-                this.dom.teamFeedback.textContent = TEXT.teamConnect;
-                this.updateStartAvailability();
-            });
-
-            this.sdk.on('session-created', (event) => {
-                const session = event?.detail || event;
-                const code = session?.sessionCode || session?.code || '----';
-                this.state.sessionCode = code;
-                this.dom.sessionCode.textContent = code;
-                this.dom.sessionStatus.textContent = TEXT.statusReady;
-                this.renderQrCode(code);
-                this.dom.teamFeedback.textContent = TEXT.teamConnect;
-                this.updateStartAvailability();
-            });
-
-            this.sdk.on('connection-error', (error) => {
-                const message = error?.error || error?.message || String(error);
-                this.dom.sessionStatus.textContent = TEXT.connectionErrorPrefix + message;
-            });
-
-            this.sdk.on('sensor-connected', (event) => {
-                const payload = event?.detail || event;
-                const sensorId = typeof payload === 'string' ? payload : payload?.sensorId;
-                if (sensorId) {
-                    this.addSensor(sensorId);
-                }
-            });
-
-            this.sdk.on('sensor-disconnected', (event) => {
-                const payload = event?.detail || event;
-                const sensorId = typeof payload === 'string' ? payload : payload?.sensorId;
-                if (sensorId) {
-                    this.removeSensor(sensorId);
-                }
-            });
-
-            this.sdk.on('sensor-data', (packet) => {
-                this.handleSensorData(packet);
-            });
-        }
-
-        renderQrCode(code) {
-            this.dom.qrBox.innerHTML = '';
-            if (!code) {
-                this.dom.qrPlaceholder.textContent = TEXT.qrPlaceholder;
-                this.dom.qrBox.appendChild(this.dom.qrPlaceholder);
-                return;
             }
 
-            const joinUrl = `${window.location.origin}/sensor.html?session=${code}`;
-            if (typeof QRCode !== 'undefined') {
+            function renderQRCode(url) {
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+                const img = document.createElement('img');
+                img.alt = '센서 연결용 QR 코드';
+                img.src = qrApiUrl;
+                img.width = 220;
+                img.height = 220;
+                img.loading = 'lazy';
+                qrContainer.replaceChildren(img);
+                qrContainer.removeAttribute('data-state');
+            }
+
+            function ensureSDK() {
+                if (typeof window.SessionSDK !== 'function') {
+                    startButton.textContent = 'SDK 로드 실패';
+                    showStatus('SessionSDK를 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.', 'error');
+                    return false;
+                }
+                return true;
+            }
+
+            function updatePlayerCount() {
+                playerCountEl.textContent = state.players.size.toString();
+            }
+
+            function formatTime(ms) {
+                const seconds = Math.max(0, Math.ceil(ms / 1000));
+                const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                return `${minutes}:${secs}`;
+            }
+
+            function stopTimerLoop() {
+                if (state.timerFrame !== null) {
+                    cancelAnimationFrame(state.timerFrame);
+                    state.timerFrame = null;
+                }
+            }
+
+            function stopMetronome() {
+                if (state.metronomeInterval !== null) {
+                    clearInterval(state.metronomeInterval);
+                    state.metronomeInterval = null;
+                }
+                metronomePlaceholder.classList.remove('beat-active');
+                metronomeIndicator.textContent = 'Ready';
+                const span = document.createElement('span');
+                span.textContent = `${CONFIG.bpm} BPM`;
+                metronomeIndicator.appendChild(span);
+                state.beatIndex = 0;
+                state.currentStage = null;
+                state.currentBeatResolved = true;
+            }
+
+            function playClick() {
                 try {
-                    new QRCode(this.dom.qrBox, {
-                        text: joinUrl,
-                        width: 180,
-                        height: 180,
-                        colorDark: '#ffffff',
-                        colorLight: '#111827',
-                        correctLevel: QRCode.CorrectLevel.H
-                    });
+                    if (!state.audioContext) {
+                        state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const gain = state.audioContext.createGain();
+                        gain.gain.value = CONFIG.metronomeVolume;
+                        gain.connect(state.audioContext.destination);
+                        state.metronomeGain = gain;
+                    }
+
+                    if (state.audioContext.state === 'suspended') {
+                        state.audioContext.resume().catch(() => {});
+                    }
+
+                    const osc = state.audioContext.createOscillator();
+                    osc.type = 'sine';
+                    osc.frequency.value = CONFIG.metronomeFrequency;
+                    osc.connect(state.metronomeGain);
+                    const now = state.audioContext.currentTime;
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } catch (error) {
+                    console.warn('Metronome audio failed:', error);
+                }
+            }
+
+            function flashMetronome(beatIndex) {
+                metronomePlaceholder.classList.add('beat-active');
+                const displayBeat = (beatIndex % 4) + 1;
+                metronomeIndicator.textContent = `Beat ${displayBeat}`;
+                const span = document.createElement('span');
+                span.textContent = `${CONFIG.bpm} BPM`;
+                metronomeIndicator.appendChild(span);
+                setTimeout(() => {
+                    metronomePlaceholder.classList.remove('beat-active');
+                }, 120);
+            }
+
+            function updateStageDisplay(stageKey) {
+                const key = stageKey ?? state.currentStage;
+                if (!key) {
+                    stageEl.textContent = '라운드 대기 중';
                     return;
-                } catch (error) {
-                    console.warn('QRCode.js 오류, 대체 이미지 사용', error);
+                }
+                stageEl.textContent = CONFIG.stageLabels[key] || key;
+            }
+
+            function updateJudgementSummary(customText) {
+                if (typeof customText === 'string') {
+                    logStatus.textContent = customText;
+                    return;
+                }
+                logStatus.textContent = `Nice ${state.judgements.nice} · Off ${state.judgements.off} · Miss ${state.judgements.miss}`;
+            }
+
+            function resetJudgementState(summaryMessage) {
+                state.totalScore = 0;
+                state.judgements = { nice: 0, off: 0, miss: 0 };
+                scoreEl.textContent = '0';
+                updateJudgementSummary(summaryMessage ?? '라운드 대기 중');
+            }
+
+            function resetShakeTracking(summaryMessage = '라운드 대기 중') {
+                resetJudgementState(summaryMessage);
+                logList.innerHTML = '';
+                state.sensorStates.forEach((sensor) => {
+                    sensor.lastShakeAt = -Infinity;
+                    sensor.lastProcessedAt = 0;
+                });
+            }
+
+            function ensureSensorState(sensorId) {
+                if (!sensorId) {
+                    return null;
+                }
+                let sensor = state.sensorStates.get(sensorId);
+                if (!sensor) {
+                    sensor = {
+                        baseline: null,
+                        lastUpdated: 0,
+                        lastProcessedAt: 0,
+                        lastShakeAt: -Infinity
+                    };
+                    state.sensorStates.set(sensorId, sensor);
+                }
+                return sensor;
+            }
+
+            function appendShakeLog({ sensorId, rating, deltaMs, magnitude, timeFromStart, stageLabel, note }) {
+                const item = document.createElement('li');
+                item.dataset.rating = rating;
+
+                const header = document.createElement('div');
+                header.className = 'log-line';
+                const label = document.createElement('strong');
+                label.textContent = `[${RATING_LABELS[rating] ?? rating.toUpperCase()}] ${sensorId ?? '—'}`;
+                const timestamp = document.createElement('span');
+                timestamp.textContent = `${timeFromStart.toFixed(2)}초`;
+                header.append(label, timestamp);
+
+                const meta = document.createElement('div');
+                meta.className = 'log-meta';
+                const parts = [];
+                if (stageLabel) {
+                    parts.push(stageLabel);
+                }
+                if (typeof deltaMs === 'number') {
+                    parts.push(`Δ ${deltaMs.toFixed(1)} ms`);
+                }
+                if (typeof magnitude === 'number') {
+                    parts.push(`|a| ${magnitude.toFixed(2)} m/s²`);
+                }
+                if (note) {
+                    parts.push(note);
+                }
+                meta.textContent = parts.join(' · ');
+
+                item.append(header, meta);
+                logList.prepend(item);
+
+                while (logList.children.length > CONFIG.logLimit) {
+                    logList.removeChild(logList.lastElementChild);
                 }
             }
 
-            const img = document.createElement('img');
-            img.alt = '세션 QR 코드';
-            img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(joinUrl)}`;
-            this.dom.qrBox.appendChild(img);
-        }
+            function registerJudgement({ sensorId, rating, deltaMs, magnitude, stageKey, note, timeFromStart }) {
+                if (!state.judgements[rating]) {
+                    state.judgements[rating] = 0;
+                }
+                state.judgements[rating] += 1;
 
-        resetPlayers() {
-            [1, 2].forEach((slot) => {
-                const card = this.dom.playerCards[slot];
-                if (!card) return;
-                card.querySelector('[data-role="status"]').textContent = TEXT.statusWaiting;
-                card.querySelector('[data-role="status"]').classList.remove('online');
-                card.querySelector('[data-role="score"]').textContent = '0';
-                card.querySelector('[data-role="timing"]').textContent = TEXT.timingDefault;
-                card.querySelector('[data-role="timing"]').className = 'timing';
-                this.state.playerData[slot] = { sensorId: null, score: 0, lastShake: 0 };
-            });
-            this.state.sensorOrder = [];
-            this.state.isSoloMode = false;
-            this.state.mixture = 0;
-            this.state.coating = 0;
-        }
+                if (rating === 'nice') {
+                    state.totalScore += CONFIG.judgement.nicePoints;
+                } else if (rating === 'off') {
+                    state.totalScore += CONFIG.judgement.offPoints;
+                }
+                scoreEl.textContent = state.totalScore.toString();
 
-        enableStartButton(label) {
-            this.dom.startButton.textContent = label;
-            this.dom.startButton.disabled = false;
-            this.dom.startButton.classList.add('ready');
-        }
+                const stageLabel = CONFIG.stageLabels[stageKey] || stageKey;
+                const elapsed = typeof timeFromStart === 'number'
+                    ? timeFromStart
+                    : (performance.now() - state.roundStartTime) / 1000;
 
-        disableStartButton(label = TEXT.startDefault) {
-            this.dom.startButton.textContent = label;
-            this.dom.startButton.disabled = true;
-            this.dom.startButton.classList.remove('ready');
-        }
+                appendShakeLog({
+                    sensorId: sensorId || '—',
+                    rating,
+                    deltaMs,
+                    magnitude,
+                    timeFromStart: elapsed,
+                    stageLabel,
+                    note
+                });
 
-        updateStartAvailability() {
-            if (this.state.isRunning) {
-                this.enableStartButton(TEXT.startReset);
-                return;
+                updateJudgementSummary();
+                state.currentBeatResolved = true;
             }
 
-            if (!this.state.sessionCode) {
-                this.disableStartButton(TEXT.startDefault);
-                return;
+            function finalizeBeat() {
+                if (!state.currentStage || !state.roundActive) {
+                    return;
+                }
+                if (state.currentBeatResolved) {
+                    return;
+                }
+                const timeFromStart = ((state.currentBeatStart + state.beatIntervalMs) - state.roundStartTime) / 1000;
+                registerJudgement({
+                    rating: 'miss',
+                    stageKey: state.currentStage,
+                    note: '입력 없음',
+                    timeFromStart
+                });
             }
 
-            const playerCount = this.state.sensorOrder.length;
-            if (playerCount === 0) {
-                this.disableStartButton(TEXT.startDefault);
-                this.dom.teamFeedback.textContent = TEXT.teamConnect;
-                return;
+            function advanceBeat(isInitial) {
+                if (!state.roundActive) {
+                    return;
+                }
+                if (!isInitial) {
+                    finalizeBeat();
+                }
+
+                const stageKey = CONFIG.stageOrder[state.beatIndex % CONFIG.stageOrder.length];
+                state.currentStage = stageKey;
+                state.currentBeatStart = performance.now();
+                state.currentBeatResolved = false;
+                updateStageDisplay(stageKey);
+
+                playClick();
+                flashMetronome(state.beatIndex);
+                state.beatIndex += 1;
             }
 
-            if (playerCount === 1) {
-                this.enableStartButton(TEXT.startSolo);
-                this.dom.teamFeedback.textContent = TEXT.teamSoloReady;
-            } else {
-                this.enableStartButton(TEXT.startDuo);
-                this.dom.teamFeedback.textContent = TEXT.teamDuoReady;
-            }
-        }
-
-        renderBeatTrack(beats) {
-            this.dom.beatTrack.innerHTML = '';
-            for (let i = 0; i < beats; i += 1) {
-                const dot = document.createElement('div');
-                dot.className = 'beat-dot';
-                dot.dataset.index = String(i);
-                this.dom.beatTrack.appendChild(dot);
-            }
-        }
-        addSensor(sensorId) {
-            if (this.state.sensorOrder.includes(sensorId)) {
-                return;
-            }
-            const slot = this.state.sensorOrder.length < 2 ? this.state.sensorOrder.length + 1 : null;
-            if (!slot) {
-                this.dom.teamFeedback.textContent = TEXT.teamDuoReady;
-                return;
+            function startMetronome() {
+                advanceBeat(true);
+                state.metronomeInterval = setInterval(() => {
+                    advanceBeat(false);
+                }, state.beatIntervalMs);
             }
 
-            this.state.sensorOrder.push(sensorId);
-            const player = this.state.playerData[slot];
-            player.sensorId = sensorId;
-            player.score = 0;
-            player.lastShake = 0;
+            function updateTimerLoop() {
+                const now = performance.now();
+                const elapsed = now - state.roundStartTime;
+                const remaining = CONFIG.roundDurationMs - elapsed;
+                timerEl.textContent = formatTime(remaining);
 
-            const card = this.dom.playerCards[slot];
-            if (card) {
-                const statusEl = card.querySelector('[data-role="status"]');
-                statusEl.textContent = TEXT.statusConnected;
-                statusEl.classList.add('online');
-                card.querySelector('[data-role="score"]').textContent = '0';
-                this.setTimingMessage(slot, TEXT.timingDefault, null);
+                if (remaining <= 0) {
+                    endRound('라운드 종료');
+                    return;
+                }
+
+                state.timerFrame = requestAnimationFrame(updateTimerLoop);
             }
 
-            this.updateStartAvailability();
-        }
+            function handleSensorData(event) {
+                const payload = event?.detail || event;
+                const sensorId = payload?.sensorId || payload?.sensor_id;
+                const data = payload?.data || payload;
+                const accel = data?.accelerationIncludingGravity || data?.acceleration;
+                if (!sensorId || !accel) {
+                    return;
+                }
 
-        removeSensor(sensorId) {
-            const index = this.state.sensorOrder.indexOf(sensorId);
-            if (index === -1) {
-                return;
-            }
-            this.state.sensorOrder.splice(index, 1);
+                const ax = Number(accel.x) || 0;
+                const ay = Number(accel.y) || 0;
+                const az = Number(accel.z) || 0;
+                const magnitude = Math.hypot(ax, ay, az);
+                const now = performance.now();
 
-            [1, 2].forEach((slot) => {
-                const id = this.state.sensorOrder[slot - 1] || null;
-                const card = this.dom.playerCards[slot];
-                if (!card) return;
-                const statusEl = card.querySelector('[data-role="status"]');
-                const timingEl = card.querySelector('[data-role="timing"]');
-                card.querySelector('[data-role="score"]').textContent = '0';
-                this.setTimingMessage(slot, TEXT.timingDefault, null);
-                if (id) {
-                    statusEl.textContent = TEXT.statusConnected;
-                    statusEl.classList.add('online');
+                const sensorState = ensureSensorState(sensorId);
+                if (!sensorState) {
+                    return;
+                }
+
+                if (sensorState.baseline === null) {
+                    sensorState.baseline = magnitude;
+                    sensorState.lastUpdated = now;
+                    return;
+                }
+
+                const elapsed = now - (sensorState.lastUpdated || now);
+                const alpha = elapsed > 0 ? Math.min(1, elapsed / CONFIG.sensor.baselineWindowMs) : 1;
+                sensorState.baseline = sensorState.baseline + alpha * (magnitude - sensorState.baseline);
+                sensorState.lastUpdated = now;
+
+                if (!state.roundActive || !state.currentStage) {
+                    return;
+                }
+
+                if (now - sensorState.lastProcessedAt < CONFIG.sensor.throttleMs) {
+                    return;
+                }
+                sensorState.lastProcessedAt = now;
+
+                const delta = magnitude - sensorState.baseline;
+                if (delta <= CONFIG.sensor.threshold) {
+                    return;
+                }
+
+                if (now - sensorState.lastShakeAt < CONFIG.sensor.refractoryMs) {
+                    return;
+                }
+                sensorState.lastShakeAt = now;
+
+                if (state.currentBeatResolved) {
+                    return;
+                }
+
+                const targetTime = state.currentBeatStart + (state.beatIntervalMs / 2);
+                const deltaMs = Math.abs(now - targetTime);
+
+                let rating = 'miss';
+                let note;
+                if (deltaMs <= CONFIG.judgement.niceWindowMs) {
+                    rating = 'nice';
+                } else if (deltaMs <= CONFIG.judgement.offWindowMs) {
+                    rating = 'off';
                 } else {
-                    statusEl.textContent = TEXT.statusWaiting;
-                    statusEl.classList.remove('online');
+                    note = '타이밍 벗어남';
                 }
-                timingEl.className = 'timing';
-            });
 
-            this.stopGame();
-            this.state.isSoloMode = false;
-            this.dom.teamFeedback.textContent = this.state.sensorOrder.length === 0 ? TEXT.teamAllLeft : TEXT.teamOneLeft;
-            this.updateStartAvailability();
-        }
-
-        startGame() {
-            if (this.state.sensorOrder.length === 0) {
-                this.dom.teamFeedback.textContent = TEXT.teamConnect;
-                return;
+                registerJudgement({
+                    sensorId,
+                    rating,
+                    deltaMs,
+                    magnitude,
+                    stageKey: state.currentStage,
+                    note
+                });
             }
 
-            this.resetGame();
-            this.state.isSoloMode = this.state.sensorOrder.length === 1;
-            this.state.isRunning = true;
-            this.state.phaseIndex = 0;
-            this.state.activeBeat = -1;
-
-            this.dom.teamFeedback.textContent = this.state.isSoloMode ? TEXT.soloStart : TEXT.duoStart;
-            this.enableStartButton(TEXT.startReset);
-            this.startPhase();
-        }
-
-        resetGame() {
-            this.stopGame();
-            this.state.mixture = 0;
-            this.state.coating = 0;
-            this.state.beatRecords = new Map();
-            Object.values(this.state.playerData).forEach((player) => {
-                player.score = 0;
-                player.lastShake = 0;
-            });
-            [1, 2].forEach((slot) => {
-                const card = this.dom.playerCards[slot];
-                if (!card) return;
-                card.querySelector('[data-role="score"]').textContent = '0';
-                const statusEl = card.querySelector('[data-role="status"]');
-                if (this.state.playerData[slot].sensorId) {
-                    statusEl.textContent = TEXT.statusConnected;
-                    statusEl.classList.add('online');
-                } else {
-                    statusEl.textContent = TEXT.statusWaiting;
-                    statusEl.classList.remove('online');
+            function startRound() {
+                if (state.roundActive) {
+                    return;
                 }
-                this.setTimingMessage(slot, TEXT.timingDefault, null);
-            });
-            this.updateMeters();
-            this.renderBeatTrack(PHASES[0].beats);
-            this.dom.phaseLabel.textContent = TEXT.teamConnect;
-            this.dom.beatCounter.textContent = '0 / 0';
-        }
-
-        stopGame() {
-            if (this.state.beatTimer) {
-                clearTimeout(this.state.beatTimer);
-                this.state.beatTimer = null;
-            }
-            this.state.isRunning = false;
-            this.state.activeBeat = -1;
-            this.dom.beatTrack.querySelectorAll('.beat-dot').forEach((dot) => {
-                dot.classList.remove('active', 'success', 'ok', 'miss');
-            });
-        }
-
-        startPhase() {
-            const phase = this.config.phases[this.state.phaseIndex];
-            if (!phase) {
-                this.finishGame();
-                return;
-            }
-            this.state.beatRecords = new Map();
-            this.dom.phaseLabel.textContent = `${TEXT.roundLabel} ${this.state.phaseIndex + 1}: ${phase.label}`;
-            this.dom.beatCounter.textContent = `0 / ${phase.beats}`;
-            this.renderBeatTrack(phase.beats);
-            this.scheduleNextBeat();
-        }
-
-        scheduleNextBeat() {
-            if (!this.state.isRunning) {
-                return;
-            }
-            if (this.state.beatTimer) {
-                clearTimeout(this.state.beatTimer);
-            }
-            const phase = this.config.phases[this.state.phaseIndex];
-            if (!phase) {
-                this.finishPhase();
-                return;
-            }
-            this.state.activeBeat += 1;
-            if (this.state.activeBeat >= phase.beats) {
-                this.finishPhase();
-                return;
-            }
-
-            this.state.activeBeatStart = performance.now();
-            this.dom.beatCounter.textContent = `${this.state.activeBeat + 1} / ${phase.beats}`;
-            this.dom.beatTrack.querySelectorAll('.beat-dot').forEach((dot, index) => {
-                dot.classList.toggle('active', index === this.state.activeBeat);
-                if (index === this.state.activeBeat) {
-                    dot.classList.remove('success', 'ok', 'miss');
+                if (state.players.size === 0) {
+                    showStatus('센서를 먼저 연결해주세요.', 'info');
+                    return;
                 }
-            });
 
-            this.state.beatTimer = setTimeout(() => {
-                this.resolveBeat(this.state.activeBeat);
-            }, this.config.beatInterval);
-        }
+                resetShakeTracking('라운드 진행 중');
+                state.roundActive = true;
+                state.roundStartTime = performance.now();
+                state.beatIndex = 0;
+                state.currentStage = null;
+                state.currentBeatResolved = true;
+                startButton.disabled = true;
+                startButton.textContent = '라운드 진행 중...';
+                timerEl.textContent = formatTime(CONFIG.roundDurationMs);
 
-        resolveBeat(index) {
-            if (!this.state.isRunning) {
-                return;
+                startMetronome();
+                state.timerFrame = requestAnimationFrame(updateTimerLoop);
             }
-            const record = this.state.beatRecords.get(index) || new Map();
-            this.state.beatRecords.set(index, record);
 
-            const activeSlots = this.state.sensorOrder.slice(0, 2)
-                .map((sensorId) => this.getPlayerSlot(sensorId))
-                .filter(Boolean);
-
-            activeSlots.forEach((slot) => {
-                if (!record.has(slot)) {
-                    this.registerResult(slot, 'miss', 0, index);
+            function endRound(reason = '라운드 종료') {
+                if (!state.roundActive) {
+                    return;
                 }
-            });
+                finalizeBeat();
+                state.roundActive = false;
+                stopTimerLoop();
+                stopMetronome();
+                timerEl.textContent = '00:00';
+                stageEl.textContent = reason;
+                startButton.disabled = false;
+                startButton.textContent = '라운드 다시 시작';
+                updateJudgementSummary();
+            }
 
-            const niceCount = activeSlots.reduce((count, slot) => {
-                const result = this.state.beatRecords.get(index)?.get(slot);
-                return result?.status === 'nice' ? count + 1 : count;
-            }, 0);
+            function resetRoundState() {
+                state.roundActive = false;
+                stopTimerLoop();
+                stopMetronome();
+                timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+                updateStageDisplay();
+                startButton.disabled = false;
+                startButton.textContent = '라운드 시작';
+                resetShakeTracking('라운드 대기 중');
+            }
 
-            if (this.state.isSoloMode) {
-                this.dom.teamFeedback.textContent = niceCount >= 1 ? TEXT.gatherSuccess : TEXT.gatherLow;
-            } else {
-                if (niceCount === 2) {
-                    this.dom.teamFeedback.textContent = TEXT.finishHigh;
-                } else if (niceCount === 1) {
-                    this.dom.teamFeedback.textContent = TEXT.timingOk;
-                } else {
-                    this.dom.teamFeedback.textContent = TEXT.timingMiss;
+            function registerSDKEvents() {
+                const sdk = state.sdk;
+
+                sdk.on('connected', (event) => {
+                    const detail = event?.detail || event;
+                    console.debug('[SessionSDK] connected', detail);
+                    startButton.disabled = false;
+                    startButton.textContent = state.session ? '라운드 시작' : '세션 생성';
+                    stageEl.textContent = state.session ? '라운드 대기 중' : '세션 연결 대기';
+                    showStatus('세션을 생성하면 QR 코드가 표시됩니다.', 'info');
+                });
+
+                sdk.on('session-created', (event) => {
+                    const detail = event?.detail || event;
+                    console.debug('[SessionSDK] session-created', detail);
+                    state.session = detail;
+                    sessionCodeEl.textContent = detail.sessionCode || '----';
+                    stageEl.textContent = '라운드 대기 중';
+                    startButton.disabled = false;
+                    startButton.textContent = '라운드 시작';
+
+                    const url = `${window.location.origin}/sensor.html?session=${detail.sessionCode}`;
+                    renderQRCode(url);
+                    timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+                });
+
+                sdk.on('session-error', (event) => {
+                    const detail = event?.detail || event;
+                    console.warn('[SessionSDK] session-error', detail);
+                    resetRoundState();
+                    startButton.textContent = '세션 생성';
+                    showStatus('세션 생성 중 오류가 발생했습니다. 다시 시도해주세요.', 'error');
+                });
+
+                sdk.on('sensor-connected', (event) => {
+                    const detail = event?.detail || event;
+                    console.debug('[SessionSDK] sensor-connected', detail);
+                    if (detail?.sensorId) {
+                        state.players.add(detail.sensorId);
+                        ensureSensorState(detail.sensorId);
+                        updatePlayerCount();
+                    }
+                    if (!state.roundActive) {
+                        stageEl.textContent = '라운드 대기 중';
+                    }
+                });
+
+                if (typeof sdk.on === 'function') {
+                    sdk.on('sensor-disconnected', (event) => {
+                        const detail = event?.detail || event;
+                        console.debug('[SessionSDK] sensor-disconnected', detail);
+                        if (detail?.sensorId) {
+                            state.players.delete(detail.sensorId);
+                            state.sensorStates.delete(detail.sensorId);
+                            updatePlayerCount();
+                        }
+                        if (state.players.size === 0) {
+                            endRound('센서 연결 해제');
+                        }
+                    });
+
+                    sdk.on('sensor-data', handleSensorData);
                 }
             }
 
-            this.scheduleNextBeat();
-        }
+            function attachHandlers() {
+                startButton.addEventListener('click', async () => {
+                    if (!state.sdk) {
+                        return;
+                    }
 
-        finishPhase() {
-            if (!this.state.isRunning) {
-                return;
-            }
-            if (this.config.phases[this.state.phaseIndex]?.key === 'gather') {
-                this.dom.teamFeedback.textContent = this.state.mixture >= 80 ? TEXT.gatherSuccess : TEXT.gatherLow;
-            }
-            this.state.phaseIndex += 1;
-            if (this.state.phaseIndex >= this.config.phases.length) {
-                this.finishGame();
-            } else {
-                this.state.activeBeat = -1;
-                this.startPhase();
-            }
-        }
+                    if (!state.session) {
+                        startButton.disabled = true;
+                        startButton.textContent = '세션 생성 중...';
+                        showStatus('세션을 생성하는 중입니다...', 'info');
+                        try {
+                            await state.sdk.createSession({ gameType: 'solo' });
+                        } catch (error) {
+                            console.error('Failed to create session', error);
+                            startButton.disabled = false;
+                            startButton.textContent = '세션 생성';
+                            showStatus('세션 생성 실패. 콘솔 로그를 확인해주세요.', 'error');
+                        }
+                        return;
+                    }
 
-        finishGame() {
-            this.stopGame();
-            const totalScore = this.state.playerData[1].score + this.state.playerData[2].score;
-            let feedback = TEXT.finishLow;
-            if (this.state.coating >= 90) {
-                feedback = TEXT.finishHigh;
-            } else if (this.state.coating >= 60) {
-                feedback = TEXT.finishMid;
-            }
-            this.dom.teamFeedback.textContent = feedback;
-            this.dom.phaseLabel.textContent = '모든 라운드 완료';
-            this.dom.beatCounter.textContent = `${totalScore} ${TEXT.totalScoreSuffix}`;
-            this.enableStartButton(TEXT.startRestart);
-            this.state.isRunning = false;
-        }
-
-        registerResult(slot, status, points, beatIndex) {
-            if (!slot) return;
-            let record = this.state.beatRecords.get(beatIndex);
-            if (!record) {
-                record = new Map();
-                this.state.beatRecords.set(beatIndex, record);
-            }
-            if (record.has(slot)) {
-                return;
-            }
-            record.set(slot, { status, points });
-
-            const player = this.state.playerData[slot];
-            player.score += points;
-            const card = this.dom.playerCards[slot];
-            if (card) {
-                card.querySelector('[data-role="score"]').textContent = String(player.score);
+                    if (!state.roundActive) {
+                        startRound();
+                    }
+                });
             }
 
-            this.setTimingMessage(slot, this.statusToMessage(status), status);
-
-            const dot = this.dom.beatTrack.querySelector(`.beat-dot[data-index="${beatIndex}"]`);
-            if (dot) {
-                dot.classList.remove('active', 'success', 'ok', 'miss');
-                if (status === 'nice') {
-                    dot.classList.add('success');
-                } else if (status === 'ok' || status === 'late') {
-                    dot.classList.add('ok');
-                } else {
-                    dot.classList.add('miss');
+            function init() {
+                if (!ensureSDK()) {
+                    return;
                 }
+
+                state.sdk = new window.SessionSDK({ debug: true });
+                showStatus('SDK 연결을 기다리는 중입니다...', 'info');
+                timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+                startButton.textContent = '세션 생성';
+
+                registerSDKEvents();
+                attachHandlers();
             }
 
-            const phase = this.config.phases[this.state.phaseIndex];
-            if (phase) {
-                const unit = phase.key === 'gather' ? this.config.gatherPointUnit : this.config.spreadPointUnit;
-                const boost = status === 'nice' ? 2 : points;
-                if (phase.key === 'gather') {
-                    this.state.mixture = Math.min(100, this.state.mixture + unit * boost);
-                } else {
-                    this.state.coating = Math.min(100, this.state.coating + unit * boost);
-                }
-                this.updateMeters();
-            }
-        }
-
-        statusToMessage(status) {
-            switch (status) {
-                case 'nice':
-                    return TEXT.timingNice;
-                case 'ok':
-                    return TEXT.timingOk;
-                case 'late':
-                    return TEXT.timingLate;
-                default:
-                    return TEXT.timingMiss;
-            }
-        }
-
-        setTimingMessage(slot, message, tone) {
-            const card = this.dom.playerCards[slot];
-            if (!card) return;
-            const timingEl = card.querySelector('[data-role="timing"]');
-            timingEl.className = 'timing';
-            if (tone === 'nice') {
-                timingEl.classList.add('good');
-            } else if (tone === 'ok' || tone === 'late') {
-                timingEl.classList.add('ok');
-            } else if (tone === 'miss') {
-                timingEl.classList.add('miss');
-            }
-            timingEl.textContent = message;
-        }
-
-        getPlayerSlot(sensorId) {
-            const index = this.state.sensorOrder.indexOf(sensorId);
-            return index === -1 ? null : index + 1;
-        }
-
-        handleSensorData(packet) {
-            if (!this.state.isRunning || !packet) {
-                return;
-            }
-            const sensorId = packet.sensorId || packet.sensor_id;
-            if (!sensorId) return;
-            const slot = this.getPlayerSlot(sensorId);
-            if (!slot) return;
-
-            const player = this.state.playerData[slot];
-            const now = performance.now();
-            if (now - player.lastShake < this.config.shakeCooldown) {
-                return;
-            }
-
-            const accel = packet.data?.acceleration;
-            if (!accel) {
-                return;
-            }
-
-            const lateralForce = Math.abs(accel.x || 0) + Math.abs((accel.y || 0) * 0.35);
-            if (lateralForce < this.config.shakeThreshold) {
-                return;
-            }
-
-            player.lastShake = now;
-            const targetTime = this.state.activeBeatStart + this.config.targetOffset;
-            const delta = Math.abs(now - targetTime);
-
-            let status = 'miss';
-            let points = 0;
-            if (delta <= this.config.niceWindow) {
-                status = 'nice';
-                points = 2;
-            } else if (delta <= this.config.okWindow) {
-                status = 'ok';
-                points = 1;
-            } else {
-                status = 'late';
-                points = 1;
-            }
-
-            this.registerResult(slot, status, points, this.state.activeBeat);
-        }
-
-        updateMeters() {
-            this.dom.seasoningMeter.style.width = `${this.state.mixture}%`;
-            this.dom.cabbageMeter.style.width = `${this.state.coating}%`;
-        }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        new KimchiFestGame();
-    });
-})();
-</script>
+            window.addEventListener('DOMContentLoaded', init);
+        })();
+    </script>
 </body>
 </html>

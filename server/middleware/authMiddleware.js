@@ -11,6 +11,11 @@ class AuthMiddleware {
             process.env.SUPABASE_URL,
             process.env.SUPABASE_ANON_KEY
         );
+        // Service Role Key for admin operations (server-side only)
+        this.supabaseAdmin = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
     }
 
     /**
@@ -41,17 +46,37 @@ class AuthMiddleware {
             }
 
             // 제작자 테이블에서 사용자 확인
-            const { data: creator, error: creatorError } = await this.supabase
+            let { data: creator, error: creatorError } = await this.supabase
                 .from('game_creators')
                 .select('id, name, nickname')
                 .eq('id', user.id)
                 .single();
 
+            // game_creators 테이블에 데이터가 없으면 자동으로 생성 (기존 사용자 대응)
             if (creatorError || !creator) {
-                return res.status(403).json({
-                    error: '게임 제작 권한이 없습니다.',
-                    code: 'NOT_CREATOR'
-                });
+                const userName = user.user_metadata?.name || user.email.split('@')[0];
+                const userNickname = user.user_metadata?.nickname || userName;
+
+                const { data: newCreator, error: insertError } = await this.supabaseAdmin
+                    .from('game_creators')
+                    .insert({
+                        id: user.id,
+                        name: userName,
+                        nickname: userNickname,
+                        games_created: 0
+                    })
+                    .select('id, name, nickname')
+                    .single();
+
+                if (insertError) {
+                    console.error('Auto-create creator error:', insertError);
+                    return res.status(403).json({
+                        error: '게임 제작 권한을 생성할 수 없습니다.',
+                        code: 'CREATOR_CREATE_FAILED'
+                    });
+                }
+
+                creator = newCreator;
             }
 
             // 요청 객체에 사용자 정보 추가

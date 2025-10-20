@@ -144,6 +144,22 @@ class DeveloperRoutes {
         this.router.get('/api/preview-game/:gameId', async (req, res) => {
             await this.handlePreviewGame(req, res);
         });
+
+        // 🆕 계정 관리 API
+        // 사용자 정보 조회 (인증 필요)
+        this.router.get('/api/account/info', checkCreatorAuth, async (req, res) => {
+            await this.handleGetAccountInfo(req, res);
+        });
+
+        // 닉네임 변경 (인증 필요)
+        this.router.post('/api/account/change-nickname', checkCreatorAuth, async (req, res) => {
+            await this.handleChangeNickname(req, res);
+        });
+
+        // 비밀번호 변경 (인증 필요)
+        this.router.post('/api/account/change-password', checkCreatorAuth, async (req, res) => {
+            await this.handleChangePassword(req, res);
+        });
     }
 
     /**
@@ -2048,6 +2064,7 @@ class DeveloperRoutes {
         `;
     }
 
+
     /**
      * 문서 뷰어
      */
@@ -2716,6 +2733,298 @@ class DeveloperRoutes {
                 </body>
                 </html>
             `);
+        }
+    }
+
+    /**
+     * 사용자 정보 조회
+     */
+    async handleGetAccountInfo(req, res) {
+        try {
+            console.log('🔍 [계정 정보 조회] 시작');
+            console.log('User:', req.user ? { id: req.user.id, email: req.user.email } : 'undefined');
+            console.log('Creator:', req.creator);
+
+            const user = req.user; // authMiddleware에서 추가됨
+            let creator = req.creator; // authMiddleware에서 추가됨
+
+            const { createClient } = require('@supabase/supabase-js');
+            const supabaseAdmin = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY
+            );
+
+            console.log('Service Role Key 존재 여부:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+            // game_creators 테이블에 데이터가 없으면 생성 (기존 사용자 대응)
+            if (!creator) {
+                console.log('⚠️ Creator 정보 없음, 자동 생성 시도');
+                const userName = user.user_metadata?.name || user.email.split('@')[0];
+                const userNickname = user.user_metadata?.nickname || userName;
+
+                console.log('생성할 데이터:', { id: user.id, name: userName, nickname: userNickname });
+
+                const { data: newCreator, error: insertError } = await supabaseAdmin
+                    .from('game_creators')
+                    .insert({
+                        id: user.id,
+                        name: userName,
+                        nickname: userNickname,
+                        games_created: 0
+                    })
+                    .select('id, name, nickname')
+                    .single();
+
+                if (insertError) {
+                    console.error('❌ Creator insert error:', insertError);
+                    console.error('Error details:', JSON.stringify(insertError, null, 2));
+                    return res.status(500).json({
+                        success: false,
+                        error: '사용자 정보를 생성할 수 없습니다.',
+                        details: insertError.message
+                    });
+                }
+
+                if (newCreator) {
+                    console.log('✅ Creator 생성 성공:', newCreator);
+                    creator = newCreator;
+                }
+            } else {
+                console.log('✅ Creator 정보 존재:', creator);
+            }
+
+            res.json({
+                success: true,
+                user: {
+                    id: user.id,
+                    name: creator.name,
+                    nickname: creator.nickname,
+                    email: user.email,
+                    password: '' // 보안상 비밀번호는 절대 전송하지 않음
+                }
+            });
+        } catch (error) {
+            console.error('❌ 사용자 정보 조회 오류:', error);
+            res.status(500).json({
+                success: false,
+                error: '사용자 정보를 불러올 수 없습니다.',
+                details: error.message
+            });
+        }
+    }
+
+    /**
+     * 닉네임 변경
+     */
+    async handleChangeNickname(req, res) {
+        try {
+            console.log('🔄 [닉네임 변경] 시작');
+            const { newNickname, password } = req.body;
+            const user = req.user;
+
+            console.log('요청 데이터:', { newNickname, passwordLength: password?.length, userId: user.id });
+
+            if (!newNickname || !password) {
+                console.log('❌ 입력값 누락');
+                return res.status(400).json({
+                    success: false,
+                    error: '닉네임과 비밀번호를 입력하세요.'
+                });
+            }
+
+            // 닉네임 유효성 검사
+            if (newNickname.length < 2 || newNickname.length > 20) {
+                return res.status(400).json({
+                    success: false,
+                    error: '닉네임은 2-20자 사이여야 합니다.'
+                });
+            }
+
+            // Supabase 클라이언트 생성
+            const { createClient } = require('@supabase/supabase-js');
+            const supabase = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_ANON_KEY
+            );
+            const supabaseAdmin = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY
+            );
+
+            // 비밀번호 확인 (Supabase Auth의 signInWithPassword 사용)
+            console.log('🔐 비밀번호 확인 중...');
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email: user.email,
+                password: password
+            });
+
+            if (signInError || !signInData.user) {
+                console.log('❌ 비밀번호 확인 실패:', signInError);
+                return res.status(401).json({
+                    success: false,
+                    error: '비밀번호가 올바르지 않습니다.'
+                });
+            }
+
+            console.log('✅ 비밀번호 확인 성공');
+
+            // 닉네임 중복 확인
+            console.log('🔍 닉네임 중복 확인 중...');
+            const { data: existingNickname, error: checkError } = await supabaseAdmin
+                .from('game_creators')
+                .select('id')
+                .eq('nickname', newNickname)
+                .neq('id', user.id)
+                .maybeSingle();
+
+            if (checkError) {
+                console.error('❌ 닉네임 중복 확인 오류:', checkError);
+            }
+
+            if (existingNickname) {
+                console.log('❌ 닉네임 중복:', newNickname);
+                return res.status(409).json({
+                    success: false,
+                    error: '이미 사용 중인 닉네임입니다.'
+                });
+            }
+
+            // game_creators 테이블에서 닉네임 업데이트 (Service Role Key 사용)
+            console.log('📝 닉네임 업데이트 중...', { newNickname, userId: user.id });
+            const { error: updateError } = await supabaseAdmin
+                .from('game_creators')
+                .update({ nickname: newNickname })
+                .eq('id', user.id);
+
+            if (updateError) {
+                console.error('❌ 닉네임 업데이트 오류:', updateError);
+                console.error('Error details:', JSON.stringify(updateError, null, 2));
+                return res.status(500).json({
+                    success: false,
+                    error: '닉네임 변경에 실패했습니다.',
+                    details: updateError.message
+                });
+            }
+
+            console.log('✅ 닉네임 변경 성공:', newNickname);
+            res.json({
+                success: true,
+                message: '닉네임이 성공적으로 변경되었습니다.',
+                newNickname: newNickname
+            });
+        } catch (error) {
+            console.error('❌ 닉네임 변경 오류:', error);
+            console.error('Error stack:', error.stack);
+            res.status(500).json({
+                success: false,
+                error: '닉네임 변경 중 오류가 발생했습니다.',
+                details: error.message
+            });
+        }
+    }
+
+    /**
+     * 비밀번호 변경
+     */
+    async handleChangePassword(req, res) {
+        try {
+            console.log('🔐 [비밀번호 변경] 시작');
+            const { currentPassword, newPassword } = req.body;
+            const user = req.user;
+
+            console.log('요청 데이터:', {
+                currentPasswordLength: currentPassword?.length,
+                newPasswordLength: newPassword?.length,
+                userId: user.id
+            });
+
+            if (!currentPassword || !newPassword) {
+                console.log('❌ 입력값 누락');
+                return res.status(400).json({
+                    success: false,
+                    error: '현재 비밀번호와 새 비밀번호를 입력하세요.'
+                });
+            }
+
+            if (newPassword.length < 6) {
+                console.log('❌ 비밀번호 길이 부족:', newPassword.length);
+                return res.status(400).json({
+                    success: false,
+                    error: '비밀번호는 최소 6자 이상이어야 합니다.'
+                });
+            }
+
+            // Supabase 클라이언트 생성
+            const { createClient } = require('@supabase/supabase-js');
+            const supabase = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_ANON_KEY
+            );
+
+            // 현재 비밀번호 확인
+            console.log('🔐 현재 비밀번호 확인 중...');
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email: user.email,
+                password: currentPassword
+            });
+
+            if (signInError || !signInData.user) {
+                console.log('❌ 현재 비밀번호 확인 실패:', signInError);
+                return res.status(401).json({
+                    success: false,
+                    error: '현재 비밀번호가 올바르지 않습니다.'
+                });
+            }
+
+            console.log('✅ 현재 비밀번호 확인 성공');
+
+            // 비밀번호 업데이트 (Supabase Auth)
+            console.log('📝 비밀번호 업데이트 중...');
+            const { data: updateData, error: updateError } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+
+            if (updateError) {
+                console.error('❌ 비밀번호 업데이트 오류:', updateError);
+                return res.status(500).json({
+                    success: false,
+                    error: '비밀번호 변경에 실패했습니다.',
+                    details: updateError.message
+                });
+            }
+
+            console.log('✅ 비밀번호 변경 성공');
+
+            // 새 비밀번호로 다시 로그인하여 새 세션 토큰 받기
+            console.log('🔄 새 세션 생성 중...');
+            const { data: newSessionData, error: newSessionError } = await supabase.auth.signInWithPassword({
+                email: user.email,
+                password: newPassword
+            });
+
+            if (newSessionError || !newSessionData.session) {
+                console.error('❌ 새 세션 생성 실패:', newSessionError);
+                // 비밀번호는 변경되었지만 세션 생성 실패
+                return res.json({
+                    success: true,
+                    message: '비밀번호가 변경되었습니다. 다시 로그인해주세요.',
+                    requireRelogin: true
+                });
+            }
+
+            console.log('✅ 새 세션 생성 성공');
+            res.json({
+                success: true,
+                message: '비밀번호가 성공적으로 변경되었습니다.',
+                session: newSessionData.session // 새 세션 정보 반환
+            });
+        } catch (error) {
+            console.error('❌ 비밀번호 변경 오류:', error);
+            res.status(500).json({
+                success: false,
+                error: '비밀번호 변경 중 오류가 발생했습니다.',
+                details: error.message
+            });
         }
     }
 
