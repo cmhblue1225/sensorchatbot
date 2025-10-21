@@ -14,6 +14,7 @@ Notes
 - SessionSDK wiring with QR fallback, session status, and sensor connection count.
 - Accelerometer-based shake detection with baseline smoothing, throttling, and on-screen log (public/games/kimchi-fest/index.html).
 - Beat-synced judgement (Nice/Off/Miss) with scoring and stage rotation (public/games/kimchi-fest/index.html).
+- Enhanced HUD: stage tracker, judgement summary chips, and live sensor list (public/games/kimchi-fest/index.html).
 
 ### Changed
 - N/A

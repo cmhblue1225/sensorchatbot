@@ -219,6 +219,188 @@
             color: rgba(148, 163, 184, 0.82);
         }
 
+        .stage-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stage-head h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: rgba(248, 250, 252, 0.9);
+        }
+
+        .stage-head p {
+            margin: 0.35rem 0 0;
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+
+        #stage-cycle {
+            font-size: 0.85rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(148, 163, 184, 0.12);
+            color: rgba(248, 250, 252, 0.75);
+            align-self: flex-start;
+        }
+
+        .stage-progress {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .stage-step {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.75rem;
+            border-radius: 0.9rem;
+            border: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.45);
+            transition: all 0.25s ease;
+        }
+
+        .stage-step.active {
+            border-color: rgba(250, 204, 21, 0.7);
+            background: rgba(250, 204, 21, 0.18);
+            box-shadow: 0 12px 24px rgba(250, 204, 21, 0.15);
+        }
+
+        .stage-step .step-index {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(248, 250, 252, 0.1);
+            font-weight: 600;
+            font-size: 1rem;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .stage-step.active .step-index {
+            background: var(--accent);
+            color: #0f172a;
+        }
+
+        .stage-step .step-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .player-strip {
+            border-radius: 0.9rem;
+            border: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.4);
+            padding: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .player-strip h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .player-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 180px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+        }
+
+        .player-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.55rem 0.75rem;
+            border-radius: 0.75rem;
+            background: rgba(15, 23, 42, 0.55);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: rgba(248, 250, 252, 0.9);
+        }
+
+        .player-list li.empty {
+            font-style: italic;
+            justify-content: center;
+            color: var(--muted);
+        }
+
+        .player-list .player-id {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .player-list .player-status {
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .feedback-top {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+            gap: 0.6rem;
+        }
+
+        .summary-chip {
+            border-radius: 0.85rem;
+            border: 1px solid var(--border);
+            padding: 0.75rem 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .summary-chip[data-rating="nice"] {
+            border-color: rgba(74, 222, 128, 0.5);
+        }
+
+        .summary-chip[data-rating="off"] {
+            border-color: rgba(251, 191, 36, 0.45);
+        }
+
+        .summary-chip[data-rating="miss"] {
+            border-color: rgba(248, 113, 113, 0.45);
+        }
+
+        .summary-chip .chip-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+        }
+
+        .summary-chip .chip-value {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: rgba(248, 250, 252, 0.9);
+        }
+
         .session-info {
             display: flex;
             flex-wrap: wrap;
@@ -297,26 +479,26 @@
         <p class="subtitle">리듬에 맞춰 김치 양념을 모으고 배추에 골고루 펴 발라보세요.</p>
     </header>
     <main>
-        <section class="hud" aria-label="상태 정보">
+        <section class="hud" aria-label="HUD metrics">
             <div class="card" id="timer-card">
-                <h2>남은 라운드 시간</h2>
+                <h2>Time Left</h2>
                 <p id="timer">00:45</p>
             </div>
             <div class="card" id="score-card">
-                <h2>총 점수</h2>
+                <h2>Total Score</h2>
                 <p id="score">0</p>
             </div>
             <div class="card" id="players-card">
-                <h2>연결된 플레이어</h2>
+                <h2>Connected Sensors</h2>
                 <p id="player-count">0</p>
             </div>
             <div class="card" id="stage-card">
-                <h2>현재 단계</h2>
-                <p id="stage">라운드 대기 중</p>
+                <h2>Current Stage</h2>
+                <p id="stage">Waiting</p>
             </div>
         </section>
 
-        <section class="stage-board" aria-label="게임 보드">
+        <section class="stage-board" aria-label="Game panels">
             <div class="placeholder" id="metronome-placeholder">
                 <div id="metronome-indicator">
                     Ready
@@ -324,25 +506,60 @@
                 </div>
             </div>
             <div class="placeholder" id="playfield-placeholder">
-                추후 가상 플레이필드(양념 모으기 &amp; 배추 바르기) 비주얼이 배치됩니다.
+                <div class="stage-head">
+                    <div>
+                        <h3 id="stage-title">Awaiting Stage</h3>
+                        <p id="stage-instruction">Start the round to begin gathering seasoning.</p>
+                    </div>
+                    <span id="stage-cycle">0 / 2</span>
+                </div>
+                <div class="stage-progress" role="list">
+                    <div class="stage-step active" data-stage="gather" role="listitem">
+                        <span class="step-index">1</span>
+                        <span class="step-label">Gather</span>
+                    </div>
+                    <div class="stage-step" data-stage="spread" role="listitem">
+                        <span class="step-index">2</span>
+                        <span class="step-label">Spread</span>
+                    </div>
+                </div>
+                <div class="player-strip">
+                    <h4>Active Sensors</h4>
+                    <ul id="player-list" class="player-list" aria-live="polite">
+                        <li class="empty">No devices connected yet.</li>
+                    </ul>
+                </div>
             </div>
             <div class="placeholder" id="feedback-placeholder">
-                <div class="log-head">
-                    <h3>센서 로그</h3>
-                    <p id="log-status">라운드 대기 중</p>
+                <div class="feedback-top">
+                    <div class="summary-grid">
+                        <div class="summary-chip" data-rating="nice">
+                            <span class="chip-label">Nice</span>
+                            <span class="chip-value" id="summary-nice">0</span>
+                        </div>
+                        <div class="summary-chip" data-rating="off">
+                            <span class="chip-label">Off</span>
+                            <span class="chip-value" id="summary-off">0</span>
+                        </div>
+                        <div class="summary-chip" data-rating="miss">
+                            <span class="chip-label">Miss</span>
+                            <span class="chip-value" id="summary-miss">0</span>
+                        </div>
+                    </div>
+                    <p id="log-status">Waiting for round start</p>
                 </div>
                 <ol id="shake-log" class="log-list" aria-live="polite"></ol>
             </div>
         </section>
 
-        <section class="card" aria-label="세션 제어">
-            <h2>세션 제어</h2>
-            <p>SessionSDK를 통해 게임 세션을 생성하고 QR 코드로 센서를 연결합니다.</p>
+        <section class="card" aria-label="Session controls">
+            <h2>Session Controls</h2>
+            <p>SessionSDK handles session creation and displays a QR code for mobile controllers.</p>
             <div class="session-info" aria-live="polite">
-                <div class="session-code">세션 코드: <span id="session-code">----</span></div>
-                <div id="qr-container">QR 코드가 준비되면 여기에 표시됩니다.</div>
+                <div class="session-code">Session Code: <span id="session-code">----</span></div>
+                <div id="qr-container">The QR code will appear here once a session is created.</div>
             </div>
-            <button id="start-button" disabled>SDK 준비 중...</button>
+            <button id="start-button" disabled>Preparing SDK...</button>
         </section>
     </main>
     <footer>
@@ -360,8 +577,8 @@
                 logLimit: 12,
                 stageOrder: ['gather', 'spread'],
                 stageLabels: {
-                    gather: '양념 모으기',
-                    spread: '배추 바르기'
+                    gather: 'Gather seasoning',
+                    spread: 'Spread on cabbage'
                 },
                 judgement: {
                     niceWindowMs: 70,
@@ -396,6 +613,14 @@
             const metronomeIndicator = document.getElementById('metronome-indicator');
             const logList = document.getElementById('shake-log');
             const logStatus = document.getElementById('log-status');
+            const stageTitleEl = document.getElementById('stage-title');
+            const stageInstructionEl = document.getElementById('stage-instruction');
+            const stageCycleEl = document.getElementById('stage-cycle');
+            const stageSteps = Array.from(document.querySelectorAll('.stage-step'));
+            const playerListEl = document.getElementById('player-list');
+            const summaryNiceEl = document.getElementById('summary-nice');
+            const summaryOffEl = document.getElementById('summary-off');
+            const summaryMissEl = document.getElementById('summary-miss');
 
             const state = {
                 sdk: null,
@@ -414,7 +639,8 @@
                 currentStage: null,
                 currentBeatStart: 0,
                 currentBeatResolved: true,
-                beatIntervalMs
+                beatIntervalMs,
+                stageIndex: 0
             };
 
             function showStatus(message, type = 'info') {
@@ -429,7 +655,7 @@
             function renderQRCode(url) {
                 const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
                 const img = document.createElement('img');
-                img.alt = '센서 연결용 QR 코드';
+                img.alt = 'QR code for sensor connection';
                 img.src = qrApiUrl;
                 img.width = 220;
                 img.height = 220;
@@ -440,8 +666,8 @@
 
             function ensureSDK() {
                 if (typeof window.SessionSDK !== 'function') {
-                    startButton.textContent = 'SDK 로드 실패';
-                    showStatus('SessionSDK를 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.', 'error');
+                    startButton.textContent = 'SDK load failed';
+                    showStatus('Failed to load SessionSDK. Refresh and try again.', 'error');
                     return false;
                 }
                 return true;
@@ -449,6 +675,33 @@
 
             function updatePlayerCount() {
                 playerCountEl.textContent = state.players.size.toString();
+                renderPlayerList();
+            }
+
+
+            function renderPlayerList() {
+                if (!playerListEl) {
+                    return;
+                }
+                playerListEl.innerHTML = '';
+                if (state.players.size === 0) {
+                    const empty = document.createElement('li');
+                    empty.className = 'empty';
+                    empty.textContent = 'No devices connected yet.';
+                    playerListEl.append(empty);
+                    return;
+                }
+                for (const sensorId of state.players) {
+                    const item = document.createElement('li');
+                    const idSpan = document.createElement('span');
+                    idSpan.className = 'player-id';
+                    idSpan.textContent = sensorId;
+                    const status = document.createElement('span');
+                    status.className = 'player-status';
+                    status.textContent = state.roundActive ? 'Playing' : 'Ready';
+                    item.append(idSpan, status);
+                    playerListEl.append(item);
+                }
             }
 
             function formatTime(ms) {
@@ -520,29 +773,48 @@
 
             function updateStageDisplay(stageKey) {
                 const key = stageKey ?? state.currentStage;
+                const totalStages = CONFIG.stageOrder.length;
+
                 if (!key) {
-                    stageEl.textContent = '라운드 대기 중';
+                    stageEl.textContent = 'Waiting for round';
+                    stageTitleEl.textContent = 'Awaiting Stage';
+                    stageInstructionEl.textContent = 'Start the round to begin gathering seasoning.';
+                    stageCycleEl.textContent = `0 / ${totalStages}`;
+                    stageSteps.forEach((step) => step.classList.remove('active'));
                     return;
                 }
-                stageEl.textContent = CONFIG.stageLabels[key] || key;
+
+                const stageLabel = CONFIG.stageLabels[key] || key;
+                stageEl.textContent = stageLabel;
+                stageTitleEl.textContent = stageLabel;
+                stageInstructionEl.textContent = CONFIG.stageInstructions?.[key] || '';
+                const index = typeof state.stageIndex === 'number' ? state.stageIndex : CONFIG.stageOrder.indexOf(key);
+                stageCycleEl.textContent = `${index + 1} / ${totalStages}`;
+                stageSteps.forEach((step) => {
+                    step.classList.toggle('active', step.dataset.stage === key);
+                });
             }
 
             function updateJudgementSummary(customText) {
+                if (summaryNiceEl) summaryNiceEl.textContent = state.judgements.nice.toString();
+                if (summaryOffEl) summaryOffEl.textContent = state.judgements.off.toString();
+                if (summaryMissEl) summaryMissEl.textContent = state.judgements.miss.toString();
+
                 if (typeof customText === 'string') {
                     logStatus.textContent = customText;
-                    return;
+                } else {
+                    logStatus.textContent = `Nice ${state.judgements.nice} • Off ${state.judgements.off} • Miss ${state.judgements.miss}`;
                 }
-                logStatus.textContent = `Nice ${state.judgements.nice} · Off ${state.judgements.off} · Miss ${state.judgements.miss}`;
             }
 
             function resetJudgementState(summaryMessage) {
                 state.totalScore = 0;
                 state.judgements = { nice: 0, off: 0, miss: 0 };
                 scoreEl.textContent = '0';
-                updateJudgementSummary(summaryMessage ?? '라운드 대기 중');
+                updateJudgementSummary(summaryMessage ?? 'Waiting for round');
             }
 
-            function resetShakeTracking(summaryMessage = '라운드 대기 중') {
+            function resetShakeTracking(summaryMessage = 'Waiting for round') {
                 resetJudgementState(summaryMessage);
                 logList.innerHTML = '';
                 state.sensorStates.forEach((sensor) => {
@@ -577,7 +849,7 @@
                 const label = document.createElement('strong');
                 label.textContent = `[${RATING_LABELS[rating] ?? rating.toUpperCase()}] ${sensorId ?? '—'}`;
                 const timestamp = document.createElement('span');
-                timestamp.textContent = `${timeFromStart.toFixed(2)}초`;
+                timestamp.textContent = `${timeFromStart.toFixed(2)} s`;
                 header.append(label, timestamp);
 
                 const meta = document.createElement('div');
@@ -595,7 +867,7 @@
                 if (note) {
                     parts.push(note);
                 }
-                meta.textContent = parts.join(' · ');
+                meta.textContent = parts.join(' • ');
 
                 item.append(header, meta);
                 logList.prepend(item);
@@ -648,7 +920,7 @@
                 registerJudgement({
                     rating: 'miss',
                     stageKey: state.currentStage,
-                    note: '입력 없음',
+                    note: 'No input',
                     timeFromStart
                 });
             }
@@ -661,8 +933,10 @@
                     finalizeBeat();
                 }
 
-                const stageKey = CONFIG.stageOrder[state.beatIndex % CONFIG.stageOrder.length];
+                const stageIndex = state.beatIndex % CONFIG.stageOrder.length;
+                const stageKey = CONFIG.stageOrder[stageIndex];
                 state.currentStage = stageKey;
+                state.stageIndex = stageIndex;
                 state.currentBeatStart = performance.now();
                 state.currentBeatResolved = false;
                 updateStageDisplay(stageKey);
@@ -686,11 +960,12 @@
                 timerEl.textContent = formatTime(remaining);
 
                 if (remaining <= 0) {
-                    endRound('라운드 종료');
+                    endRound('Round finished');
                     return;
                 }
 
                 state.timerFrame = requestAnimationFrame(updateTimerLoop);
+                renderPlayerList();
             }
 
             function handleSensorData(event) {
@@ -757,7 +1032,7 @@
                 } else if (deltaMs <= CONFIG.judgement.offWindowMs) {
                     rating = 'off';
                 } else {
-                    note = '타이밍 벗어남';
+                    note = 'Timing drift';
                 }
 
                 registerJudgement({
@@ -775,25 +1050,25 @@
                     return;
                 }
                 if (state.players.size === 0) {
-                    showStatus('센서를 먼저 연결해주세요.', 'info');
+                    showStatus('Connect sensors first.', 'info');
                     return;
                 }
 
-                resetShakeTracking('라운드 진행 중');
+                resetShakeTracking('Round in progress');
                 state.roundActive = true;
                 state.roundStartTime = performance.now();
                 state.beatIndex = 0;
                 state.currentStage = null;
                 state.currentBeatResolved = true;
                 startButton.disabled = true;
-                startButton.textContent = '라운드 진행 중...';
+                startButton.textContent = 'Round in progress...';
                 timerEl.textContent = formatTime(CONFIG.roundDurationMs);
 
                 startMetronome();
                 state.timerFrame = requestAnimationFrame(updateTimerLoop);
             }
 
-            function endRound(reason = '라운드 종료') {
+            function endRound(reason = 'Round finished') {
                 if (!state.roundActive) {
                     return;
                 }
@@ -804,8 +1079,9 @@
                 timerEl.textContent = '00:00';
                 stageEl.textContent = reason;
                 startButton.disabled = false;
-                startButton.textContent = '라운드 다시 시작';
+                startButton.textContent = 'Restart round';
                 updateJudgementSummary();
+                renderPlayerList();
             }
 
             function resetRoundState() {
@@ -813,10 +1089,13 @@
                 stopTimerLoop();
                 stopMetronome();
                 timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+                state.currentStage = null;
+                state.stageIndex = 0;
                 updateStageDisplay();
                 startButton.disabled = false;
-                startButton.textContent = '라운드 시작';
-                resetShakeTracking('라운드 대기 중');
+                startButton.textContent = 'Start round';
+                resetShakeTracking('Waiting for round');
+                renderPlayerList();
             }
 
             function registerSDKEvents() {
@@ -826,9 +1105,9 @@
                     const detail = event?.detail || event;
                     console.debug('[SessionSDK] connected', detail);
                     startButton.disabled = false;
-                    startButton.textContent = state.session ? '라운드 시작' : '세션 생성';
-                    stageEl.textContent = state.session ? '라운드 대기 중' : '세션 연결 대기';
-                    showStatus('세션을 생성하면 QR 코드가 표시됩니다.', 'info');
+                    startButton.textContent = state.session ? 'Start round' : 'Create session';
+                    stageEl.textContent = state.session ? 'Waiting for round' : 'Awaiting session';
+                    showStatus('Create a session to display the QR code.', 'info');
                 });
 
                 sdk.on('session-created', (event) => {
@@ -836,9 +1115,9 @@
                     console.debug('[SessionSDK] session-created', detail);
                     state.session = detail;
                     sessionCodeEl.textContent = detail.sessionCode || '----';
-                    stageEl.textContent = '라운드 대기 중';
+                    stageEl.textContent = 'Waiting for round';
                     startButton.disabled = false;
-                    startButton.textContent = '라운드 시작';
+                    startButton.textContent = 'Start round';
 
                     const url = `${window.location.origin}/sensor.html?session=${detail.sessionCode}`;
                     renderQRCode(url);
@@ -849,8 +1128,8 @@
                     const detail = event?.detail || event;
                     console.warn('[SessionSDK] session-error', detail);
                     resetRoundState();
-                    startButton.textContent = '세션 생성';
-                    showStatus('세션 생성 중 오류가 발생했습니다. 다시 시도해주세요.', 'error');
+                    startButton.textContent = 'Create session';
+                    showStatus('Session creation failed. Please try again.', 'error');
                 });
 
                 sdk.on('sensor-connected', (event) => {
@@ -862,7 +1141,7 @@
                         updatePlayerCount();
                     }
                     if (!state.roundActive) {
-                        stageEl.textContent = '라운드 대기 중';
+                        stageEl.textContent = 'Waiting for round';
                     }
                 });
 
@@ -876,7 +1155,7 @@
                             updatePlayerCount();
                         }
                         if (state.players.size === 0) {
-                            endRound('센서 연결 해제');
+                            endRound('Sensors disconnected');
                         }
                     });
 
@@ -892,15 +1171,15 @@
 
                     if (!state.session) {
                         startButton.disabled = true;
-                        startButton.textContent = '세션 생성 중...';
-                        showStatus('세션을 생성하는 중입니다...', 'info');
+                        startButton.textContent = 'Creating session...';
+                        showStatus('Creating session...', 'info');
                         try {
                             await state.sdk.createSession({ gameType: 'solo' });
                         } catch (error) {
                             console.error('Failed to create session', error);
                             startButton.disabled = false;
-                            startButton.textContent = '세션 생성';
-                            showStatus('세션 생성 실패. 콘솔 로그를 확인해주세요.', 'error');
+                            startButton.textContent = 'Create session';
+                            showStatus('Failed to create session. See console for details.', 'error');
                         }
                         return;
                     }
@@ -917,9 +1196,14 @@
                 }
 
                 state.sdk = new window.SessionSDK({ debug: true });
-                showStatus('SDK 연결을 기다리는 중입니다...', 'info');
+                showStatus('Waiting for SDK connection...', 'info');
                 timerEl.textContent = formatTime(CONFIG.roundDurationMs);
-                startButton.textContent = '세션 생성';
+                startButton.textContent = 'Create session';
+                renderPlayerList();
+                state.currentStage = null;
+                state.stageIndex = 0;
+                updateStageDisplay();
+                updateJudgementSummary('Waiting for round');
 
                 registerSDKEvents();
                 attachHandlers();

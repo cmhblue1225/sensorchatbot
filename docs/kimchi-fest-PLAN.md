@@ -182,3 +182,11 @@ Handoff Summary (3-line 요약 템플릿)
   - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
 - Stop check: 라운드 중 흔들림 타이밍에 따라 Nice/Off/Miss가 구분되고 점수·요약 지표가 즉시 반영됨을 확인.
 - RESUME_FROM: 8 (HUD + 피드백 UI)
+
+## 2025-10-21T09:43:41+09:00
+- 완료 단계: 8 (HUD + 피드백 UI)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (스테이지 패널, 판정 요약 칩, 센서 리스트, 영어 UI 정리)
+  - public/games/kimchi-fest/CHANGELOG.md (Unreleased 항목에 HUD 개선 추가)
+- Stop check: HUD가 단계/센서/판정 통계가 실시간 갱신되고, 로그·칩·단계 하이라이트가 정상 반응함을 확인.
+- RESUME_FROM: 9 (솔로 플레이 테스트/튜닝)
