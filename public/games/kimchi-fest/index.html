@@ -1074,6 +1074,87 @@ function syncDebugDisplays() {
                 applyDebugTuning();
             }
 
+            function ensureAudioContext() {
+                if (state.audioContext) {
+                    return state.audioContext;
+                }
+                const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                if (typeof AudioContextCtor !== 'function') {
+                    console.warn('Web Audio API�� �������̽��� �������ϴ�.');
+                    return null;
+                }
+                try {
+                    const context = new AudioContextCtor();
+                    state.audioContext = context;
+                    state.metronomeGain = context.createGain();
+                    state.metronomeGain.gain.value = 0;
+                    state.metronomeGain.connect(context.destination);
+                    return context;
+                } catch (error) {
+                    console.error('AudioContext ������ �����߾��', error);
+                    state.audioContext = null;
+                    state.metronomeGain = null;
+                    return null;
+                }
+            }
+
+            function playClick() {
+                if (CONFIG.metronomeVolume <= 0) {
+                    return;
+                }
+                const context = ensureAudioContext();
+                if (!context) {
+                    return;
+                }
+                if (context.state === 'suspended') {
+                    context.resume().catch((error) => {
+                        console.debug('AudioContext resume ����', error);
+                    });
+                }
+                const gainNode = state.metronomeGain ?? context.createGain();
+                if (!state.metronomeGain) {
+                    gainNode.gain.value = 0;
+                    gainNode.connect(context.destination);
+                    state.metronomeGain = gainNode;
+                }
+                const oscillator = context.createOscillator();
+                oscillator.type = 'square';
+                oscillator.frequency.value = CONFIG.metronomeFrequency;
+                oscillator.connect(gainNode);
+
+                const now = context.currentTime;
+                gainNode.gain.cancelScheduledValues(now);
+                gainNode.gain.setValueAtTime(0.0001, now);
+                gainNode.gain.linearRampToValueAtTime(CONFIG.metronomeVolume, now + 0.005);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+                oscillator.start(now);
+                oscillator.stop(now + 0.2);
+                oscillator.addEventListener('ended', () => {
+                    try {
+                        oscillator.disconnect();
+                    } catch (error) {
+                        console.debug('Oscillator disconnect ����', error);
+                    }
+                });
+            }
+
+            function flashMetronome(beatIndex) {
+                if (!metronomePlaceholder || !metronomeIndicator) {
+                    return;
+                }
+                metronomePlaceholder.classList.remove('beat-active');
+                // reflow�� �����մϴ�.
+                void metronomePlaceholder.offsetWidth;
+                metronomePlaceholder.classList.add('beat-active');
+
+                const beatNumber = (beatIndex % CONFIG.stageOrder.length) + 1;
+                const infoSpan = metronomeIndicator.querySelector('span');
+                if (infoSpan) {
+                    infoSpan.textContent = `${CONFIG.bpm} BPM · ${beatNumber}�� ��`;
+                }
+            }
+
 function ensureSensorState(sensorId) {
                 if (!sensorId) {
                     return null;

@@ -21,6 +21,7 @@ Notes
 
 ### Changed
 - Session creation defaults to dual mode so multiple sensors can join a single session (public/games/kimchi-fest/index.html).
+- Restored metronome audio/flash helpers so beats trigger sound and UI pulses again (public/games/kimchi-fest/index.html).
 
 ### Fixed
 - N/A
