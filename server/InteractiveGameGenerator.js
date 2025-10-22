@@ -1741,10 +1741,13 @@ ${context}
             // ⚠️ 중요: beta.messages.stream()은 지원하지 않음!
             // beta.messages.create()만 지원 (스트리밍 없이 한 번에 응답)
             // 참고: https://docs.anthropic.com/en/docs/build-with-claude/context-windows#1m-token-context-window
+            //
+            // 🔥 중요: Extended Thinking 사용 시 temperature는 반드시 1이어야 함!
+            // 참고: https://docs.claude.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
             const message = await this.anthropicClient.beta.messages.create({
                 model: this.config.claudeModel,
                 max_tokens: this.config.maxTokens,  // 64,000 토큰
-                temperature: this.config.temperature,  // 0.3
+                temperature: 1,  // Extended Thinking 사용 시 필수값
                 betas: ['context-1m-2025-08-07'],  // 🎯 1M 토큰 베타 헤더
                 thinking: {  // 🧠 Extended Thinking 활성화
                     type: 'enabled',
