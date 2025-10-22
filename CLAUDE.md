@@ -5,13 +5,90 @@
 > 이 문서는 AI 개발자와 시스템 아키텍트를 위한 전문 가이드입니다.
 
 **작성일**: 2025년 10월 10일
-**최종 업데이트**: 2025년 10월 11일
-**버전**: v6.0.0
+**최종 업데이트**: 2025년 10월 17일
+**버전**: v6.1.0
 **대상**: AI 개발자, 시스템 관리자, 고급 기여자
 
 ---
 
-## 🚀 최신 업데이트 (2025-10-11)
+## 🚀 최신 업데이트 (2025-10-17)
+
+### ✅ 완료된 주요 작업
+
+#### 🔐 권한 관리 시스템 완전 구현 (100% 완료) - NEW!
+
+**목표**: admin@admin.com 계정에 모든 게임 접근 권한, 일반 사용자는 본인 게임만 접근
+
+**1. 데이터베이스 마이그레이션**
+- `generated_games` 테이블에 `creator_id` 컬럼 추가 (UUID, auth.users 참조)
+- 기존 게임 모두 `test@test.com` 계정으로 설정
+- 성능 향상을 위한 인덱스 추가
+- 파일: `supabase/migrations/add_creator_id_to_generated_games.sql`
+
+**2. Row Level Security (RLS) 정책 구현**
+```sql
+-- 모든 사용자 읽기 가능
+CREATE POLICY "Anyone can read games" ON generated_games FOR SELECT USING (true);
+
+-- 본인만 게임 생성 가능
+CREATE POLICY "Authenticated users can insert games"
+ON generated_games FOR INSERT TO authenticated
+WITH CHECK (auth.uid() = creator_id);
+
+-- 본인 또는 admin만 수정 가능
+CREATE POLICY "Creator or admin can update games"
+ON generated_games FOR UPDATE TO authenticated
+USING (auth.uid() = creator_id OR auth.email() = 'admin@admin.com');
+
+-- 본인 또는 admin만 삭제 가능
+CREATE POLICY "Creator or admin can delete games"
+ON generated_games FOR DELETE TO authenticated
+USING (auth.uid() = creator_id OR auth.email() = 'admin@admin.com');
+```
+
+**3. 미들웨어 시스템 확장**
+- `checkGameOwnership` 미들웨어 추가 (server/middleware/authMiddleware.js)
+- admin@admin.com 자동 권한 우회 로직
+- 일반 사용자는 creator_id 검증
+- 파일: `server/middleware/authMiddleware.js` (Line 167-217)
+
+**4. API 엔드포인트 보호**
+- `/api/upload-generated-game`: creator_id 자동 저장
+- `/api/maintenance/report-bug`: 권한 검증 추가
+- `/api/maintenance/add-feature`: 권한 검증 추가
+- `/api/games`: creator_id 정보 응답에 포함
+- 파일: `server/index.js`
+
+**5. UI 권한 표시 시스템**
+- 게임 카드에 권한 배지 표시:
+  - 👑 관리자 (admin@admin.com)
+  - ✓ 내 게임 (본인이 생성한 게임)
+  - 🔒 읽기 전용 (타인이 생성한 게임)
+- 권한에 따라 버튼 활성화/비활성화
+- 파일: `server/routes/developerRoutes.js` (Line 1900-2100)
+
+**6. 토큰 저장 키 통일 (중요 버그 수정)**
+- **문제**: `localStorage.setItem('authToken')` vs `localStorage.getItem('auth_token')` 불일치
+- **증상**: 로그인 후에도 "토큰이 없습니다" 경고 표시
+- **해결**: 모든 곳에서 `'authToken'` (camelCase)으로 통일
+- 수정 파일:
+  - `server/utils/htmlGenerator.js`: `authToken` 저장 (변경 없음)
+  - `server/routes/developerRoutes.js`: `auth_token` → `authToken` (3곳)
+
+**7. 인증 응답 형식 표준화**
+- `/api/auth/user` 엔드포인트에 `success: true` 필드 추가
+- 클라이언트 코드에서 `userData.success` 체크 가능
+- 파일: `server/routes/authRoutes.js` (Line 293)
+
+**테스트 시나리오**:
+1. ✅ admin@admin.com 로그인 → 모든 게임에 "👑 관리자" 표시
+2. ✅ test@test.com 로그인 → 자신의 게임에 "✓ 내 게임" 표시
+3. ✅ 새 계정 생성 → 자신이 만든 게임만 수정/삭제 가능
+4. ✅ 권한 없는 게임 수정 시도 → 403 Forbidden 응답
+
+---
+
+## 🚀 이전 업데이트 (2025-10-11)
 
 ### ✅ 완료된 주요 작업
 
@@ -1344,7 +1421,35 @@ open http://localhost:3000/games/my-new-game
 
 ## 🎯 다음 작업 시 참고사항
 
-### 수정된 핵심 파일 (2025-10-11)
+### 🔐 수정된 핵심 파일 (2025-10-17) - 권한 관리 시스템
+
+1. **supabase/migrations/add_creator_id_to_generated_games.sql** (NEW)
+   - `generated_games` 테이블에 `creator_id UUID` 컬럼 추가
+   - 기존 게임 모두 test@test.com으로 설정
+   - RLS 정책 4개 생성 (SELECT, INSERT, UPDATE, DELETE)
+   - 인덱스 추가: `idx_generated_games_creator_id`
+
+2. **server/middleware/authMiddleware.js**
+   - `checkGameOwnership` 미들웨어 추가 (Line 167-217)
+   - `isAdmin` 헬퍼 함수 추가 (Line 222-224)
+   - module.exports에 2개 함수 추가
+
+3. **server/index.js**
+   - Line 32: `checkGameOwnership` import 추가
+   - Line 218: `/api/upload-generated-game`에 creator_id 저장
+   - Line 166-182: `/api/games`에서 creator_id 조회 및 응답 포함
+   - Line 1250, 1297: 유지보수 API에 권한 검증 추가
+
+4. **server/routes/developerRoutes.js**
+   - Line 1904, 2047, 2089: `localStorage.getItem('auth_token')` → `'authToken'` 수정 (3곳)
+   - Line 1908-1929: 사용자 정보 조회 및 admin 확인 로직
+   - Line 1947-2000: 권한 배지 시스템 (👑/✓/🔒)
+
+5. **server/routes/authRoutes.js**
+   - Line 293: `success: true` 필드 추가
+   - 클라이언트 응답 형식 표준화
+
+### 📊 수정된 핵심 파일 (2025-10-11) - 유지보수 시스템
 
 1. **server/index.js** (Line 132-171)
    - `/api/games` 엔드포인트가 비동기 함수로 변경됨
@@ -1367,9 +1472,12 @@ open http://localhost:3000/games/my-new-game
 ### 현재 작동 중인 API 엔드포인트
 
 ```
-✅ GET /api/games - 게임 목록 + 버전 정보
-✅ POST /api/maintenance/report-bug - 버그 수정
-✅ POST /api/maintenance/add-feature - 기능 추가
+✅ GET /api/games - 게임 목록 + 버전 정보 + creator_id (2025-10-17 업데이트)
+✅ POST /api/auth/login - 로그인 (session.access_token 반환)
+✅ GET /api/auth/user - 사용자 정보 (success: true 포함, 2025-10-17 추가)
+✅ POST /api/upload-generated-game - 게임 업로드 (creator_id 자동 저장, 2025-10-17)
+✅ POST /api/maintenance/report-bug - 버그 수정 (권한 검증, 2025-10-17)
+✅ POST /api/maintenance/add-feature - 기능 추가 (권한 검증, 2025-10-17)
 ✅ GET /api/maintenance/history/:gameId - 수정 이력
 ✅ GET /api/maintenance/session/:gameId - 세션 정보
 ✅ GET /api/maintenance/version/:gameId - 버전 정보
@@ -1377,7 +1485,24 @@ open http://localhost:3000/games/my-new-game
 
 ### Supabase 데이터베이스 (rwkgktwdljsddowcxphc)
 
-**game_versions 테이블 구조:**
+**generated_games 테이블 구조 (2025-10-17 업데이트):**
+```sql
+-- 기존 컬럼들
+game_id TEXT PRIMARY KEY,
+title TEXT,
+description TEXT,
+game_type TEXT,
+genre TEXT,
+storage_path TEXT,
+metadata JSONB,
+created_at TIMESTAMPTZ DEFAULT NOW(),
+updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+-- ✅ 새로 추가된 컬럼 (2025-10-17)
+creator_id UUID REFERENCES auth.users(id) ON DELETE SET NULL
+```
+
+**game_versions 테이블 구조 (2025-10-11):**
 ```sql
 CREATE TABLE game_versions (
   id BIGSERIAL PRIMARY KEY,
@@ -1392,8 +1517,16 @@ CREATE TABLE game_versions (
 );
 ```
 
-### 알려진 문제 없음 (2025-10-11 기준)
+### ✅ 알려진 문제 없음 (2025-10-17 기준)
 
+**권한 관리 시스템:**
+- ✅ DB 마이그레이션 완료 (creator_id 컬럼 추가)
+- ✅ RLS 정책 적용 완료 (admin 권한 우회)
+- ✅ 미들웨어 권한 검증 완료
+- ✅ UI 권한 배지 표시 완료
+- ✅ 토큰 키 이름 통일 (authToken)
+
+**유지보수 시스템 (2025-10-11):**
 - ✅ API 파라미터 불일치 해결됨
 - ✅ 버전 정보 DB 연동 완료
 - ✅ 게임 관리 탭 통합 완료
@@ -1419,7 +1552,7 @@ CREATE TABLE game_versions (
 
 ---
 
-**Sensor Game Hub v6.0** - AI로 게임을 만들고, 센서로 즐기세요! 🎮✨
+**Sensor Game Hub v6.1** - AI로 게임을 만들고, 센서로 즐기세요! 🎮✨
 
 ---
 
@@ -1429,6 +1562,6 @@ CREATE TABLE game_versions (
 
 [📚 README.md](README.md) | [👨‍💻 개발자 가이드](DEVELOPER_GUIDE.md) | [📖 문서 시스템](docs/)
 
-**최종 업데이트: 2025-10-11 - 게임 유지보수 시스템 완전 통합 완료 🎉**
+**최종 업데이트: 2025-10-17 - 권한 관리 시스템 완전 구현 완료 🎉**
 
 </div>
