@@ -186,7 +186,23 @@ Handoff Summary (3-line 요약 템플릿)
 ## 2025-10-21T09:43:41+09:00
 - 완료 단계: 8 (HUD + 피드백 UI)
 - 변경 파일/경로:
-  - public/games/kimchi-fest/index.html (스테이지 패널, 판정 요약 칩, 센서 리스트, 영어 UI 정리)
-  - public/games/kimchi-fest/CHANGELOG.md (Unreleased 항목에 HUD 개선 추가)
-- Stop check: HUD가 단계/센서/판정 통계가 실시간 갱신되고, 로그·칩·단계 하이라이트가 정상 반응함을 확인.
+  - public/games/kimchi-fest/index.html (스테이지 패널, 판정 요약 칩, 센서 리스트, UI 한글화)
+  - public/games/kimchi-fest/CHANGELOG.md (Unreleased 항목에 HUD/한글화 내역 추가)
+- Stop check: HUD가 단계·센서·판정 통계를 실시간으로 갱신하고, 로그/칩/단계 하이라이트가 정상 동작함을 확인.
 - RESUME_FROM: 9 (솔로 플레이 테스트/튜닝)
+
+## 2025-10-21T10:15:00+09:00
+- 완료 단계: 9 (솔로 플레이 테스트/튜닝)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (임계값/판정 창 조정, 디버그 패널 및 시뮬레이터 추가)
+  - public/games/kimchi-fest/CHANGELOG.md (Unreleased 항목에 디버그 패널/튜닝 내역 추가)
+- Stop check: debug=1 모드에서 슬라이더/버튼으로 판정 값을 조정하고 N/O/M 키 또는 버튼으로 Nice/Off/Miss를 재현할 수 있으며, HUD 통계가 즉시 갱신되는지 확인.
+- RESUME_FROM: 10 (듀얼/멀티 확장 – 선택)
+
+## 2025-10-21T11:05:00+09:00
+- 완료 단계: 10 (듀얼 경쟁 모드 확장)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (듀얼 점수판, 플레이어별 세부 통계, 승자 안내, 디버그 튜닝 슬라이더)
+  - public/games/kimchi-fest/CHANGELOG.md (경쟁 듀얼 모드 내역 추가)
+- Stop check: 센서를 두 대 연결해 라운드 진행 시 플레이어별 점수/판정/승자 메시지가 표시되고, ?debug=1 패널에서 슬라이더·판정 버튼이 정상 동작함을 확인.
+- RESUME_FROM: 11 (SFX + 폴리시 – 선택)

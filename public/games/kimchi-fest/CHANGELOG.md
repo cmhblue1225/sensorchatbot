@@ -15,6 +15,9 @@ Notes
 - Accelerometer-based shake detection with baseline smoothing, throttling, and on-screen log (public/games/kimchi-fest/index.html).
 - Beat-synced judgement (Nice/Off/Miss) with scoring and stage rotation (public/games/kimchi-fest/index.html).
 - Enhanced HUD: stage tracker, judgement summary chips, and live sensor list (public/games/kimchi-fest/index.html).
+- Localised HUD/controls copy to Korean for player-facing UI (public/games/kimchi-fest/index.html).
+- Debug 튜닝 패널 추가(?debug=1): 임계값/판정 슬라이더와 판정 시뮬레이션 버튼 제공 (public/games/kimchi-fest/index.html).
+- 듀얼 경쟁 모드: 플레이어별 점수판(정확+5/살짝+2/실패−1), 승자 안내, 실시간 통계 반영 (public/games/kimchi-fest/index.html).
 
 ### Changed
 - N/A
