@@ -548,6 +548,89 @@
             color: var(--muted);
         }
 
+            .player-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .player-score {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--accent-strong);
+            letter-spacing: 0.01em;
+        }
+
+        .player-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .player-judgement {
+            font-weight: 600;
+        }
+
+        .player-judgement--nice {
+            color: var(--nice);
+        }
+
+        .player-judgement--off {
+            color: var(--off);
+        }
+
+        .player-judgement--miss {
+            color: var(--miss);
+        }
+
+        .player-judgement--none {
+            color: var(--muted);
+        }
+
+        .player-breakdown {
+            display: flex;
+            gap: 0.75rem;
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+
+        .player-breakdown span strong {
+            color: rgba(248, 250, 252, 0.85);
+            font-weight: 600;
+        }
+
+        .stage-result {
+            margin-top: 0.35rem;
+            font-size: 0.9rem;
+            color: rgba(248, 250, 252, 0.82);
+        }
+
+        .stage-result[data-tone="info"] {
+            color: var(--muted);
+        }
+
+        .stage-result[data-tone="success"] {
+            color: var(--nice);
+        }
+
+        .stage-result[data-tone="warning"] {
+            color: var(--off);
+        }
+
+        .stage-result[data-tone="error"] {
+            color: var(--miss);
+        }
+
+        .score-total {
+            display: block;
+            margin-top: 0.35rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -561,9 +644,7 @@
                 <h2>남은 시간</h2>
                 <p id="timer">00:45</p>
             </div>
-            <div class="card" id="score-card">
-                <h2>총 점수</h2>
-                <p id="score">0</p>
+            <div class="card" id="score-card">`r`n                <h2>���� ����</h2>`r`n                <p id="score">--</p>
             </div>
             <div class="card" id="players-card">
                 <h2>연결된 센서</h2>
@@ -587,6 +668,7 @@
                     <div>
                         <h3 id="stage-title">단계 대기 중</h3>
                         <p id="stage-instruction">라운드를 시작하면 양념 모으기가 시작됩니다.</p>
+                                            <p id="stage-result" class="stage-result" aria-live="polite"></p>
                     </div>
                     <div class="stage-badges">
                         <span id="player-badge" class="stage-badge">솔로 모드</span>
@@ -669,7 +751,7 @@
         </section>
     </main>
     <footer>
-        <small>Kimchi Fest Prototype · Sensor Game Hub v6.0</small>
+        <small>Kimchi Fest Prototype \u00b7 Sensor Game Hub v6.0</small>
     </footer>
     <script src="/socket.io/socket.io.js" defer></script>
     <script src="/js/SessionSDK.js" defer></script>
@@ -725,6 +807,7 @@
             const logStatus = document.getElementById('log-status');
             const stageTitleEl = document.getElementById('stage-title');
             const stageInstructionEl = document.getElementById('stage-instruction');
+            const stageResultEl = document.getElementById('stage-result');
             const stageCycleEl = document.getElementById('stage-cycle');
             const stageSteps = Array.from(document.querySelectorAll('.stage-step'));
             const playerListEl = document.getElementById('player-list');
@@ -753,7 +836,9 @@
                 currentBeatStart: 0,
                 currentBeatResolved: true,
                 beatIntervalMs,
-                stageIndex: 0
+                stageIndex: 0,
+                leader: null,
+                leaderTie: false
             };
             const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
             const debugPanel = document.getElementById('debug-panel');
@@ -824,6 +909,7 @@
                 playerCountEl.textContent = state.players.size.toString();
                 renderPlayerList();
                 updatePlayerBadge();
+                updateLeaderDisplay();
             }
 
 
@@ -835,41 +921,123 @@
                 if (state.players.size === 0) {
                     const empty = document.createElement('li');
                     empty.className = 'empty';
-                    empty.textContent = '아직 연결된 기기가 없습니다.';
+                    empty.textContent = '���� ����� ��Ⱑ �����ϴ�.';
                     playerListEl.append(empty);
                     return;
                 }
-                for (const sensorId of state.players) {
+
+                const entries = Array.from(state.players).map((sensorId) => {
+                    const detail = ensurePlayerDetail(sensorId);
+                    const label = state.playerLabels.get(sensorId) || sensorId;
+                    return { sensorId, detail, label };
+                });
+
+                entries.sort((a, b) => b.detail.score - a.detail.score);
+
+                for (const { sensorId, detail, label } of entries) {
                     const item = document.createElement('li');
+                    item.dataset.sensorId = sensorId;
+
+                    const header = document.createElement('div');
+                    header.className = 'player-top';
+
                     const idSpan = document.createElement('span');
                     idSpan.className = 'player-id';
-                    idSpan.textContent = sensorId;
+                    idSpan.textContent = label;
+
+                    const scoreSpan = document.createElement('span');
+                    scoreSpan.className = 'player-score';
+                    scoreSpan.textContent = `${detail.score}\uc810`;
+
+                    header.append(idSpan, scoreSpan);
+
+                    const metaRow = document.createElement('div');
+                    metaRow.className = 'player-meta';
+
                     const status = document.createElement('span');
                     status.className = 'player-status';
-                    status.textContent = state.roundActive ? '플레이 중' : '대기 중';
-                    item.append(idSpan, status);
+                    status.textContent = state.roundActive ? '\ud50c\ub808\uc774 \uc911' : '\ub300\uae30 \uc911';
+
+                    const judgement = document.createElement('span');
+                    const lastRating = detail.lastRating;
+                    const tone = lastRating ? `player-judgement--${lastRating}` : 'player-judgement--none';
+                    judgement.className = `player-judgement ${tone}`;
+                    if (lastRating) {
+                        const labelText = RATING_LABELS[lastRating] || lastRating.toUpperCase();
+                        let deltaText = '';
+                        if (typeof detail.lastDeltaMs === 'number') {
+                            deltaText = ` (${Math.round(detail.lastDeltaMs)} ms)`;
+                        }
+                        judgement.textContent = `\ub9c8\uc9c0\ub9c9 \ud310\uc815: ${labelText}${deltaText}`;
+                    } else {
+                        judgement.textContent = '\ub9c8\uc9c0\ub9c9 \ud310\uc815: -';
+                    }
+
+                    metaRow.append(status, judgement);
+
+                    const breakdown = document.createElement('div');
+                    breakdown.className = 'player-breakdown';
+
+                    const niceStat = document.createElement('span');
+                    niceStat.innerHTML = `<strong>${RATING_LABELS.nice}</strong> ${detail.nice}`;
+
+                    const offStat = document.createElement('span');
+                    offStat.innerHTML = `<strong>${RATING_LABELS.off}</strong> ${detail.off}`;
+
+                    const missStat = document.createElement('span');
+                    missStat.innerHTML = `<strong>${RATING_LABELS.miss}</strong> ${detail.miss}`;
+
+                    breakdown.append(niceStat, offStat, missStat);
+
+                    item.append(header, metaRow, breakdown);
                     playerListEl.append(item);
                 }
             }
 
-            
-            function updateStagePanel(stageKey) {
+            function setStageResult(message = '', tone = 'info') {
+                if (!stageResultEl) {
+                    return;
+                }
+                if (!message) {
+                    stageResultEl.textContent = '';
+                    stageResultEl.dataset.tone = 'info';
+                    return;
+                }
+                stageResultEl.textContent = message;
+                stageResultEl.dataset.tone = tone;
+            }
+
+                        function updateStagePanel(stageKey) {
                 const total = CONFIG.stageOrder.length;
                 const key = stageKey ?? state.currentStage ?? null;
 
                 if (!stageTitleEl || !stageInstructionEl || !stageCycleEl) {
-                    stageEl.textContent = key ? (CONFIG.stageLabels[key] || key) : (state.session ? '라운드 대기 중' : '세션 준비 중');
+                    stageEl.textContent = key ? (CONFIG.stageLabels[key] || key) : (state.session ? '\ub77c\uc6b4\ub4dc \ub300\uae30 \uc911' : '\uc138\uc158 \ub300\uae30 \uc911');
+                    if (!key) {
+                        setStageResult('\uc13c\uc11c\ub97c \uc5f0\uacb0\ud558\uba74 \uac8c\uc784 \uc900\ube44\uac00 \uc644\ub8cc\ub429\ub2c8\ub2e4.', 'info');
+                    } else {
+                        setStageResult('', 'info');
+                    }
                     return;
                 }
 
                 if (!key) {
-                    const waitingLabel = state.session ? '라운드 대기 중' : '세션 준비 중';
+                    const waitingLabel = state.session ? '\ub77c\uc6b4\ub4dc \ub300\uae30 \uc911' : '\uc138\uc158 \ub300\uae30 \uc911';
                     stageEl.textContent = waitingLabel;
                     stageTitleEl.textContent = waitingLabel;
                     stageInstructionEl.textContent = state.session
-                        ? '라운드를 시작하면 양념 모으기가 시작됩니다.'
-                        : '세션을 생성하고 모바일 기기를 연결해주세요.';
-                    stageCycleEl.textContent = `0 / ${total} 단계`;
+                        ? '\uc2dc\uc791\uc744 \ub204\ub974\uba74 \ub77c\uc6b4\ub4dc\uac00 \uc2dc\uc791\ub429\ub2c8\ub2e4.'
+                        : '\uc138\uc158\uc744 \uc0dd\uc131\ud558\uace0 QR \ucf54\ub4dc\ub97c \uacf5\uc720\ud574\uc8fc\uc138\uc694.';
+
+                    if (state.players.size === 0) {
+                        setStageResult('\uc13c\uc11c\ub97c \uc5f0\uacb0\ud558\uba74 \uc900\ube44\ac00 \uc644\ub8cc\ub429\ub2c8\ub2e4.', 'info');
+                    } else if (!state.roundActive) {
+                        setStageResult('START \ubc84\ud2bc\uc744 \ub204\ub974\uba74 \uc2dc\uc791\ud569\ub2c8\ub2e4.', 'info');
+                    } else {
+                        setStageResult('', 'info');
+                    }
+
+                    stageCycleEl.textContent = `0 / ${total} \uc138\ud2b8`;
                     stageSteps.forEach((step) => step.classList.remove('active'));
                     return;
                 }
@@ -881,11 +1049,11 @@
                 stageEl.textContent = label;
                 stageTitleEl.textContent = label;
                 stageInstructionEl.textContent = instruction;
-                stageCycleEl.textContent = `${index + 1} / ${total} 단계`;
+                stageCycleEl.textContent = `${index + 1} / ${total} \uc138\ud2b8`;
                 stageSteps.forEach((step) => step.classList.toggle('active', step.dataset.stage === key));
+                setStageResult('', 'info');
             }
 
-            
             function updatePlayerBadge() {
                 if (!playerBadgeEl) {
                     return;
@@ -903,15 +1071,52 @@
             function updateTotalsFromPlayers() {
                 state.totalScore = 0;
                 state.judgements = { nice: 0, off: 0, miss: 0 };
-                state.playersDetailed.forEach((detail) => {
+                let leader = null;
+                let tie = false;
+
+                state.playersDetailed.forEach((detail, sensorId) => {
                     state.totalScore += detail.score;
                     state.judgements.nice += detail.nice;
                     state.judgements.off += detail.off;
                     state.judgements.miss += detail.miss;
+
+                    if (!state.players.has(sensorId)) {
+                        return;
+                    }
+
+                    if (!leader || detail.score > leader.detail.score) {
+                        leader = { sensorId, detail };
+                        tie = false;
+                    } else if (leader && detail.score === leader.detail.score && sensorId !== leader.sensorId) {
+                        tie = true;
+                    }
                 });
+
+                state.leader = leader;
+                state.leaderTie = tie;
+                updateLeaderDisplay();
             }
 
-function updateJudgementSummary(customText) {
+            function updateLeaderDisplay() {
+                if (!scoreEl) {
+                    return;
+                }
+                const total = state.totalScore;
+                if (!state.leader || state.players.size === 0) {
+                    scoreEl.innerHTML = '\ub300\uae30 \uc911<span class="score-total">\ucd1d\ud569 ' + total + '\uc810</span>';
+                    return;
+                }
+                const label = state.playerLabels.get(state.leader.sensorId) || state.leader.sensorId;
+                const leaderScore = state.leader.detail.score;
+
+                if (state.leaderTie) {
+                    scoreEl.innerHTML = '\uacf5\ub3d9 \uc120\ub450 \u00b7 ' + leaderScore + '\uc810<span class="score-total">\ucd1d\ud569 ' + total + '\uc810</span>';
+                } else {
+                    scoreEl.innerHTML = label + ' \u00b7 ' + leaderScore + '\uc810<span class="score-total">\ucd1d\ud569 ' + total + '\uc810</span>';
+                }
+            }
+
+            function updateJudgementSummary(customText) {
                 if (!logStatus) {
                     return;
                 }
@@ -932,15 +1137,16 @@ function updateJudgementSummary(customText) {
                 }
             }
 
-            function resetJudgementState(summaryMessage) {
+function resetJudgementState(summaryMessage) {
                 state.totalScore = 0;
                 state.judgements = { nice: 0, off: 0, miss: 0 };
-                scoreEl.textContent = '0';
+                state.leader = null;
+                state.leaderTie = false;
                 updateTotalsFromPlayers();
                 updateJudgementSummary(summaryMessage);
             }
 
-            function resetShakeTracking(summaryMessage = '라운드를 시작하면 판정 로그가 표시됩니다.') {
+            function resetShakeTracking(summaryMessage = '���带 �����ϸ� ���� �αװ� ǥ�õ˴ϴ�.') {
                 resetJudgementState(summaryMessage);
                 if (logList) {
                     logList.innerHTML = '';
@@ -956,15 +1162,19 @@ function updateJudgementSummary(customText) {
                     detail.miss = 0;
                     detail.lastNote = '';
                     detail.lastUpdated = 0;
+                    detail.lastRating = null;
+                    detail.lastDeltaMs = null;
                 });
+                state.leader = null;
+                state.leaderTie = false;
                 updateTotalsFromPlayers();
                 updateJudgementSummary(summaryMessage);
                 renderPlayerList();
                 updatePlayerBadge();
+                setStageResult('', 'info');
             }
 
-
-            function ensurePlayerDetail(sensorId) {
+                        function ensurePlayerDetail(sensorId) {
                 let detail = state.playersDetailed.get(sensorId);
                 if (!detail) {
                     detail = {
@@ -1151,7 +1361,7 @@ function syncDebugDisplays() {
                 const beatNumber = (beatIndex % CONFIG.stageOrder.length) + 1;
                 const infoSpan = metronomeIndicator.querySelector('span');
                 if (infoSpan) {
-                    infoSpan.textContent = `${CONFIG.bpm} BPM · ${beatNumber}�� ��`;
+                    infoSpan.textContent = `${CONFIG.bpm} BPM \u00b7 ${beatNumber}�� ��`;
                 }
             }
 
@@ -1211,6 +1421,7 @@ function ensureSensorState(sensorId) {
 
             function registerJudgement({ sensorId, rating, deltaMs, magnitude, stageKey, note, timeFromStart }) {
                 const detail = ensurePlayerDetail(sensorId || 'unknown');
+                const deltaValue = typeof deltaMs === 'number' ? deltaMs : null;
 
                 if (rating === 'nice') {
                     detail.score += CONFIG.judgement.nicePoints;
@@ -1222,9 +1433,10 @@ function ensureSensorState(sensorId) {
                 detail[rating] += 1;
                 detail.lastNote = note || '';
                 detail.lastUpdated = performance.now();
+                detail.lastRating = rating;
+                detail.lastDeltaMs = deltaValue;
 
                 updateTotalsFromPlayers();
-                scoreEl.textContent = state.totalScore.toString();
 
                 const stageLabel = CONFIG.stageLabels[stageKey] || stageKey;
                 const elapsed = typeof timeFromStart === 'number'
@@ -1234,7 +1446,7 @@ function ensureSensorState(sensorId) {
                 appendShakeLog({
                     sensorId: sensorId || '?',
                     rating,
-                    deltaMs,
+                    deltaMs: deltaValue,
                     magnitude,
                     timeFromStart: elapsed,
                     stageLabel,
@@ -1247,7 +1459,7 @@ function ensureSensorState(sensorId) {
                 state.currentBeatResolved = true;
             }
 
-            function finalizeBeat() {
+                        function finalizeBeat() {
                 if (!state.currentStage || !state.roundActive) {
                     return;
                 }
@@ -1285,23 +1497,35 @@ function ensureSensorState(sensorId) {
             }
 
             
-            function announceRoundResult() {
-                if (!stageInstructionEl || state.playersDetailed.size < 2) {
-                    return;
+            function announceRoundResult(reason = '\ub77c\uc6b4\ub4dc \uc885\ub8cc') {
+                if (stageTitleEl) {
+                    stageTitleEl.textContent = reason;
+                }
+                if (stageInstructionEl) {
+                    stageInstructionEl.textContent = '\ub2e4\uc74c \ub77c\uc6b4\ub4dc\ub294 START \ubc84\ud2bc\uc73c\ub85c \uc2dc\uc791\ud558\uc138\uc694.';
                 }
                 const activePlayers = Array.from(state.playersDetailed.entries())
                     .filter(([sensorId]) => state.players.has(sensorId));
-                if (activePlayers.length < 2) {
+                if (activePlayers.length === 0) {
+                    setStageResult('\uc5f0\uacb0\ub41c \ud50c\ub808\uc774\uc5b4\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.', 'info');
                     return;
                 }
+                if (activePlayers.length === 1) {
+                    const [sensorId, detail] = activePlayers[0];
+                    const label = state.playerLabels.get(sensorId) || sensorId;
+                    setStageResult(`${label} \u00b7 ${detail.score}\uc810`, 'info');
+                    return;
+                }
+
                 activePlayers.sort((a, b) => b[1].score - a[1].score);
                 const [first, second] = activePlayers;
                 const firstLabel = state.playerLabels.get(first[0]) || first[0];
                 const secondLabel = state.playerLabels.get(second[0]) || second[0];
+
                 if (first[1].score === second[1].score) {
-                    stageInstructionEl.textContent = '무승부! 두 플레이어가 같은 점수입니다.';
+                    setStageResult(`\ubb34\uc2b9\ubd80! ${first[1].score}\uc810 \uacf5\ub3d9 \uc120\ub450`, 'warning');
                 } else {
-                    stageInstructionEl.textContent = `${firstLabel} 승리! (${first[1].score}점 vs ${second[1].score}점)`;
+                    setStageResult(`${firstLabel} \uc2b9\ub9ac! (${first[1].score}\uc810 vs ${second[1].score}\uc810)`, 'success');
                 }
             }
 
@@ -1438,6 +1662,8 @@ function ensureSensorState(sensorId) {
                 startButton.textContent = '라운드 진행 중...';
                 timerEl.textContent = formatTime(CONFIG.roundDurationMs);
 
+                setStageResult('START \ubc84\ud2bc\uc744 \ub204\ub974\uba74 \ub77c\uc6b4\ub4dc\uac00 \uc2dc\uc791\ub429\ub2c8\ub2e4.', 'info');
+
                 startMetronome();
                 state.timerFrame = requestAnimationFrame(updateTimerLoop);
             }
@@ -1453,14 +1679,16 @@ function ensureSensorState(sensorId) {
                 timerEl.textContent = '00:00';
                 stageEl.textContent = reason;
                 startButton.disabled = false;
-                startButton.textContent = '라운드 다시 시작';
+                startButton.textContent = '���� �ٽ� ����';
                 updateJudgementSummary();
+                updateTotalsFromPlayers();
                 renderPlayerList();
                 updatePlayerBadge();
                 updateStagePanel();
+                announceRoundResult(reason);
             }
 
-            function resetRoundState() {
+                        function resetRoundState() {
                 state.roundActive = false;
                 stopTimerLoop();
                 stopMetronome();
