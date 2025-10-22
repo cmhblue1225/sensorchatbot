@@ -566,8 +566,9 @@ ${context}
 - 최적의 구조와 패턴을 선택하세요
 
 🚀 **중요: 1M 토큰 컨텍스트 + 64K 토큰 출력 가능!**
-- 컨텍스트 윈도우: 1,000,000 토큰 (충분한 예제 참조 가능)
-- 출력 토큰: 64,000 토큰 (완전한 게임 코드 생성 가능)
+- 컨텍스트 윈도우: **1,000,000 토큰** (일반 모델의 5배! 충분한 예제 참조 가능)
+- 출력 토큰: **64,000 토큰** (완전한 게임 코드 생성 가능)
+- Extended Thinking으로 코드 작성 전 충분히 사고 가능
 - **걱정하지 말고 최고 품질의 완전한 코드를 작성하세요!**
 
 💪 **Don't hold back. Give it your all.**
@@ -1727,18 +1728,20 @@ ${context}
                 });
             }
 
-            console.log('🤖 Anthropic SDK 스트리밍 호출 시작...');
+            console.log('🤖 Anthropic SDK 호출 시작...');
             console.log('🧠 Extended Thinking 활성화 (10K 토큰 사고 예산)');
             console.log('📚 1M 토큰 컨텍스트 윈도우 베타 활성화');
+            console.log('⚠️ 참고: beta API는 스트리밍 미지원 - 응답 대기 시간 30-60초');
             const aiRequestStartTime = Date.now();
 
             // 🚀 Claude 4 Best Practices:
             // 1. Extended Thinking: 코딩 품질 20-30% 향상
             // 2. 1M Token Context: 대규모 컨텍스트 처리 (200K → 1M)
             //
-            // ⚠️ 중요: 1M 토큰 베타는 beta.messages API를 사용해야 함!
+            // ⚠️ 중요: beta.messages.stream()은 지원하지 않음!
+            // beta.messages.create()만 지원 (스트리밍 없이 한 번에 응답)
             // 참고: https://docs.anthropic.com/en/docs/build-with-claude/context-windows#1m-token-context-window
-            const stream = await this.anthropicClient.beta.messages.stream({
+            const message = await this.anthropicClient.beta.messages.create({
                 model: this.config.claudeModel,
                 max_tokens: this.config.maxTokens,  // 64,000 토큰
                 temperature: this.config.temperature,  // 0.3
@@ -1753,41 +1756,31 @@ ${context}
                 }]
             });
 
-            let fullContent = '';
-            let lastProgressUpdate = Date.now();
-            const progressUpdateInterval = 2000; // 2초마다 진행률 업데이트
-
-            // 스트림에서 데이터 수집
-            for await (const chunk of stream) {
-                if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
-                    fullContent += chunk.delta.text;
-
-                    // 2초마다 진행률 업데이트 (실시간 피드백)
-                    const now = Date.now();
-                    if (now - lastProgressUpdate > progressUpdateInterval && this.io) {
-                        const percentage = Math.min(75, 50 + (fullContent.length / 500)); // 50-75% 범위
-                        this.io.emit('game-generation-progress', {
-                            sessionId,
-                            step: 3,
-                            percentage: Math.floor(percentage),
-                            message: `코드 생성 중... (${Math.floor(fullContent.length / 1000)}KB 생성됨)`
-                        });
-                        lastProgressUpdate = now;
-                    }
-                }
-            }
-
             const aiRequestEndTime = Date.now();
 
-            // 스트림 메타데이터 추출
-            const finalMessage = await stream.finalMessage();
+            // 응답 데이터 추출
+            const fullContent = message.content
+                .filter(block => block.type === 'text')
+                .map(block => block.text)
+                .join('');
+
             const response = {
                 content: fullContent,
                 response_metadata: {
-                    stop_reason: finalMessage.stop_reason,
-                    usage: finalMessage.usage
+                    stop_reason: message.stop_reason,
+                    usage: message.usage
                 }
             };
+
+            // 진행률 75%로 업데이트
+            if (this.io) {
+                this.io.emit('game-generation-progress', {
+                    sessionId,
+                    step: 3,
+                    percentage: 75,
+                    message: `Claude AI 응답 완료! (${Math.floor(fullContent.length / 1000)}KB 생성됨)`
+                });
+            }
 
             console.log(`✅ 스트리밍 완료 (${((aiRequestEndTime - aiRequestStartTime) / 1000).toFixed(1)}초 소요)`);
 
