@@ -1219,11 +1219,25 @@ function ensureSensorState(sensorId) {
                 }
             }
 
-function startMetronome() {
+            function startMetronome() {
                 advanceBeat(true);
                 state.metronomeInterval = setInterval(() => {
                     advanceBeat(false);
                 }, state.beatIntervalMs);
+            }
+
+            function stopMetronome() {
+                if (state.metronomeInterval) {
+                    clearInterval(state.metronomeInterval);
+                    state.metronomeInterval = null;
+                }
+            }
+
+            function stopTimerLoop() {
+                if (state.timerFrame) {
+                    cancelAnimationFrame(state.timerFrame);
+                    state.timerFrame = null;
+                }
             }
 
             function updateTimerLoop() {
