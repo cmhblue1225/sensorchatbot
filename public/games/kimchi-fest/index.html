@@ -705,6 +705,11 @@
                 }
             };
 
+            const SESSION_CONFIG = {
+                gameId: 'kimchi-fest',
+                gameType: 'dual'
+            };
+
             const beatIntervalMs = 60000 / CONFIG.bpm;
 
             const startButton = document.getElementById('start-button');
@@ -1480,7 +1485,7 @@ function ensureSensorState(sensorId) {
                         startButton.textContent = '세션을 생성하는 중입니다...';
                         showStatus(STATUS_TEXT.sessionCreating, 'info');
                         try {
-                            await state.sdk.createSession({ gameType: 'solo' });
+                            await state.sdk.createSession();
                         } catch (error) {
                             console.error('세션 생성에 실패했어요', error);
                             startButton.disabled = false;
@@ -1501,7 +1506,11 @@ function ensureSensorState(sensorId) {
                     return;
                 }
 
-                state.sdk = new window.SessionSDK({ debug: true });
+                state.sdk = new window.SessionSDK({
+                    debug: true,
+                    gameId: SESSION_CONFIG.gameId,
+                    gameType: SESSION_CONFIG.gameType
+                });
                 showStatus(STATUS_TEXT.waitingSDK, 'info');
                 timerEl.textContent = formatTime(CONFIG.roundDurationMs);
                 startButton.textContent = '세션 생성';

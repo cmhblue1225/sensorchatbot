@@ -20,7 +20,7 @@ Notes
 - 듀얼 경쟁 모드: 플레이어별 점수판(정확+5/살짝+2/실패−1), 승자 안내, 실시간 통계 반영 (public/games/kimchi-fest/index.html).
 
 ### Changed
-- N/A
+- Session creation defaults to dual mode so multiple sensors can join a single session (public/games/kimchi-fest/index.html).
 
 ### Fixed
 - N/A
