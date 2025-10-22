@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23f97316'/%3E%3Ctext x='8' y='11' font-size='9' text-anchor='middle' fill='white' font-family='Arial, sans-serif'%3EK%3C/text%3E%3C/svg%3E" />
     <title>Kimchi Fest | Prototype Shell</title>
     <style>
         :root {
@@ -910,6 +911,8 @@
                 renderPlayerList();
                 updatePlayerBadge();
                 updateLeaderDisplay();
+                updateLeaderDisplay();
+                updateLeaderDisplay();
             }
 
 
@@ -1133,7 +1136,7 @@
                 if (typeof customText === 'string') {
                     logStatus.textContent = customText;
                 } else {
-                    logStatus.textContent = `정확 ${state.judgements.nice} • 살짝 ${state.judgements.off} • 실패 ${state.judgements.miss}`;
+                    logStatus.textContent = `정확 ${state.judgements.nice} · 살짝 ${state.judgements.off} · 빗나감 ${state.judgements.miss}`;
                 }
             }
 
@@ -1146,7 +1149,7 @@ function resetJudgementState(summaryMessage) {
                 updateJudgementSummary(summaryMessage);
             }
 
-            function resetShakeTracking(summaryMessage = '���带 �����ϸ� ���� �αװ� ǥ�õ˴ϴ�.') {
+            function resetShakeTracking(summaryMessage = '플레이를 시작하면 판정 로그가 표시됩니다.') {
                 resetJudgementState(summaryMessage);
                 if (logList) {
                     logList.innerHTML = '';
@@ -1183,7 +1186,9 @@ function resetJudgementState(summaryMessage) {
                         off: 0,
                         miss: 0,
                         lastNote: '',
-                        lastUpdated: 0
+                        lastUpdated: 0,
+                        lastRating: null,
+                        lastDeltaMs: null
                     };
                     state.playersDetailed.set(sensorId, detail);
                     if (!state.playerLabels.has(sensorId)) {
@@ -1361,7 +1366,7 @@ function syncDebugDisplays() {
                 const beatNumber = (beatIndex % CONFIG.stageOrder.length) + 1;
                 const infoSpan = metronomeIndicator.querySelector('span');
                 if (infoSpan) {
-                    infoSpan.textContent = `${CONFIG.bpm} BPM \u00b7 ${beatNumber}�� ��`;
+                    infoSpan.textContent = `${CONFIG.bpm} BPM · ${beatNumber}번째 박`;
                 }
             }
 
@@ -1652,7 +1657,7 @@ function ensureSensorState(sensorId) {
                     return;
                 }
 
-                resetShakeTracking('라운드 진행 중');
+                resetShakeTracking('라운드 준비 중');
                 state.roundActive = true;
                 state.roundStartTime = performance.now();
                 state.beatIndex = 0;
@@ -1825,6 +1830,7 @@ function ensureSensorState(sensorId) {
                 startButton.textContent = '세션 생성';
                 renderPlayerList();
                 updatePlayerBadge();
+                updateLeaderDisplay();
                 state.currentStage = null;
                 state.stageIndex = 0;
                 updateStagePanel();
