@@ -12,19 +12,19 @@
 
 const fs = require('fs').promises;
 const path = require('path');
-const { ChatAnthropic } = require('@langchain/anthropic');
+const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
 
 class GameMaintenanceManager {
     constructor(config, gameScanner = null) {
         this.config = config;
-        this.llm = new ChatAnthropic({
-            anthropicApiKey: config.claudeApiKey,
-            model: config.claudeModel,
-            maxTokens: 64000,  // Claude Sonnet 4.5의 최대 출력 토큰 (공식 문서 확인)
-            temperature: 0.2,  // 유지보수는 정확성 최우선
-            streaming: true  // ✅ 스트리밍 활성화 (타임아웃 방지)
+
+        // ✅ Anthropic SDK 직접 사용 (1M 토큰 + Extended Thinking 지원)
+        this.anthropicClient = new Anthropic({
+            apiKey: config.claudeApiKey
         });
+
+        console.log('🔧 Anthropic SDK 초기화 완료 (1M 토큰 + Extended Thinking 지원)');
 
         // Supabase 클라이언트 초기화 (읽기용 - Anon Key)
         this.supabase = createClient(
@@ -293,8 +293,20 @@ class GameMaintenanceManager {
     async analyzeBugAndFix(currentCode, bugDescription, userContext) {
         const codeLength = currentCode.length;
         console.log(`📏 원본 코드 길이: ${codeLength} 문자`);
+        console.log('🧠 Extended Thinking으로 버그 분석 시작...');
+        console.log('📚 1M 토큰 컨텍스트 활성화');
 
         const prompt = `당신은 HTML5 Canvas 게임 버그 수정 전문가입니다.
+
+🧠 **Extended Thinking 활성화됨!**
+- 버그를 수정하기 전에 충분히 사고하고 원인을 분석하세요
+- 여러 해결 방법을 고려한 후 최선의 방법을 선택하세요
+- 잠재적인 부작용을 미리 예측하세요
+
+🚀 **중요: 1M 토큰 컨텍스트 + 64K 토큰 출력!**
+- 컨텍스트: 1,000,000 토큰 (충분한 코드 분석 가능)
+- 출력: 64,000 토큰 (완전한 수정 코드 생성)
+- **걱정하지 말고 완벽한 수정 코드를 작성하세요!**
 
 **사용자 버그 리포트:**
 "${bugDescription}"
@@ -310,6 +322,7 @@ ${currentCode}
 1. 버그의 정확한 원인을 찾아 최소한의 변경으로 수정하세요
 2. SessionSDK, QR코드, 센서 연결 로직은 절대 건드리지 마세요
 3. 전체 HTML 코드를 반환하되, 수정된 부분을 명확히 표시하세요
+4. **모든 함수를 완전히 구현하세요 (중간에 멈추지 마세요!)**
 
 **버그 패턴별 해결책:**
 - "센서 민감도가 낮아요" / "반응이 둔해요":
@@ -333,25 +346,39 @@ ${currentCode}
 \`\`\``;
 
         try {
-            console.log('🤖 LLM 스트리밍 호출 중... (타임아웃 방지)');
+            console.log('🤖 Anthropic SDK 호출 시작...');
+            console.log('⚠️ 참고: beta API는 스트리밍 미지원 - 응답 대기 시간 30-60초');
+            const aiRequestStartTime = Date.now();
 
-            // ✅ 스트리밍으로 응답 받기 (10분+ 타임아웃 방지)
-            let fullResponse = '';
-            let chunkCount = 0;
+            // 🚀 Claude 4.5 with 1M Token + Extended Thinking
+            const message = await this.anthropicClient.beta.messages.create({
+                model: 'claude-sonnet-4-5-20250929',
+                max_tokens: 64000,
+                temperature: 1,  // Extended Thinking 사용 시 필수값
+                betas: ['context-1m-2025-08-07'],  // 🎯 1M 토큰 베타 헤더
+                thinking: {  // 🧠 Extended Thinking 활성화
+                    type: 'enabled',
+                    budget_tokens: 10000  // 10K 토큰 사고 예산
+                },
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }]
+            });
 
-            const stream = await this.llm.stream(prompt);
+            const aiRequestEndTime = Date.now();
+            const elapsedSeconds = ((aiRequestEndTime - aiRequestStartTime) / 1000).toFixed(1);
+            console.log(`✅ AI 응답 완료 (${elapsedSeconds}초 소요)`);
 
-            for await (const chunk of stream) {
-                fullResponse += chunk.content;
-                chunkCount++;
+            // 응답 데이터 추출
+            const fullResponse = message.content
+                .filter(block => block.type === 'text')
+                .map(block => block.text)
+                .join('');
 
-                // 진행 상황 로깅 (1000청크마다)
-                if (chunkCount % 1000 === 0) {
-                    console.log(`📦 청크 ${chunkCount}개 받음, 현재 길이: ${fullResponse.length}자`);
-                }
-            }
-
-            console.log(`✅ LLM 스트리밍 완료: 총 ${chunkCount}개 청크, ${fullResponse.length}자`);
+            console.log(`📦 응답 길이: ${fullResponse.length}자`);
+            console.log(`🔍 Stop reason: ${message.stop_reason}`);
+            console.log(`📊 Usage:`, message.usage);
 
             const fixedCode = this.extractHTML(fullResponse);
             console.log('📝 HTML 추출 완료, 길이:', fixedCode.length);
@@ -472,8 +499,20 @@ ${currentCode}
     async addFeatureToGame(currentCode, featureDescription, userContext) {
         const codeLength = currentCode.length;
         console.log(`📏 원본 코드 길이: ${codeLength} 문자`);
+        console.log('🧠 Extended Thinking으로 기능 추가 시작...');
+        console.log('📚 1M 토큰 컨텍스트 활성화');
 
         const prompt = `당신은 게임 기능 추가 전문가입니다.
+
+🧠 **Extended Thinking 활성화됨!**
+- 기능을 추가하기 전에 최적의 구조를 계획하세요
+- 기존 코드와의 통합 방법을 신중히 고려하세요
+- 성능과 사용성을 모두 고려하세요
+
+🚀 **중요: 1M 토큰 컨텍스트 + 64K 토큰 출력!**
+- 컨텍스트: 1,000,000 토큰 (충분한 코드 분석 가능)
+- 출력: 64,000 토큰 (완전한 기능 추가 코드)
+- **풍부하고 완성도 높은 기능을 만드세요!**
 
 **사용자 기능 요청:**
 ${featureDescription}
@@ -489,6 +528,8 @@ ${currentCode}
 1. 요청된 기능을 최소한의 변경으로 추가하세요
 2. SessionSDK, QR코드, 센서 연결 로직은 절대 건드리지 마세요
 3. 전체 HTML 코드를 반환하되, 추가된 부분을 명확히 표시하세요
+4. **모든 함수를 완전히 구현하세요 (중간에 멈추지 마세요!)**
+5. **가능한 한 많은 기능과 디테일을 포함하세요!**
 
 **출력 형식:**
 먼저 추가된 기능을 간단히 설명하고, 그 다음 전체 HTML 코드를 반환하세요.
@@ -505,29 +546,49 @@ ${currentCode}
 \`\`\``;
 
         try {
-            console.log('🤖 LLM 스트리밍 호출 중... (기능 추가)');
+            console.log('🤖 Anthropic SDK 호출 시작...');
+            console.log('⚠️ 참고: beta API는 스트리밍 미지원 - 응답 대기 시간 30-60초');
+            const aiRequestStartTime = Date.now();
 
-            // ✅ 스트리밍으로 응답 받기
-            let fullResponse = '';
-            let chunkCount = 0;
+            // 🚀 Claude 4.5 with 1M Token + Extended Thinking
+            const message = await this.anthropicClient.beta.messages.create({
+                model: 'claude-sonnet-4-5-20250929',
+                max_tokens: 64000,
+                temperature: 1,  // Extended Thinking 사용 시 필수값
+                betas: ['context-1m-2025-08-07'],  // 🎯 1M 토큰 베타 헤더
+                thinking: {  // 🧠 Extended Thinking 활성화
+                    type: 'enabled',
+                    budget_tokens: 10000  // 10K 토큰 사고 예산
+                },
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }]
+            });
 
-            const stream = await this.llm.stream(prompt);
+            const aiRequestEndTime = Date.now();
+            const elapsedSeconds = ((aiRequestEndTime - aiRequestStartTime) / 1000).toFixed(1);
+            console.log(`✅ AI 응답 완료 (${elapsedSeconds}초 소요)`);
 
-            for await (const chunk of stream) {
-                fullResponse += chunk.content;
-                chunkCount++;
+            // 응답 데이터 추출
+            const fullResponse = message.content
+                .filter(block => block.type === 'text')
+                .map(block => block.text)
+                .join('');
 
-                if (chunkCount % 1000 === 0) {
-                    console.log(`📦 청크 ${chunkCount}개 받음, 현재 길이: ${fullResponse.length}자`);
-                }
-            }
-
-            console.log(`✅ LLM 스트리밍 완료: 총 ${chunkCount}개 청크, ${fullResponse.length}자`);
+            console.log(`📦 응답 길이: ${fullResponse.length}자`);
+            console.log(`🔍 Stop reason: ${message.stop_reason}`);
+            console.log(`📊 Usage:`, message.usage);
 
             const enhancedCode = this.extractHTML(fullResponse);
+            console.log('📝 HTML 추출 완료, 길이:', enhancedCode.length);
 
             // 간단한 검증
             if (!enhancedCode.includes('<!DOCTYPE html>') || !enhancedCode.includes('SessionSDK')) {
+                console.error('❌ 코드 검증 실패:', {
+                    hasDoctype: enhancedCode.includes('<!DOCTYPE html>'),
+                    hasSessionSDK: enhancedCode.includes('SessionSDK')
+                });
                 throw new Error('생성된 코드가 유효하지 않습니다');
             }
 
@@ -539,6 +600,7 @@ ${currentCode}
 
         } catch (error) {
             console.error('❌ 기능 추가 실패:', error.message);
+            console.error('상세 에러:', error.stack);
             return {
                 success: false,
                 analysis: `기능 추가 실패: ${error.message}`
