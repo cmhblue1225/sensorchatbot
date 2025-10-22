@@ -1735,11 +1735,14 @@ ${context}
             // 🚀 Claude 4 Best Practices:
             // 1. Extended Thinking: 코딩 품질 20-30% 향상
             // 2. 1M Token Context: 대규모 컨텍스트 처리 (200K → 1M)
-            const stream = await this.anthropicClient.messages.stream({
+            //
+            // ⚠️ 중요: 1M 토큰 베타는 beta.messages API를 사용해야 함!
+            // 참고: https://docs.anthropic.com/en/docs/build-with-claude/context-windows#1m-token-context-window
+            const stream = await this.anthropicClient.beta.messages.stream({
                 model: this.config.claudeModel,
                 max_tokens: this.config.maxTokens,  // 64,000 토큰
                 temperature: this.config.temperature,  // 0.3
-                betas: ['context-1m-2025-08-07'],  // 🎯 1M 토큰 베타 활성화
+                betas: ['context-1m-2025-08-07'],  // 🎯 1M 토큰 베타 헤더
                 thinking: {  // 🧠 Extended Thinking 활성화
                     type: 'enabled',
                     budget_tokens: 10000  // 10K 토큰 사고 예산
