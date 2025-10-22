@@ -335,8 +335,9 @@
 
         .player-list li {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 0.4rem;
+            align-items: stretch;
             padding: 0.55rem 0.75rem;
             border-radius: 0.75rem;
             background: rgba(15, 23, 42, 0.55);
@@ -587,7 +588,10 @@
                         <h3 id="stage-title">단계 대기 중</h3>
                         <p id="stage-instruction">라운드를 시작하면 양념 모으기가 시작됩니다.</p>
                     </div>
-                    <span id="stage-cycle">0 / 2</span>
+                    <div class="stage-badges">
+                        <span id="player-badge" class="stage-badge">솔로 모드</span>
+                        <span id="stage-cycle" class="stage-badge">0 / 2 단계</span>
+                    </div>
                 </div>
                 <div class="stage-progress" role="list">
                     <div class="stage-step active" data-stage="gather" role="listitem">
@@ -677,7 +681,7 @@
                 metronomeVolume: 0.15,
                 metronomeFrequency: 880,
                 logLimit: 12,
-                                stageOrder: ['gather', 'spread'],
+                stageOrder: ['gather', 'spread'],
                 stageLabels: {
                     gather: '양념 모으기',
                     spread: '배추 바르기'
@@ -689,7 +693,7 @@
                 judgement: {
                     niceWindowMs: 60,
                     offWindowMs: 140,
-                    nicePoints: 2,
+                    nicePoints: 5,
                     offPoints: 2,
                     missPoints: -1
                 },
@@ -699,12 +703,6 @@
                     threshold: 3.2,
                     refractoryMs: 120
                 }
-                        } : null;
-
-            const RATING_LABELS = {
-                nice: '정확',
-                off: '살짝',
-                miss: '실패'
             };
 
             const beatIntervalMs = 60000 / CONFIG.bpm;
@@ -758,11 +756,28 @@
             const niceInput = debugPanel ? debugPanel.querySelector('[data-setting="nice"]') : null;
             const offInput = debugPanel ? debugPanel.querySelector('[data-setting="off"]') : null;
             const tuningDisplays = debugPanel ? {
-                'threshold': debugPanel.querySelector('[data-display="threshold"]'),
-                'nice': debugPanel.querySelector('[data-display="nice"]'),
-                'off': debugPanel.querySelector('[data-display="off"]')
+                threshold: debugPanel.querySelector('[data-display="threshold"]'),
+                nice: debugPanel.querySelector('[data-display="nice"]'),
+                off: debugPanel.querySelector('[data-display="off"]')
+            } : null;
+            const playerBadgeEl = document.getElementById('player-badge');
+
+            const STATUS_TEXT = {
+                sdkLoadFail: 'SessionSDK를 불러오지 못했어요. 새로고침 후 다시 시도해주세요.',
+                roundNotStarted: '라운드를 먼저 시작해주세요.',
+                sensorMissing: '먼저 센서를 연결해주세요.',
+                qrReady: '세션을 생성하면 QR 코드가 표시됩니다.',
+                sessionCreateFail: '세션 생성에 실패했습니다. 다시 시도해주세요.',
+                sessionCreating: '세션을 생성하는 중입니다...',
+                sessionCreateError: '세션 생성에 실패했어요. 콘솔 로그를 확인해주세요.',
+                waitingSDK: 'SDK 연결을 기다리는 중입니다...'
             };
 
+            const RATING_LABELS = {
+                nice: '정확',
+                off: '살짝',
+                miss: '실패'
+            };
 
             function showStatus(message, type = 'info') {
                 qrContainer.textContent = message;
@@ -1371,7 +1386,18 @@ function startMetronome() {
                     console.debug('[SessionSDK] session-created', detail);
                     state.session = detail;
                     sessionCodeEl.textContent = detail.sessionCode || '----';
+                    state.players.clear();
+                    state.sensorStates.clear();
+                    state.playersDetailed.clear();
+                    state.playerLabels.clear();
+                    state.roundActive = false;
+                    stopTimerLoop();
+                    stopMetronome();
+                    updateTotalsFromPlayers();
                     updateStagePanel();
+                    renderPlayerList();
+                    updatePlayerBadge();
+                    updateJudgementSummary('라운드를 시작하면 판정 로그가 표시됩니다.');
                     startButton.disabled = false;
                     startButton.textContent = '라운드 시작';
 
