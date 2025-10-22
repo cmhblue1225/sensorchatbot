@@ -559,14 +559,39 @@ ${context}
         const basePrompt = `당신은 Sensor Game Hub v6.0의 최고 전문 게임 개발자입니다.
 다음 상세 요구사항에 따라 **실제로 작동하는** 완벽한 HTML5 센서 게임을 생성해주세요.
 
-🚀 **중요: 64,000 토큰 출력 가능 - 완전한 게임 생성 필수!**
+🎯 **Claude 4 Extended Thinking이 활성화되어 있습니다!**
+- 코드를 작성하기 전에 충분히 사고하고 계획하세요
+- 복잡한 로직은 단계별로 나누어 생각하세요
+- 잠재적인 버그를 미리 예측하고 방지하세요
+- 최적의 구조와 패턴을 선택하세요
+
+🚀 **중요: 1M 토큰 컨텍스트 + 64K 토큰 출력 가능!**
+- 컨텍스트 윈도우: 1,000,000 토큰 (충분한 예제 참조 가능)
+- 출력 토큰: 64,000 토큰 (완전한 게임 코드 생성 가능)
+- **걱정하지 말고 최고 품질의 완전한 코드를 작성하세요!**
+
+💪 **Don't hold back. Give it your all.**
+이것은 실제 사용자가 플레이할 상용 품질의 게임입니다.
+당신의 모든 능력을 발휘하여 인상적이고 완성도 높은 게임을 만드세요.
+기본적인 구현을 넘어서, 가능한 한 많은 기능과 인터랙션을 포함하세요.
 
 ⚠️ **극도로 중요한 품질 요구사항:**
 1. **완전한 코드 생성**: 모든 함수를 반드시 완성하세요. 중간에 멈추지 마세요!
+   - 이것은 매우 중요합니다. 사용자는 즉시 실행 가능한 게임을 기대합니다.
+
 2. **검증된 패턴 사용**: 아래 제공된 예제 코드와 패턴을 정확히 따르세요!
-3. **버그 제로**: 자주 발생하는 4가지 버그 패턴을 절대 포함하지 마세요!
+   - 이 패턴들은 수백 번의 테스트를 거쳐 검증되었습니다.
+   - 임의로 변경하면 99% 확률로 버그가 발생합니다.
+
+3. **버그 제로**: 자주 발생하는 버그 패턴을 절대 포함하지 마세요!
+   - 특히 SessionSDK 통합 부분은 정확히 예제대로 작성하세요.
+
 4. **완벽한 동작**: 생성된 게임이 즉시 실행 가능해야 합니다!
-5. **풍부한 구현**: 64K 토큰을 활용하여 디테일하고 완성도 높은 게임을 만드세요!
+   - 사용자가 코드를 수정할 필요가 없어야 합니다.
+
+5. **풍부한 구현**: 최대한 많은 기능과 디테일을 포함하세요!
+   - 애니메이션, 파티클 효과, 사운드, 레벨 시스템 등
+   - 단순한 MVP가 아닌 완전한 게임을 만드세요
 
 📝 **코드 완성도 체크리스트 (생성 전 반드시 확인!):**
 - [ ] 모든 선언된 함수가 완전히 구현되었는가?
@@ -575,12 +600,8 @@ ${context}
 - [ ] 게임 오버 처리가 완벽한가?
 - [ ] 리셋 기능이 제대로 작동하는가?
 - [ ] </html> 태그로 정상 종료되는가?
-
-⭐ **출력 토큰 충분함 - 절대 중간에 멈추지 마세요!**
-- 사용 가능한 출력 토큰: **64,000개** (약 48,000 단어)
-- 평균 게임 크기: 10,000-15,000 토큰 (30% 정도만 사용)
-- 복잡한 게임도 충분히 생성 가능!
-- **걱정하지 말고 완전한 코드를 모두 작성하세요!**`;
+- [ ] SessionSDK가 정확한 패턴으로 통합되었는가?
+- [ ] QR 코드 생성이 올바르게 구현되었는가?`;
 
         // 장르 분석 정보가 있는 경우 활용
         const genreAnalysis = requirements.genreAnalysis;
@@ -1706,14 +1727,23 @@ ${context}
                 });
             }
 
-            console.log('🤖 Anthropic SDK 스트리밍 호출 시작... (64K 토큰 생성 가능)');
+            console.log('🤖 Anthropic SDK 스트리밍 호출 시작...');
+            console.log('🧠 Extended Thinking 활성화 (10K 토큰 사고 예산)');
+            console.log('📚 1M 토큰 컨텍스트 윈도우 베타 활성화');
             const aiRequestStartTime = Date.now();
 
-            // Anthropic SDK 직접 사용 (LangChain top_p 문제 우회)
+            // 🚀 Claude 4 Best Practices:
+            // 1. Extended Thinking: 코딩 품질 20-30% 향상
+            // 2. 1M Token Context: 대규모 컨텍스트 처리 (200K → 1M)
             const stream = await this.anthropicClient.messages.stream({
                 model: this.config.claudeModel,
                 max_tokens: this.config.maxTokens,  // 64,000 토큰
                 temperature: this.config.temperature,  // 0.3
+                betas: ['context-1m-2025-08-07'],  // 🎯 1M 토큰 베타 활성화
+                thinking: {  // 🧠 Extended Thinking 활성화
+                    type: 'enabled',
+                    budget_tokens: 10000  // 10K 토큰 사고 예산
+                },
                 messages: [{
                     role: 'user',
                     content: gameGenerationPrompt
@@ -2068,6 +2098,24 @@ ${context}
         }
 
         try {
+            // 🎯 Claude 4 Best Practice: 마크다운 최소화 시스템 프롬프트
+            const naturalConversationPrompt = `<avoid_excessive_markdown_and_bullet_points>
+당신은 사용자와 자연스러운 대화를 나누는 게임 기획 전문가입니다.
+
+중요한 규칙:
+1. 마크다운 형식을 사용하지 마세요 (**굵게**, *기울임*, ## 제목, - 리스트 등)
+2. 자연스러운 문장으로 부드럽게 대화하세요
+3. 중요한 내용은 문장 안에 자연스럽게 녹여서 표현하세요
+4. 친근하고 편안한 톤으로 이야기하세요
+5. 질문은 자연스럽게 문장 안에 포함시키세요
+
+예시:
+❌ 나쁜 예: "**게임 타입**은 무엇인가요? - Solo - Dual - Multi"
+✅ 좋은 예: "혼자 플레이하는 게임인가요, 아니면 친구들과 함께 하는 게임을 만들고 싶으신가요?"
+</avoid_excessive_markdown_and_bullet_points>
+
+${prompt}`;
+
             // Anthropic SDK 직접 사용 (LangChain top_p 문제 완전 우회)
             const response = await this.anthropicClient.messages.create({
                 model: this.config.claudeModel,
@@ -2075,7 +2123,7 @@ ${context}
                 temperature: this.config.temperature,
                 messages: [{
                     role: 'user',
-                    content: prompt
+                    content: naturalConversationPrompt
                 }]
             });
 
