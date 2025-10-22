@@ -1174,14 +1174,31 @@ ${currentGameData.metadata.description || '대화형 AI로 생성된 센서 게�
             try {
                 console.log('☁️ 원격 스토리지 업로드 시작...');
 
+                // 인증 토큰 가져오기
+                const authToken = localStorage.getItem('authToken');
+
+                // 로그인하지 않은 경우 경고
+                if (!authToken) {
+                    console.warn('⚠️ 로그인하지 않았습니다. 게스트로 업로드합니다.');
+                    addMessageToChat('⚠️ 로그인하지 않아 게스트로 게임을 업로드합니다.\n게임은 모두에게 공개되지만, 나중에 수정/삭제할 수 없습니다.', 'ai');
+                }
+
                 // 사용자에게 알림
                 addMessageToChat('☁️ 게임을 원격 스토리지에 업로드하고 있습니다...', 'ai');
 
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+
+                // 토큰이 있으면 Authorization 헤더 추가
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                    console.log('🔐 인증 토큰 포함하여 업로드');
+                }
+
                 const response = await fetch('/api/upload-generated-game', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: headers,
                     body: JSON.stringify({
                         gameCode: gameCode,
                         metadata: metadata
