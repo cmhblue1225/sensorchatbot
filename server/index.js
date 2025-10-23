@@ -53,6 +53,22 @@ class GameServer {
             console.log('✅ Supabase 클라이언트 초기화 (원격 게임 서빙)');
         }
 
+        // Supabase Admin 클라이언트 초기화 (DB 작업용 - RLS 우회)
+        this.supabaseAdmin = null;
+        if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            this.supabaseAdmin = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY,
+                {
+                    auth: {
+                        autoRefreshToken: false,
+                        persistSession: false
+                    }
+                }
+            );
+            console.log('✅ Supabase Admin 클라이언트 초기화 (RLS 우회 가능)');
+        }
+
         this.sessionManager = new SessionManager();
         this.gameScanner = new GameScanner();
         this.aiAssistant = null; // 지연 초기화
@@ -247,12 +263,21 @@ class GameServer {
                 }
 
                 console.log('📤 생성된 게임 업로드 시작:', metadata.title || 'Untitled Game');
+                console.log('👤 요청 사용자 ID:', req.user?.id);
 
-                // Supabase Admin Client 확인
+                // Supabase Client 확인
                 if (!this.supabaseClient) {
                     return res.status(500).json({
                         success: false,
                         error: 'Supabase 클라이언트가 초기화되지 않았습니다.'
+                    });
+                }
+
+                // Supabase Admin Client 확인 (DB 작업용)
+                if (!this.supabaseAdmin) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Supabase Admin 클라이언트가 초기화되지 않았습니다.'
                     });
                 }
 
@@ -342,10 +367,11 @@ class GameServer {
                     console.error('❌ game.json 업로드 실패:', jsonError);
                 }
 
-                // 2. DB에 등록
+                // 2. DB에 등록 (Admin 클라이언트 사용 - RLS 우회)
                 console.log('💾 DB에 게임 등록 중...');
+                console.log('🔑 Admin 클라이언트 사용 (RLS 우회)');
 
-                const { error: dbError } = await this.supabaseClient
+                const { error: dbError } = await this.supabaseAdmin
                     .from('generated_games')
                     .upsert({
                         game_id: finalGameId,
