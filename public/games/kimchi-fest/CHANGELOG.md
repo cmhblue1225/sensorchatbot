@@ -23,6 +23,7 @@ Notes
 - Session creation defaults to dual mode so multiple sensors can join a single session (public/games/kimchi-fest/index.html).
 - Restored metronome audio/flash helpers so beats trigger sound and UI pulses again (public/games/kimchi-fest/index.html).
 - Enhanced player list shows per-player 점수/판정과 라운드 승자 메시지를 노출 (public/games/kimchi-fest/index.html).
+- Added judgement/start/end SFX with player flash and stage pulse animations (public/games/kimchi-fest/index.html).
 
 ### Fixed
 - N/A

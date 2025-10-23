@@ -206,3 +206,19 @@ Handoff Summary (3-line 요약 템플릿)
   - public/games/kimchi-fest/CHANGELOG.md (경쟁 듀얼 모드 내역 추가)
 - Stop check: 센서를 두 대 연결해 라운드 진행 시 플레이어별 점수/판정/승자 메시지가 표시되고, ?debug=1 패널에서 슬라이더·판정 버튼이 정상 동작함을 확인.
 - RESUME_FROM: 11 (SFX + 폴리시 – 선택)
+
+## 2025-10-21T12:15:00+09:00
+- 완료 단계: 11 (SFX + 폴리시 – 연출)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (WebAudio 판정 SFX, 라운드 cue 사운드, 플레이어/스테이지 연출 추가)
+  - public/games/kimchi-fest/CHANGELOG.md (SFX 및 연출 개선 내역 추가)
+- Stop check: 판정별 SFX와 라운드 시작/종료 cue가 재생되고, 플레이어 카드 및 스테이지 연출이 표시되는지 확인.
+- RESUME_FROM: 12 (메타 데이터 + 등록 준비)
+
+## 2025-10-21T12:40:00+09:00
+- 완료 단계: 12 (메타 데이터 + 등록 준비)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/game.json (게임 메타데이터/설명/컨트롤 JSON 정리)
+  - public/games/kimchi-fest/CHANGELOG.md (Phase 11~12 내역 업데이트)
+- Stop check: game.json이 UTF-8 유효 JSON으로 작성되고, 변경 로그에 최신 단계가 반영되었는지 확인.
+- RESUME_FROM: N/A (prototype pass 완료)
