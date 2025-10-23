@@ -1815,7 +1815,7 @@ class DeveloperRoutes {
                 >
             </div>
 
-            <div id="manager-games-grid" class="games-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;">
+            <div id="manager-games-grid" class="games-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); gap: 1.5rem;">
                 <p style="text-align: center; color: #94A3B8; grid-column: 1 / -1;">게임을 불러오는 중...</p>
             </div>
         </div>
