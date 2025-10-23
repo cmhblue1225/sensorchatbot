@@ -73,6 +73,14 @@
             transform: translateX(-50%);
             z-index: 100;
             text-align: center;
+            opacity: 1;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .game-header.hidden-smooth {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(-50%) translateY(-20px);
         }
 
         .session-title {
@@ -164,6 +172,12 @@
             justify-content: center;
             position: relative;
             z-index: 10;
+            margin-top: 280px; /* QR 코드 카드 아래로 이동 */
+            transition: margin-top 0.5s ease;
+        }
+
+        .game-area.game-started {
+            margin-top: 0; /* 게임 시작 시 원위치 */
         }
 
         .game-state {
@@ -290,6 +304,14 @@
             display: flex;
             gap: 3rem;
             z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .players-status.visible {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .player-card {
@@ -606,10 +628,18 @@
 
         /* 반응형 디자인 */
         @media (max-width: 768px) {
+            .game-area {
+                margin-top: 240px;
+            }
+
+            .game-area.game-started {
+                margin-top: 0;
+            }
+
             .session-title {
                 font-size: 1.5rem;
             }
-            
+
             .session-code {
                 font-size: 1.8rem;
             }
@@ -624,24 +654,24 @@
                 width: 120px !important;
                 height: 120px !important;
             }
-            
+
             .game-state {
                 font-size: 2rem;
                 min-width: 300px;
                 padding: 1.5rem;
             }
-            
+
             .players-status {
                 flex-direction: column;
                 gap: 1rem;
                 bottom: 140px;
             }
-            
+
             .player-card {
                 min-width: 150px;
                 padding: 1rem;
             }
-            
+
             .control-panel {
                 flex-wrap: wrap;
                 justify-content: center;
@@ -666,6 +696,14 @@
         }
 
         @media (max-width: 480px) {
+            .game-area {
+                margin-top: 200px;
+            }
+
+            .game-area.game-started {
+                margin-top: 0;
+            }
+
             .players-status {
                 bottom: 120px;
             }
@@ -896,6 +934,8 @@
                     sensor1Status: document.getElementById('sensor1Status'),
                     sensor2Status: document.getElementById('sensor2Status'),
                     gameState: document.getElementById('gameState'),
+                    gameArea: document.querySelector('.game-area'),
+                    gameHeader: document.querySelector('.game-header'),
                     reactionDisplay: document.getElementById('reactionDisplay'),
                     playersStatus: document.getElementById('playersStatus'),
                     player1Card: document.getElementById('player1Card'),
@@ -1161,9 +1201,15 @@
 
                 this.updateSensorStatus();
                 this.playSuccessSound();
-                
+
                 if (this.connectedSensors.size === 2) {
                     this.setGameState('ready');
+                    // QR 코드 카드 숨기고 플레이어 카드 표시
+                    setTimeout(() => {
+                        this.elements.gameHeader.classList.add('hidden-smooth');
+                        this.elements.playersStatus.classList.add('visible');
+                        this.elements.gameArea.classList.add('game-started');
+                    }, 300);
                 }
             }
 
@@ -1171,10 +1217,14 @@
                 const sensorId = data.sensorId;
                 this.connectedSensors.delete(sensorId);
                 this.updateSensorStatus();
-                
+
                 if (this.connectedSensors.size < 2) {
                     this.setGameState('waiting');
                     this.elements.startGameBtn.disabled = true;
+                    // QR 코드 카드 다시 표시, 플레이어 카드 숨김
+                    this.elements.gameHeader.classList.remove('hidden-smooth');
+                    this.elements.playersStatus.classList.remove('visible');
+                    this.elements.gameArea.classList.remove('game-started');
                 }
             }
 
@@ -1641,7 +1691,7 @@
                     clearTimeout(this.bellTimeout);
                     this.bellTimeout = null;
                 }
-                
+
                 if (this.gameTimer) {
                     clearTimeout(this.gameTimer);
                     this.gameTimer = null;
@@ -1659,7 +1709,7 @@
                 this.reactionTimes.clear();
                 this.roundWinner = null;
                 this.gameStartTime = 0;
-                
+
                 // 센서 상태 초기화
                 this.connectedSensors.forEach(sensor => {
                     sensor.isLifted = false;
@@ -1677,8 +1727,16 @@
                 // 연결된 센서가 있으면 ready 상태로, 없으면 waiting 상태로
                 if (this.connectedSensors.size === 2) {
                     this.setGameState('ready');
+                    // 플레이어 카드는 계속 표시, QR 카드는 숨김 유지
+                    this.elements.gameHeader.classList.add('hidden-smooth');
+                    this.elements.playersStatus.classList.add('visible');
+                    this.elements.gameArea.classList.add('game-started');
                 } else {
                     this.setGameState('waiting');
+                    // QR 코드 카드 표시, 플레이어 카드 숨김
+                    this.elements.gameHeader.classList.remove('hidden-smooth');
+                    this.elements.playersStatus.classList.remove('visible');
+                    this.elements.gameArea.classList.remove('game-started');
                 }
 
                 console.log('🔄 게임 재시작 (세션 유지)');
