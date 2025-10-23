@@ -75,3 +75,22 @@ Open Items
 Scope Note
 - 본 문서는 설계 스냅샷이며, 코드 구현을 포함하지 않습니다.
 
+
+---
+
+Upgrade Blueprint (김장 연출 확장안)
+- Bucket Progress
+  - 각 플레이어 라인 아이템에 `bucket` 컨테이너 삽입.
+  - `fillAmount ∈ [0,1]`를 CSS 변수 `--fill`과 마스크로 표현, 25/50/75% 단위에서 글로우/파티클 트리거.
+  - 듀얼 대전 구조 유지: 플레이어별 개별 버킷, 라운드 종료 시 버스트 애니메이션.
+- Animation Layer
+  - 중앙 레이어 `animation-layer`에서 Lottie/SVG로 양념 국자, 배추 바르기 연출.
+  - `animationQueue`를 두어 스테이지 전환(gather→spread), 판정(Nice/Off/Miss)별로 애니메이션 enqueue.
+  - `playersDetailed`에 `flashUntil`, `flashRating` 필드를 추가해 카드/버킷의 플래시 효과와 동기.
+- SFX Integration
+  - WebAudio 기반 `playTone`/`playJudgementSFX`/`playRoundCue` 유틸로 판정, 라운드 시작·종료, 결과 발표 음향 제공.
+  - 모듈화된 `state.sfxBus`를 통해 전체 볼륨과 테마 교체 용이.
+- Asset Strategy
+  - 캐릭터 스킨: idle/action/hit 3컷 또는 Lottie, JSON manifest에서 `skinId`와 경로 관리.
+  - 버킷 그래픽: 단일 SVG + 마스크 또는 3단계 스프라이트.
+  - 양념/배추 연출: 짧은 스프라이트 시퀀스 혹은 Lottie JSON, stage 전환과 판정 이벤트로 재사용.

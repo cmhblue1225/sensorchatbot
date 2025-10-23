@@ -222,3 +222,27 @@ Handoff Summary (3-line 요약 템플릿)
   - public/games/kimchi-fest/CHANGELOG.md (Phase 11~12 내역 업데이트)
 - Stop check: game.json이 UTF-8 유효 JSON으로 작성되고, 변경 로그에 최신 단계가 반영되었는지 확인.
 - RESUME_FROM: N/A (prototype pass 완료)
+
+---
+
+## 확장 설계 (김장 연출 업그레이드)
+- 목표: 듀얼 경쟁에 맞춘 버킷(양동이) 진행도와 “양념 바르기” 애니메이션을 도입해 몰입감 강화.
+- 주요 구성요소:
+  1. **플레이어 버킷 진행도**
+     - 각 플레이어 카드 내 `bucket-progress` 컨테이너 추가.
+     - 판정 시 fillAmount 누적, CSS 변수 `--fill`로 시각화. 25/50/75% 이상에서 하이라이트 연출.
+  2. **양념 바르기 애니메이션 레이어**
+     - 중앙에 `animation-layer` 추가, gather→spread 전환 및 spread 단계 판정에 따라 애니메이션 재생.
+     - 애니메이션 큐를 두어 requestAnimationFrame에서 순차 재생.
+  3. **상태 확장**
+     - `playersDetailed`: `fillAmount`, `flashUntil`, `flashRating`, `skinId`.
+     - `state`: `animationQueue`, `stagePulseTimeout`, `sfxBus`.
+  4. **사운드 & 연출 연계**
+     - 판정별 SFX와 버킷/캐릭터 연출 동기화.
+     - 라운드 종료 시 플레이어 버킷 overflow, 승자 발표 cue 재생.
+- 산출물 체크리스트:
+  - [ ] index.html: 버킷/애니메이션 레이어 DOM 구조 추가.
+  - [ ] styles: 버킷 fill, flash, stage pulse CSS 정의.
+  - [ ] scripts: 애니메이션 큐, 버킷 진행도 업데이트, asset manifest 로더.
+  - [ ] game.json 또는 별도 manifests: 캐릭터 스킨/애니메이션/버킷 자산 경로 정의.
+  - [ ] 자산 확보(사용자): 캐릭터 기본/판정 컷, 버킷 마스크, 양념/배추 애니메이션 스프라이트, 텍스처.
