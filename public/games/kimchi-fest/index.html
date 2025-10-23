@@ -637,7 +637,7 @@
 <body>
     <header>
         <h1>Kimchi Fest</h1>
-        <p class="subtitle">양념을 모으고 배추에 골고루 발라보세요!</p>
+        <p class="subtitle">리듬에 맞춰 김장을 완성해 보세요!</p>
     </header>
     <main>
         <section class="hud" aria-label="HUD metrics">
@@ -645,10 +645,12 @@
                 <h2>남은 시간</h2>
                 <p id="timer">00:45</p>
             </div>
-            <div class="card" id="score-card">`r`n                <h2>���� ����</h2>`r`n                <p id="score">--</p>
+            <div class="card" id="score-card">
+                <h2>총 점수</h2>
+                <p id="score">--</p>
             </div>
             <div class="card" id="players-card">
-                <h2>연결된 센서</h2>
+                <h2>연결 기기 수</h2>
                 <p id="player-count">0</p>
             </div>
             <div class="card" id="stage-card">
@@ -660,36 +662,36 @@
         <section class="stage-board" aria-label="Game panels">
             <div class="placeholder" id="metronome-placeholder">
                 <div id="metronome-indicator">
-                    대기 중
+                    메트로놈
                     <span>110 BPM</span>
                 </div>
             </div>
             <div class="placeholder" id="playfield-placeholder">
                 <div class="stage-head">
                     <div>
-                        <h3 id="stage-title">단계 대기 중</h3>
-                        <p id="stage-instruction">라운드를 시작하면 양념 모으기가 시작됩니다.</p>
-                                            <p id="stage-result" class="stage-result" aria-live="polite"></p>
+                        <h3 id="stage-title">스테이지 대기 중</h3>
+                        <p id="stage-instruction">라운드를 시작하면 단계 안내가 표시됩니다.</p>
+                        <p id="stage-result" class="stage-result" aria-live="polite"></p>
                     </div>
                     <div class="stage-badges">
-                        <span id="player-badge" class="stage-badge">솔로 모드</span>
+                        <span id="player-badge" class="stage-badge">싱글 플레이</span>
                         <span id="stage-cycle" class="stage-badge">0 / 2 단계</span>
                     </div>
                 </div>
                 <div class="stage-progress" role="list">
                     <div class="stage-step active" data-stage="gather" role="listitem">
                         <span class="step-index">1</span>
-                        <span class="step-label">양념 모으기</span>
+                        <span class="step-label">재료 모으기</span>
                     </div>
                     <div class="stage-step" data-stage="spread" role="listitem">
                         <span class="step-index">2</span>
-                        <span class="step-label">배추 바르기</span>
+                        <span class="step-label">양념 바르기</span>
                     </div>
                 </div>
                 <div class="player-strip">
                     <h4>연결된 기기</h4>
                     <ul id="player-list" class="player-list" aria-live="polite">
-                        <li class="empty">아직 연결된 기기가 없습니다.</li>
+                        <li class="empty">연결된 센서가 없습니다.</li>
                     </ul>
                 </div>
             </div>
@@ -705,17 +707,20 @@
                             <span class="chip-value" id="summary-off">0</span>
                         </div>
                         <div class="summary-chip" data-rating="miss">
-                            <span class="chip-label">실패</span>
+                            <span class="chip-label">빗나감</span>
                             <span class="chip-value" id="summary-miss">0</span>
                         </div>
                     </div>
-                    <p id="log-status">라운드 대기 중 start</p>
+                    <p id="log-status">라운드를 시작하면 판정 로그가 표시됩니다.</p>
                 </div>
                 <ol id="shake-log" class="log-list" aria-live="polite"></ol>
             </div>
         </section>
 
         <section class="card debug-panel" id="debug-panel" aria-label="테스트 도구">
+            <h2>감도/판정 조정</h2>
+            <p class="debug-help">URL에 <code>?debug=1</code>을 붙이면 활성화됩니다. 버튼을 눌러 판정과 가속도 변화를 즉시 확인할 수 있습니다.</p>
+<section class="card debug-panel" id="debug-panel" aria-label="테스트 도구">
             <h2>디버그/튜닝 도구</h2>
             <p class="debug-help">URL에 <code>?debug=1</code>을 붙이면 활성화됩니다. 슬라이더와 버튼으로 판정·임계값을 조정하며 시험할 수 있습니다.</p>
             <div class="debug-grid">
@@ -924,7 +929,7 @@
                 if (state.players.size === 0) {
                     const empty = document.createElement('li');
                     empty.className = 'empty';
-                    empty.textContent = '���� ����� ��Ⱑ �����ϴ�.';
+                    empty.textContent = '연결된 센서가 없습니다.';
                     playerListEl.append(empty);
                     return;
                 }
@@ -1295,7 +1300,7 @@ function syncDebugDisplays() {
                 }
                 const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
                 if (typeof AudioContextCtor !== 'function') {
-                    console.warn('Web Audio API�� �������̽��� �������ϴ�.');
+                    console.warn('Web Audio API를 지원하지 않는 브라우저입니다.');;
                     return null;
                 }
                 try {
@@ -1306,7 +1311,7 @@ function syncDebugDisplays() {
                     state.metronomeGain.connect(context.destination);
                     return context;
                 } catch (error) {
-                    console.error('AudioContext ������ �����߾��', error);
+                    console.error('AudioContext 초기화에 실패했습니다.', error);
                     state.audioContext = null;
                     state.metronomeGain = null;
                     return null;
@@ -1323,7 +1328,7 @@ function syncDebugDisplays() {
                 }
                 if (context.state === 'suspended') {
                     context.resume().catch((error) => {
-                        console.debug('AudioContext resume ����', error);
+                        console.debug('AudioContext resume 실패', error);
                     });
                 }
                 const gainNode = state.metronomeGain ?? context.createGain();
@@ -1349,7 +1354,7 @@ function syncDebugDisplays() {
                     try {
                         oscillator.disconnect();
                     } catch (error) {
-                        console.debug('Oscillator disconnect ����', error);
+                        console.debug('Oscillator disconnect 실패', error);
                     }
                 });
             }
@@ -1359,7 +1364,7 @@ function syncDebugDisplays() {
                     return;
                 }
                 metronomePlaceholder.classList.remove('beat-active');
-                // reflow�� �����մϴ�.
+                // reflow을 강제로 발생시킵니다.
                 void metronomePlaceholder.offsetWidth;
                 metronomePlaceholder.classList.add('beat-active');
 
@@ -1684,7 +1689,7 @@ function ensureSensorState(sensorId) {
                 timerEl.textContent = '00:00';
                 stageEl.textContent = reason;
                 startButton.disabled = false;
-                startButton.textContent = '���� �ٽ� ����';
+                startButton.textContent = '라운드 다시 시작';
                 updateJudgementSummary();
                 updateTotalsFromPlayers();
                 renderPlayerList();
