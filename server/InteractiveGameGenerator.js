@@ -271,7 +271,13 @@ class InteractiveGameGenerator {
                 success: true,
                 sessionId: sessionId,
                 message: response.message,
-                sessionData: {
+                metadata: {
+                    infoCompleteness: session.infoCompleteness,
+                    readyToGenerate: session.readyToGenerate,
+                    collectedInfo: session.collectedInfo,
+                    nextAction: session.readyToGenerate ? 'generate' : 'ask_more'
+                },
+                sessionData: {  // backward compatibility
                     infoCompleteness: session.infoCompleteness,
                     readyToGenerate: session.readyToGenerate,
                     collectedInfo: session.collectedInfo
