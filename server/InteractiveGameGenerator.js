@@ -1408,6 +1408,33 @@ function processSensorData(data) {
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+📝 **게임 설명 생성 요구사항 (중요!):**
+
+게임 코드를 생성하기 전에, 먼저 이 게임에 대한 매력적이고 전문적인 설명을 1-2문장으로 작성하세요.
+
+**설명 작성 가이드:**
+- 플레이어가 무엇을 하는지 명확하게 설명
+- 어떤 센서를 사용하는지 자연스럽게 포함
+- 게임의 핵심 재미 요소 강조
+- 마케팅 문구처럼 매력적으로 작성
+
+**좋은 예시:**
+- "스마트폰을 기울여 공을 조작하며 미로를 탈출하는 물리 퍼즐 게임입니다. 중력을 활용해 장애물을 피하고 목표 지점에 도달하세요!"
+- "핸드폰을 흔들어 재료를 섞고 기울여 요리를 완성하는 요리 시뮬레이션 게임입니다. 타이밍을 맞춰 완벽한 요리를 만들어보세요!"
+
+**나쁜 예시 (피하세요):**
+- "게임을 만들고 싶어." (사용자 원본 입력)
+- "센서를 사용하는 게임입니다." (너무 일반적)
+
+**응답 형식 (반드시 지켜주세요!):**
+
+먼저 다음 JSON 형식으로 게임 설명을 제공하세요:
+{"gameDescription": "여기에 1-2문장으로 게임 설명을 작성하세요"}
+
+그 다음 완전한 HTML 게임 코드를 제공하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 이제 위의 모든 지시사항을 완벽히 따라 고품질 게임을 생성하세요! 🚀`;
     }
 
@@ -1668,6 +1695,7 @@ ${context}
             });
 
             console.log(`🎮 최종 게임 생성 시작: ${session.gameRequirements.title}`);
+            console.log(`📝 사용자 요청: "${session.gameRequirements.description}"`);
             console.log(`🔍 게임 사양:`, {
                 title: session.gameRequirements.title,
                 gameType: session.gameRequirements.gameType,
@@ -1811,14 +1839,28 @@ ${context}
                 console.log(`📊 토큰 사용량:`, response.response_metadata.usage);
             }
 
-            // 🎯 Step 3 진행 중 - HTML 추출
+            // 🎯 Step 3 진행 중 - 게임 설명 및 HTML 추출
             if (this.io) {
                 this.io.emit('game-generation-progress', {
                     sessionId,
                     step: 3,
                     percentage: 75,
-                    message: 'Claude AI 응답 완료! HTML 코드 추출 중...'
+                    message: 'Claude AI 응답 완료! 게임 설명 및 HTML 코드 추출 중...'
                 });
+            }
+
+            // 🎯 게임 설명 추출 (새로 추가)
+            console.log('📝 AI 생성 게임 설명 추출 중...');
+            let generatedDescription = null;
+
+            // JSON 형식에서 설명 추출 시도
+            const descMatch = response.content.match(/\{"gameDescription"\s*:\s*"([^"]+)"\}/);
+            if (descMatch) {
+                generatedDescription = descMatch[1];
+                console.log(`✅ AI 생성 설명 추출 성공: "${generatedDescription}"`);
+            } else {
+                console.log('⚠️ AI 생성 설명을 찾을 수 없습니다. 원본 설명을 사용합니다.');
+                console.log('💡 힌트: Claude 응답에서 {"gameDescription": "..."} 패턴을 찾지 못했습니다.');
             }
 
             // HTML 추출
@@ -1890,7 +1932,8 @@ ${context}
             // 게임 메타데이터 생성
             const metadata = {
                 title: session.gameRequirements.title,
-                description: session.gameRequirements.description,
+                description: generatedDescription || session.gameRequirements.description, // AI 생성 설명 우선 사용
+                originalUserInput: session.gameRequirements.description, // 원본 사용자 입력 보존
                 gameType: session.gameRequirements.gameType,
                 genre: session.gameRequirements.genre,
                 difficulty: session.gameRequirements.difficulty,
@@ -1898,6 +1941,16 @@ ${context}
                 generatedAt: new Date().toISOString(),
                 sessionId: sessionId
             };
+
+            // 메타데이터 로깅 (설명 확인용)
+            console.log('📋 게임 메타데이터:');
+            console.log(`   제목: ${metadata.title}`);
+            console.log(`   설명: ${metadata.description}`);
+            if (generatedDescription) {
+                console.log(`   ✅ AI 생성 설명 사용됨`);
+            } else {
+                console.log(`   ⚠️  원본 사용자 입력 사용됨 (AI 설명 생성 실패)`);
+            }
 
             // 🎯 Step 5: 게임 파일 저장 및 등록 (90-100%)
             if (this.io) {
