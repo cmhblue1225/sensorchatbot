@@ -3461,7 +3461,7 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
 
 💡 아이디어를 자유롭게 말씀해주세요!\`;
 
-                    appendMessage('ai', welcomeMessage);
+                    addGeneratorMessage(welcomeMessage, true);
 
                     // 메타데이터가 있으면 정보 패널 업데이트
                     if (data.metadata) {
