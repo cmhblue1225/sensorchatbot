@@ -2040,11 +2040,17 @@ class DeveloperRoutes {
                     return;
                 }
 
+                // 🔐 토큰 확인
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    alert('⚠️ 로그인이 필요합니다.\\n\\n게임 관리 탭 상단의 "🔐 로그인" 버튼을 클릭하여 로그인해주세요.');
+                    return;
+                }
+
                 const loadingEl = document.getElementById('manager-bug-loading');
                 loadingEl.style.display = 'block';
 
                 try {
-                    const token = localStorage.getItem('authToken');
                     const response = await fetch('/api/maintenance/report-bug', {
                         method: 'POST',
                         headers: {
@@ -2058,6 +2064,12 @@ class DeveloperRoutes {
                     });
 
                     const data = await response.json();
+
+                    if (response.status === 401) {
+                        alert('⚠️ 로그인이 만료되었습니다.\\n\\n게임 관리 탭 상단의 "🔐 로그인" 버튼을 클릭하여 다시 로그인해주세요.');
+                        closeManagerBugModal();
+                        return;
+                    }
 
                     if (data.success) {
                         alert('✅ 버그가 성공적으로 수정되었습니다!');
@@ -2082,11 +2094,17 @@ class DeveloperRoutes {
                     return;
                 }
 
+                // 🔐 토큰 확인
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    alert('⚠️ 로그인이 필요합니다.\\n\\n게임 관리 탭 상단의 "🔐 로그인" 버튼을 클릭하여 로그인해주세요.');
+                    return;
+                }
+
                 const loadingEl = document.getElementById('manager-feature-loading');
                 loadingEl.style.display = 'block';
 
                 try {
-                    const token = localStorage.getItem('authToken');
                     const response = await fetch('/api/maintenance/add-feature', {
                         method: 'POST',
                         headers: {
@@ -2100,6 +2118,12 @@ class DeveloperRoutes {
                     });
 
                     const data = await response.json();
+
+                    if (response.status === 401) {
+                        alert('⚠️ 로그인이 만료되었습니다.\\n\\n게임 관리 탭 상단의 "🔐 로그인" 버튼을 클릭하여 다시 로그인해주세요.');
+                        closeManagerFeatureModal();
+                        return;
+                    }
 
                     if (data.success) {
                         alert('✅ 기능이 성공적으로 추가되었습니다!');
