@@ -2800,6 +2800,41 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
         .gen-step-text {
             color: #CBD5E1;
             font-size: 0.875rem;
+            flex: 1;
+        }
+
+        .step-estimate {
+            color: #94A3B8;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            font-style: italic;
+        }
+
+        .loading-dots::after {
+            content: '';
+            display: inline-block;
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        .gen-step.active {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+            border: 1px solid rgba(99, 102, 241, 0.4);
+        }
+
+        .gen-step.active .gen-step-icon {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
         }
 
         .generation-progress {
@@ -3000,7 +3035,10 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                     </div>
                     <div class="gen-step" data-gen-step="3">
                         <div class="gen-step-icon">⏳</div>
-                        <div class="gen-step-text">Claude AI로 게임 코드 생성 중...</div>
+                        <div class="gen-step-text">
+                            Claude AI로 게임 코드 생성 중<span class="loading-dots"></span>
+                            <div class="step-estimate">(최대 5분 소요)</div>
+                        </div>
                     </div>
                     <div class="gen-step" data-gen-step="4">
                         <div class="gen-step-icon">⏳</div>
@@ -3312,6 +3350,9 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                 const iconEl = stepEl.querySelector('.gen-step-icon');
                 const textEl = stepEl.querySelector('.gen-step-text');
 
+                // 모든 active 클래스 제거
+                stepEl.classList.remove('active');
+
                 if (i < step) {
                     // 완료된 단계
                     iconEl.textContent = '✅';
@@ -3321,7 +3362,10 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                     iconEl.textContent = '⏳';
                     stepEl.style.opacity = '1';
                     stepEl.style.fontWeight = 'bold';
-                    if (textEl && message) {
+                    stepEl.classList.add('active'); // 🎨 애니메이션 활성화
+
+                    // Step 3인 경우 메시지 업데이트하지 않음 (HTML에 이미 정의됨)
+                    if (textEl && message && i !== 3) {
                         textEl.textContent = message;
                     }
                 } else {

@@ -1172,6 +1172,20 @@ class HtmlGenerator {
                     transform: translateY(-2px);
                 }
 
+                .test-login-btn {
+                    background: linear-gradient(135deg, #10B981, #059669);
+                    color: white;
+                    border: 2px solid #10B981;
+                    font-weight: 600;
+                }
+
+                .test-login-btn:hover {
+                    background: linear-gradient(135deg, #059669, #047857);
+                    border-color: #059669;
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+                }
+
                 .account-btn {
                     background: rgba(139, 92, 246, 0.2);
                     color: #8B5CF6;
@@ -1464,6 +1478,7 @@ class HtmlGenerator {
                     <div class="auth-buttons" id="authButtons">
                         <button class="auth-btn login-btn" onclick="showLoginModal()">로그인</button>
                         <button class="auth-btn signup-btn" onclick="showSignupModal()">회원가입</button>
+                        <button class="auth-btn test-login-btn" onclick="testAccountLogin()">🚀 테스트 계정으로 로그인</button>
                     </div>
 
                     <!-- User Info (hidden by default) -->
@@ -1737,6 +1752,48 @@ class HtmlGenerator {
                 const element = document.getElementById(elementId);
                 element.textContent = message;
                 element.style.display = 'block';
+            }
+
+            // 테스트 계정 로그인
+            async function testAccountLogin() {
+                try {
+                    console.log('🚀 테스트 계정으로 로그인 시도...');
+
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            email: 'test@test.com',
+                            password: 'test1234'
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        authToken = data.session.access_token;
+                        localStorage.setItem('authToken', authToken);
+                        currentUser = data.user;
+
+                        console.log('✅ 테스트 계정 로그인 성공:', currentUser);
+
+                        // 성공 알림 (간단한 알림 후 바로 사용자 정보 표시)
+                        showUserInfo();
+
+                        // 환영 메시지 (옵션)
+                        setTimeout(() => {
+                            alert('테스트 계정으로 로그인되었습니다!\\n\\n이메일: test@test.com\\n\\n이제 모든 기능을 자유롭게 사용해보세요! 🎮');
+                        }, 500);
+                    } else {
+                        console.error('❌ 테스트 계정 로그인 실패:', data.error);
+                        alert('테스트 계정 로그인에 실패했습니다.\\n\\n오류: ' + (data.error || '알 수 없는 오류'));
+                    }
+                } catch (error) {
+                    console.error('❌ 테스트 로그인 오류:', error);
+                    alert('네트워크 오류가 발생했습니다.\\n\\n잠시 후 다시 시도해주세요.');
+                }
             }
 
             // 로그인 폼 처리
