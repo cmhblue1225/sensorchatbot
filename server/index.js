@@ -3155,6 +3155,14 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
 
             if (!message) return;
 
+            // 🔐 인증 토큰 가져오기
+            const authToken = localStorage.getItem('authToken');
+            if (!authToken) {
+                alert('로그인이 필요합니다. 먼저 로그인해주세요.');
+                window.location.href = '/developer';
+                return;
+            }
+
             // 사용자 메시지 표시
             addGeneratorMessage(message, false);
             input.value = '';
@@ -3168,7 +3176,10 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                 if (!generatorSessionId) {
                     const startResponse = await fetch('/developer/api/start-game-session', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + authToken
+                        },
                         body: JSON.stringify({ initialPrompt: message })
                     });
 
@@ -3189,7 +3200,10 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                     // 기존 세션에 메시지 전송
                     const chatResponse = await fetch('/developer/api/game-chat', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + authToken
+                        },
                         body: JSON.stringify({
                             sessionId: generatorSessionId,
                             message: message
@@ -3230,6 +3244,14 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                 return;
             }
 
+            // 🔐 인증 토큰 가져오기
+            const authToken = localStorage.getItem('authToken');
+            if (!authToken) {
+                alert('로그인이 필요합니다. 먼저 로그인해주세요.');
+                window.location.href = '/developer';
+                return;
+            }
+
             // 생성 모달 표시 및 초기화
             const generationModal = document.getElementById('generation-modal');
             generationModal.classList.remove('hidden');
@@ -3240,7 +3262,10 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             try {
                 const response = await fetch('/developer/api/finalize-game', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
                     body: JSON.stringify({
                         sessionId: generatorSessionId
                     })
