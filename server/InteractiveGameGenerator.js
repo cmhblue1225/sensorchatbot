@@ -162,7 +162,7 @@ class InteractiveGameGenerator {
     /**
      * 새로운 대화 세션 시작
      */
-    async startNewSession(sessionId) {
+    async startNewSession(sessionId, creatorId = null) {
         try {
             // 성능 추적 시작
             const performanceTracking = this.performanceMonitor.startGameGenerationTracking(sessionId, {
@@ -173,6 +173,7 @@ class InteractiveGameGenerator {
             // ✨ 자유 대화 시스템: 단계 없이 자연스러운 대화
             const session = {
                 id: sessionId,
+                creatorId: creatorId,      // 🔐 게임 제작자 ID (권한 관리용)
                 // ❌ stage 필드 제거: 4단계 강제 없음
                 conversationHistory: [],  // { role: 'user|assistant', content: '...' }
                 collectedInfo: {
@@ -2255,7 +2256,8 @@ ${context}
                 difficulty: session.gameRequirements.difficulty,
                 sensorMechanics: session.gameRequirements.sensorMechanics,
                 generatedAt: new Date().toISOString(),
-                sessionId: sessionId
+                sessionId: sessionId,
+                creatorId: session.creatorId  // 🔐 게임 제작자 ID
             };
 
             // 메타데이터 로깅 (설명 확인용)
@@ -3312,6 +3314,7 @@ ${gameCode.substring(0, 8000)}
                                 storage_path: htmlStoragePath,  // index.html 경로
                                 thumbnail_url: null,
                                 play_count: 0,
+                                creator_id: metadata.creatorId || null,  // 🔐 게임 제작자 ID
                                 metadata: {
                                     requirements: metadata.requirements,
                                     validation: validationResult,
@@ -3334,6 +3337,7 @@ ${gameCode.substring(0, 8000)}
                                         title: metadata.title,
                                         description: metadata.description || '',
                                         storage_path: htmlStoragePath,  // index.html 경로
+                                        creator_id: metadata.creatorId || null,  // 🔐 게임 제작자 ID
                                         metadata: {
                                             requirements: metadata.requirements,
                                             validation: validationResult,

@@ -2972,9 +2972,13 @@ class DeveloperRoutes {
             const sessionId = `game-session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
             console.log('🎮 대화형 게임 생성 세션 시작:', sessionId);
+            console.log('👤 게임 제작자:', req.user?.email, '(ID:', req.user?.id, ')');
+
+            // 🔐 게임 제작자 ID 전달 (권한 관리용)
+            const creatorId = req.user?.id || null;
 
             // InteractiveGameGenerator의 startNewSession 호출
-            await aiService.interactiveGameGenerator.startNewSession(sessionId);
+            await aiService.interactiveGameGenerator.startNewSession(sessionId, creatorId);
 
             console.log('✅ 세션 생성 완료:', sessionId);
 
