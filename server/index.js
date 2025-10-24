@@ -3413,7 +3413,69 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                 // 진행률 UI 업데이트
                 updateProgressUI(data.step, data.percentage, data.message);
             });
+
+            // 🚀 페이지 로드 시 자동으로 세션 시작
+            initializeSession();
         });
+
+        // 🎯 세션 자동 초기화
+        async function initializeSession() {
+            try {
+                // 🔐 인증 토큰 확인
+                const authToken = localStorage.getItem('authToken');
+                if (!authToken) {
+                    alert('로그인이 필요합니다. 먼저 로그인해주세요.');
+                    window.location.href = '/developer';
+                    return;
+                }
+
+                // 🎮 세션 시작 API 호출
+                const response = await fetch('/developer/api/start-game-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({
+                        initialPrompt: '세션 자동 시작'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    generatorSessionId = data.sessionId;
+                    console.log('✅ 세션 자동 시작 완료:', generatorSessionId);
+
+                    // 환영 메시지 표시
+                    const welcomeMessage = \`🎮 Sensor Game Hub 대화형 게임 생성기에 오신 것을 환영합니다!
+
+저는 여러분의 게임 아이디어를 현실로 만들어드리는 AI 개발 파트너입니다.
+
+어떤 게임을 만들고 싶으신가요?
+
+예를 들어:
+• "스마트폰을 기울여서 공을 굴리는 미로 게임"
+• "친구와 함께 흔들어서 요리하는 협력 게임"
+• "여러 명이 경쟁하는 반응속도 테스트 게임"
+
+💡 아이디어를 자유롭게 말씀해주세요!\`;
+
+                    appendMessage('ai', welcomeMessage);
+
+                    // 메타데이터가 있으면 정보 패널 업데이트
+                    if (data.metadata) {
+                        updateInfoPanel(data.metadata);
+                    }
+                } else {
+                    console.error('❌ 세션 시작 실패:', data.error);
+                    alert('세션 시작에 실패했습니다: ' + data.error);
+                }
+            } catch (error) {
+                console.error('❌ 세션 초기화 오류:', error);
+                alert('세션 초기화 중 오류가 발생했습니다.');
+            }
+        }
     </script>
 </body>
 </html>
