@@ -145,10 +145,15 @@ class GameServer {
         this.app.get('/ai-game-generator', (req, res) => {
             res.sendFile(path.join(__dirname, '../public/ai-game-generator.html'));
         });
-        
-        // 대화형 게임 생성기 페이지 (새로운 기본)
+
+        // 대화형 게임 생성기 페이지 - 구버전 (백업)
+        this.app.get('/interactive-game-generator-legacy', (req, res) => {
+            res.sendFile(path.join(__dirname, '../public/interactive-game-generator-legacy.html'));
+        });
+
+        // 대화형 게임 생성기 페이지 - 신버전 (Phase 2 UI)
         this.app.get('/interactive-game-generator', (req, res) => {
-            res.sendFile(path.join(__dirname, '../public/interactive-game-generator.html'));
+            res.send(this.generateStandaloneGameGeneratorPage());
         });
         
         // 개발자 가이드 페이지
@@ -2385,7 +2390,1011 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             </html>
         `;
     }
-    
+
+    /**
+     * 대화형 게임 생성기 독립 페이지 생성 (Phase 2 UI)
+     */
+    generateStandaloneGameGeneratorPage() {
+        return `
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 AI 게임 생성기 - Sensor Game Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            color: #F8FAFC;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: #CBD5E1;
+            font-size: 1.125rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(100, 116, 139, 0.3);
+            border-radius: 0.5rem;
+            color: #CBD5E1;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            background: rgba(100, 116, 139, 0.5);
+            color: #E2E8F0;
+        }
+
+        .generator-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* 📊 정보 수집 진행률 바 */
+        .info-completeness-bar {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .completeness-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .completeness-label {
+            color: #CBD5E1;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .completeness-value {
+            color: #6366F1;
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .progress-bar-container {
+            height: 12px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366F1, #A855F7);
+            transition: width 0.5s ease;
+            border-radius: 9999px;
+        }
+
+        .completeness-status {
+            display: flex;
+            justify-content: center;
+        }
+
+        .readiness-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .readiness-badge.not-ready {
+            background: rgba(239, 68, 68, 0.2);
+            color: #FCA5A5;
+        }
+
+        .readiness-badge.ready {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86EFAC;
+        }
+
+        /* 2열 레이아웃 */
+        .generator-main-layout {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .generator-main-layout > .generator-chat-container {
+            flex: 1;
+        }
+
+        /* 명령 버튼 영역 */
+        .command-buttons-area {
+            display: flex;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-top: 1px solid rgba(100, 116, 139, 0.3);
+            border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .command-btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: rgba(100, 116, 139, 0.2);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 0.5rem;
+            color: #CBD5E1;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .command-btn:hover:not(:disabled) {
+            background: rgba(100, 116, 139, 0.3);
+            border-color: #6366F1;
+            color: #E2E8F0;
+            transform: translateY(-1px);
+        }
+
+        .command-btn.generate {
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            border-color: transparent;
+            color: white;
+        }
+
+        .command-btn.generate:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .command-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* 정보 수집 패널 */
+        .info-collection-panel {
+            width: 300px;
+            flex-shrink: 0;
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1rem;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .panel-title {
+            color: #E2E8F0;
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .panel-content {
+            padding: 1rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .info-section {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+        }
+
+        .info-section:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #94A3B8;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-value {
+            color: #E2E8F0;
+            font-size: 0.875rem;
+        }
+
+        .info-value.info-list {
+            color: #CBD5E1;
+        }
+
+        .generator-chat-container {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            overflow: hidden;
+        }
+
+        .generator-chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .chat-message {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .chat-message.bot {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .chat-message.user {
+            background: rgba(168, 85, 247, 0.1);
+            border-color: rgba(168, 85, 247, 0.3);
+            margin-left: 2rem;
+        }
+
+        .message-content {
+            color: #E2E8F0;
+            line-height: 1.6;
+        }
+
+        .generator-chat-input-area {
+            display: flex;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-top: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .generator-chat-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 0.5rem;
+            color: #E2E8F0;
+            font-size: 0.875rem;
+        }
+
+        .generator-chat-input:focus {
+            outline: none;
+            border-color: #6366F1;
+        }
+
+        .generator-send-btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            border: none;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .generator-send-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .generator-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 모달 스타일 */
+        .generation-modal, .result-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .generation-modal.hidden, .result-modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: #94A3B8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+        }
+
+        .modal-close:hover {
+            background: rgba(100, 116, 139, 0.3);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #E2E8F0;
+            margin-bottom: 1.5rem;
+        }
+
+        .generation-steps {
+            margin-bottom: 1.5rem;
+        }
+
+        .gen-step {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 0.5rem;
+            opacity: 0.4;
+            transition: all 0.3s;
+        }
+
+        .gen-step.active {
+            opacity: 1;
+        }
+
+        .gen-step-icon {
+            font-size: 1.5rem;
+        }
+
+        .gen-step-text {
+            color: #CBD5E1;
+            font-size: 0.875rem;
+        }
+
+        .generation-progress {
+            margin-top: 1rem;
+        }
+
+        .progress-percentage {
+            text-align: center;
+            color: #CBD5E1;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .result-content {
+            margin-bottom: 1.5rem;
+            color: #CBD5E1;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 1rem;
+            flex-direction: column;
+        }
+
+        .result-btn {
+            padding: 1rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .result-btn.primary {
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            color: white;
+        }
+
+        .result-btn.secondary {
+            background: rgba(100, 116, 139, 0.3);
+            color: #CBD5E1;
+        }
+
+        .result-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.3);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.7);
+        }
+
+        @media (max-width: 768px) {
+            .generator-main-layout {
+                flex-direction: column;
+            }
+
+            .info-collection-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-link">← 홈으로 돌아가기</a>
+
+    <div class="page-header">
+        <h1 class="page-title">🎮 AI 게임 생성기</h1>
+        <p class="page-subtitle">AI와 대화하며 나만의 센서 게임을 만들어보세요</p>
+    </div>
+
+    <div class="generator-container">
+        <!-- 📊 정보 수집 진행률 바 (0-100%) -->
+        <div class="info-completeness-bar">
+            <div class="completeness-header">
+                <span class="completeness-label">📊 정보 수집 진행률</span>
+                <span id="completeness-percentage" class="completeness-value">0%</span>
+            </div>
+            <div class="progress-bar-container">
+                <div id="info-progress-bar" class="info-progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="completeness-status">
+                <span id="readiness-badge" class="readiness-badge not-ready">⏳ 더 많은 정보가 필요합니다</span>
+            </div>
+        </div>
+
+        <!-- 2열 레이아웃 (채팅 + 정보 패널) -->
+        <div class="generator-main-layout">
+            <!-- 왼쪽: 대화형 채팅 영역 -->
+            <div class="generator-chat-container">
+                <div id="generator-chat-messages" class="generator-chat-messages">
+                    <div class="chat-message bot">
+                        <div class="message-content">
+                            🎮 <strong>Sensor Game Hub 대화형 게임 생성기에 오신 것을 환영합니다!</strong><br><br>
+                            저는 여러분의 게임 아이디어를 현실로 만들어드리는 AI 개발 파트너입니다.<br><br>
+                            <strong>어떤 게임을 만들고 싶으신가요?</strong><br><br>
+                            예를 들어:<br>
+                            • "스마트폰을 기울여서 공을 굴리는 미로 게임"<br>
+                            • "친구와 함께 흔들어서 요리하는 협력 게임"<br>
+                            • "여러 명이 경쟁하는 반응속도 테스트 게임"<br><br>
+                            💡 아이디어를 자유롭게 말씀해주세요!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 명령 버튼 영역 -->
+                <div class="command-buttons-area">
+                    <button id="cmd-summary-btn" class="command-btn" title="지금까지 수집된 정보 요약">
+                        📋 요약
+                    </button>
+                    <button id="cmd-modify-btn" class="command-btn" title="특정 정보 수정">
+                        ✏️ 수정
+                    </button>
+                    <button id="cmd-confirm-btn" class="command-btn" title="정보 확인 및 생성 준비">
+                        ✓ 확인
+                    </button>
+                    <button id="cmd-generate-btn" class="command-btn generate" title="게임 생성 시작" disabled>
+                        🚀 생성
+                    </button>
+                </div>
+
+                <!-- 입력 영역 -->
+                <div class="generator-chat-input-area">
+                    <input
+                        type="text"
+                        id="generator-chat-input"
+                        class="generator-chat-input"
+                        placeholder="게임 아이디어를 입력하세요... (명령: 요약/수정/확인/생성)"
+                    >
+                    <button id="generator-send-btn" class="generator-send-btn">
+                        <span>전송</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 오른쪽: 정보 수집 패널 -->
+            <div class="info-collection-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">📝 수집된 정보</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="info-section">
+                        <div class="info-label">🎮 게임 타입</div>
+                        <div id="info-gameType" class="info-value">미정</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-label">🎯 장르</div>
+                        <div id="info-genre" class="info-value">미정</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-label">📱 센서 사용</div>
+                        <div id="info-sensorUsage" class="info-value info-list">없음</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-label">🎲 난이도</div>
+                        <div id="info-difficulty" class="info-value">미정</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-label">⚙️ 핵심 메카닉</div>
+                        <div id="info-mechanics" class="info-value info-list">없음</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-label">✨ 추가 기능</div>
+                        <div id="info-features" class="info-value info-list">없음</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 게임 생성 진행 모달 -->
+        <div id="generation-modal" class="generation-modal hidden">
+            <div class="modal-content">
+                <h3 class="modal-title">🎮 게임 생성 중...</h3>
+                <div class="generation-steps">
+                    <div class="gen-step" data-gen-step="1">
+                        <div class="gen-step-icon">⏳</div>
+                        <div class="gen-step-text">게임 아이디어 분석 중...</div>
+                    </div>
+                    <div class="gen-step" data-gen-step="2">
+                        <div class="gen-step-icon">⏳</div>
+                        <div class="gen-step-text">관련 문서 검색 중... (616개 임베딩)</div>
+                    </div>
+                    <div class="gen-step" data-gen-step="3">
+                        <div class="gen-step-icon">⏳</div>
+                        <div class="gen-step-text">Claude AI로 게임 코드 생성 중...</div>
+                    </div>
+                    <div class="gen-step" data-gen-step="4">
+                        <div class="gen-step-icon">⏳</div>
+                        <div class="gen-step-text">게임 코드 검증 중...</div>
+                    </div>
+                    <div class="gen-step" data-gen-step="5">
+                        <div class="gen-step-icon">⏳</div>
+                        <div class="gen-step-text">게임 파일 저장 및 등록 중...</div>
+                    </div>
+                </div>
+                <div class="generation-progress">
+                    <div class="progress-bar-container">
+                        <div id="generation-progress-bar" class="info-progress-fill" style="width: 0%"></div>
+                    </div>
+                    <p id="generation-progress-text" class="progress-percentage">0%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 결과 모달 -->
+        <div id="result-modal" class="result-modal hidden">
+            <div class="modal-content">
+                <button class="modal-close" id="close-result-modal">×</button>
+                <h3 class="modal-title">✅ 게임 생성 완료!</h3>
+                <div id="result-content" class="result-content">
+                    <!-- 동적으로 채워짐 -->
+                </div>
+                <div class="result-actions">
+                    <a id="play-game-btn" class="result-btn primary" href="#" target="_blank">
+                        🎮 바로 플레이하기
+                    </a>
+                    <button id="new-game-btn" class="result-btn secondary">
+                        🔄 새 게임 만들기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let generatorSessionId = null;
+
+        // ✨ Phase 2: 정보 패널 업데이트 함수
+        function updateInfoPanel(metadata) {
+            if (!metadata) return;
+
+            // 1️⃣ 진행률 바 업데이트
+            const completeness = metadata.infoCompleteness || 0;
+            const progressBar = document.getElementById('info-progress-bar');
+            const completenessText = document.getElementById('completeness-percentage');
+
+            if (progressBar && completenessText) {
+                progressBar.style.width = completeness + '%';
+                completenessText.textContent = completeness + '%';
+            }
+
+            // 2️⃣ 준비 상태 배지 업데이트
+            const readyBadge = document.getElementById('readiness-badge');
+            const generateBtn = document.getElementById('cmd-generate-btn');
+
+            if (readyBadge) {
+                if (metadata.readyToGenerate) {
+                    readyBadge.className = 'readiness-badge ready';
+                    readyBadge.textContent = '✅ 게임 생성 준비 완료';
+                    if (generateBtn) generateBtn.disabled = false;
+                } else {
+                    readyBadge.className = 'readiness-badge not-ready';
+                    if (completeness < 30) {
+                        readyBadge.textContent = '⏳ 더 많은 정보가 필요합니다';
+                    } else if (completeness < 60) {
+                        readyBadge.textContent = '🔄 정보 수집 중...';
+                    } else {
+                        readyBadge.textContent = '🎯 거의 완성! 조금만 더...';
+                    }
+                    if (generateBtn) generateBtn.disabled = true;
+                }
+            }
+
+            // 3️⃣ 수집된 정보 업데이트
+            if (metadata.collectedInfo) {
+                const info = metadata.collectedInfo;
+
+                // 게임 타입
+                const gameTypeEl = document.getElementById('info-gameType');
+                if (gameTypeEl) {
+                    const typeMap = { 'solo': '🎮 1인 플레이', 'dual': '👥 2인 협력', 'multi': '🏆 다중 경쟁' };
+                    gameTypeEl.textContent = info.gameType ? (typeMap[info.gameType] || info.gameType) : '미정';
+                }
+
+                // 장르
+                const genreEl = document.getElementById('info-genre');
+                if (genreEl) {
+                    genreEl.textContent = info.genre || '미정';
+                }
+
+                // 센서 사용
+                const sensorEl = document.getElementById('info-sensorUsage');
+                if (sensorEl) {
+                    if (info.sensorUsage && info.sensorUsage.length > 0) {
+                        sensorEl.innerHTML = info.sensorUsage.map(s => '• ' + s).join('<br>');
+                    } else {
+                        sensorEl.textContent = '없음';
+                    }
+                }
+
+                // 난이도
+                const difficultyEl = document.getElementById('info-difficulty');
+                if (difficultyEl) {
+                    const diffMap = { '쉬움': '😊 쉬움', '보통': '😐 보통', '어려움': '😤 어려움' };
+                    difficultyEl.textContent = info.difficulty ? (diffMap[info.difficulty] || info.difficulty) : '미정';
+                }
+
+                // 핵심 메카닉
+                const mechanicsEl = document.getElementById('info-mechanics');
+                if (mechanicsEl) {
+                    if (info.mechanics && info.mechanics.length > 0) {
+                        mechanicsEl.innerHTML = info.mechanics.map(m => '• ' + m).join('<br>');
+                    } else {
+                        mechanicsEl.textContent = '없음';
+                    }
+                }
+
+                // 추가 기능
+                const featuresEl = document.getElementById('info-features');
+                if (featuresEl) {
+                    if (info.additionalFeatures && info.additionalFeatures.length > 0) {
+                        featuresEl.innerHTML = info.additionalFeatures.map(f => '• ' + f).join('<br>');
+                    } else {
+                        featuresEl.textContent = '없음';
+                    }
+                }
+            }
+
+            console.log('✅ 정보 패널 업데이트 완료:', metadata);
+        }
+
+        // 메시지 추가 함수
+        function addGeneratorMessage(message, isBot = false) {
+            const messagesContainer = document.getElementById('generator-chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message ' + (isBot ? 'bot' : 'user');
+            messageDiv.innerHTML = '<div class="message-content">' + message + '</div>';
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 메시지 전송 함수
+        async function sendGeneratorMessage() {
+            const input = document.getElementById('generator-chat-input');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // 사용자 메시지 표시
+            addGeneratorMessage(message, false);
+            input.value = '';
+
+            const sendBtn = document.getElementById('generator-send-btn');
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<span>전송 중...</span>';
+
+            try {
+                // 세션이 없으면 생성
+                if (!generatorSessionId) {
+                    const startResponse = await fetch('/developer/api/start-game-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ initialPrompt: message })
+                    });
+
+                    const startData = await startResponse.json();
+
+                    if (startData.success) {
+                        generatorSessionId = startData.sessionId;
+                        addGeneratorMessage(startData.aiResponse, true);
+
+                        // 메타데이터 업데이트
+                        if (startData.metadata) {
+                            updateInfoPanel(startData.metadata);
+                        }
+                    } else {
+                        addGeneratorMessage('❌ 세션 생성 실패: ' + startData.error, true);
+                    }
+                } else {
+                    // 기존 세션에 메시지 전송
+                    const chatResponse = await fetch('/developer/api/game-chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sessionId: generatorSessionId,
+                            message: message
+                        })
+                    });
+
+                    const chatData = await chatResponse.json();
+
+                    if (chatData.success) {
+                        addGeneratorMessage(chatData.aiResponse, true);
+
+                        // 메타데이터 업데이트
+                        if (chatData.metadata) {
+                            updateInfoPanel(chatData.metadata);
+                        }
+
+                        // 생성 명령어이면 게임 생성 시작
+                        if (message === '생성' && chatData.metadata && chatData.metadata.readyToGenerate) {
+                            setTimeout(() => finalizeGame(), 1000);
+                        }
+                    } else {
+                        addGeneratorMessage('❌ 오류: ' + chatData.error, true);
+                    }
+                }
+            } catch (error) {
+                addGeneratorMessage('❌ 네트워크 오류가 발생했습니다.', true);
+                console.error('Error:', error);
+            }
+
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<span>전송</span>';
+        }
+
+        // 최종 게임 생성 함수
+        async function finalizeGame() {
+            if (!generatorSessionId) {
+                alert('세션이 없습니다. 대화를 먼저 시작해주세요.');
+                return;
+            }
+
+            // 생성 모달 표시 및 초기화
+            const generationModal = document.getElementById('generation-modal');
+            generationModal.classList.remove('hidden');
+
+            // 진행률 초기화
+            updateProgressUI(1, 0, '게임 생성 시작...');
+
+            try {
+                const response = await fetch('/developer/api/finalize-game', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: generatorSessionId
+                    })
+                });
+
+                const data = await response.json();
+
+                // 완료 후 잠시 대기 (사용자가 100% 확인 가능)
+                setTimeout(() => {
+                    generationModal.classList.add('hidden');
+
+                    if (data.success) {
+                        // 결과 모달 표시
+                        showResultModal(data);
+                    } else {
+                        addGeneratorMessage('❌ 게임 생성 실패: ' + data.error, true);
+                    }
+                }, 1000);
+
+            } catch (error) {
+                generationModal.classList.add('hidden');
+                addGeneratorMessage('❌ 오류가 발생했습니다.', true);
+            }
+        }
+
+        // 진행률 UI 업데이트 함수
+        function updateProgressUI(step, percentage, message) {
+            // 진행률 바 업데이트
+            const progressBar = document.getElementById('generation-progress-bar');
+            const progressText = document.getElementById('generation-progress-text');
+
+            if (progressBar) {
+                progressBar.style.width = percentage + '%';
+            }
+            if (progressText) {
+                progressText.textContent = percentage + '%';
+            }
+
+            // 각 단계 아이콘 업데이트
+            for (let i = 1; i <= 5; i++) {
+                const stepEl = document.querySelector('[data-gen-step="' + i + '"]');
+                if (!stepEl) continue;
+
+                const iconEl = stepEl.querySelector('.gen-step-icon');
+                const textEl = stepEl.querySelector('.gen-step-text');
+
+                if (i < step) {
+                    // 완료된 단계
+                    iconEl.textContent = '✅';
+                    stepEl.style.opacity = '0.6';
+                } else if (i === step) {
+                    // 현재 진행 중인 단계
+                    iconEl.textContent = '⏳';
+                    stepEl.style.opacity = '1';
+                    stepEl.style.fontWeight = 'bold';
+                    if (textEl && message) {
+                        textEl.textContent = message;
+                    }
+                } else {
+                    // 대기 중인 단계
+                    iconEl.textContent = '⏳';
+                    stepEl.style.opacity = '0.4';
+                }
+            }
+        }
+
+        // 결과 모달 표시
+        function showResultModal(data) {
+            const resultModal = document.getElementById('result-modal');
+            const resultContent = document.getElementById('result-content');
+            const playGameBtn = document.getElementById('play-game-btn');
+
+            resultContent.innerHTML = '<p><strong>게임 ID:</strong> ' + data.gameId + '</p>' +
+                                      '<p><strong>게임 URL:</strong> <a href="' + data.gameUrl + '" target="_blank" style="color: #6366F1;">' + data.gameUrl + '</a></p>';
+
+            playGameBtn.href = data.gameUrl;
+            resultModal.classList.remove('hidden');
+        }
+
+        // 이벤트 리스너 설정
+        document.addEventListener('DOMContentLoaded', () => {
+            const generatorChatInput = document.getElementById('generator-chat-input');
+            const generatorSendBtn = document.getElementById('generator-send-btn');
+            const cmdSummaryBtn = document.getElementById('cmd-summary-btn');
+            const cmdModifyBtn = document.getElementById('cmd-modify-btn');
+            const cmdConfirmBtn = document.getElementById('cmd-confirm-btn');
+            const cmdGenerateBtn = document.getElementById('cmd-generate-btn');
+            const closeResultModalBtn = document.getElementById('close-result-modal');
+            const newGameBtn = document.getElementById('new-game-btn');
+
+            generatorSendBtn.addEventListener('click', sendGeneratorMessage);
+            generatorChatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendGeneratorMessage();
+                }
+            });
+
+            // ✨ Phase 2: 명령 버튼 이벤트 핸들러
+            if (cmdSummaryBtn) {
+                cmdSummaryBtn.addEventListener('click', () => {
+                    generatorChatInput.value = '요약';
+                    sendGeneratorMessage();
+                });
+            }
+
+            if (cmdModifyBtn) {
+                cmdModifyBtn.addEventListener('click', () => {
+                    generatorChatInput.value = '수정';
+                    sendGeneratorMessage();
+                });
+            }
+
+            if (cmdConfirmBtn) {
+                cmdConfirmBtn.addEventListener('click', () => {
+                    generatorChatInput.value = '확인';
+                    sendGeneratorMessage();
+                });
+            }
+
+            if (cmdGenerateBtn) {
+                cmdGenerateBtn.addEventListener('click', () => {
+                    generatorChatInput.value = '생성';
+                    sendGeneratorMessage();
+                });
+            }
+
+            closeResultModalBtn.addEventListener('click', () => {
+                document.getElementById('result-modal').classList.add('hidden');
+            });
+
+            newGameBtn.addEventListener('click', () => {
+                location.reload();
+            });
+
+            // 🔗 Socket.IO 연결 및 진행률 이벤트 리스너
+            const socket = io();
+
+            socket.on('game-generation-progress', (data) => {
+                console.log('📡 진행률 이벤트 수신:', data);
+
+                // 현재 세션의 이벤트만 처리
+                if (data.sessionId !== generatorSessionId) return;
+
+                // 진행률 UI 업데이트
+                updateProgressUI(data.step, data.percentage, data.message);
+            });
+        });
+    </script>
+</body>
+</html>
+        `;
+    }
+
     /**
      * 개발자 가이드 페이지 생성
      */
