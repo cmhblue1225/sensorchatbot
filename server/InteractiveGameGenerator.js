@@ -3385,6 +3385,7 @@ ${gameCode.substring(0, 8000)}
 
     /**
      * 게임 ID 생성 (제목을 기반으로 안전한 폴더명 생성)
+     * Supabase Storage 호환: 영문, 숫자, 하이픈만 허용
      */
     generateGameId(title) {
         // 제목이 없거나 유효하지 않으면 기본값 사용
@@ -3393,10 +3394,23 @@ ${gameCode.substring(0, 8000)}
             safeTitle = 'sensor-game';
         }
 
-        // 제목을 안전한 폴더명으로 변환
-        const baseId = safeTitle
+        // 한글을 로마자로 간단 변환 (기본 매핑)
+        const koreanToRoman = {
+            '가': 'ga', '나': 'na', '다': 'da', '라': 'ra', '마': 'ma', '바': 'ba', '사': 'sa', '아': 'a', '자': 'ja', '차': 'cha', '카': 'ka', '타': 'ta', '파': 'pa', '하': 'ha',
+            '게': 'ge', '눈': 'nun', '덩': 'dung', '이': 'i', '굴': 'gul', '리': 'ri', '기': 'gi', '공': 'gong', '미': 'mi', '로': 'ro',
+            '볼': 'ball', '슈': 'shu', '팅': 'ting', '레': 're', '이': 'i', '싱': 'sing', '스': 's', '타': 'ta', '트': 't'
+        };
+
+        let romanized = safeTitle;
+        // 한글을 로마자로 변환 시도
+        for (const [kor, rom] of Object.entries(koreanToRoman)) {
+            romanized = romanized.replace(new RegExp(kor, 'g'), rom);
+        }
+
+        // 제목을 안전한 폴더명으로 변환 (영문, 숫자, 하이픈만 허용)
+        const baseId = romanized
             .toLowerCase()
-            .replace(/[^a-z0-9가-힣\s]/g, '') // 알파벳, 숫자, 한글, 공백만 허용
+            .replace(/[^a-z0-9\s-]/g, '') // 영문, 숫자, 공백, 하이픈만 허용 (한글 제거)
             .replace(/\s+/g, '-') // 공백을 하이픈으로 변경
             .replace(/-+/g, '-') // 연속 하이픈 제거
             .replace(/^-|-$/g, '') // 시작/끝 하이픈 제거
