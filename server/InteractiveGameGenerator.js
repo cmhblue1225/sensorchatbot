@@ -2045,7 +2045,7 @@ ${context}
                     sessionId,
                     step: 3,
                     percentage: 50,
-                    message: 'Claude AI로 게임 코드 생성 중... (약 30초 소요)'
+                    message: 'Claude AI로 게임 코드 생성 중... (최대 5분 소요)'
                 });
             }
 
