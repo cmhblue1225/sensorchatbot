@@ -2937,8 +2937,22 @@ class DeveloperRoutes {
             res.json({
                 success: true,
                 sessionId: sessionId,
+                aiResponse: '세션이 시작되었습니다. 게임 아이디어를 말씀해주세요!',
                 message: '세션이 시작되었습니다. 게임 아이디어를 말씀해주세요!',
-                stage: 'initial'
+                stage: 'initial',
+                metadata: {
+                    infoCompleteness: 0,
+                    readyToGenerate: false,
+                    collectedInfo: {
+                        gameType: null,
+                        genre: null,
+                        sensorUsage: [],
+                        difficulty: null,
+                        mechanics: [],
+                        additionalFeatures: []
+                    },
+                    nextAction: 'ask_more'
+                }
             });
         } catch (error) {
             console.error('❌ 게임 세션 시작 오류:', error);
@@ -2985,10 +2999,24 @@ class DeveloperRoutes {
 
             res.json({
                 success: true,
+                aiResponse: result.message,
                 message: result.message,
                 stage: result.stage,
                 requirements: result.requirements,
-                sessionId: sessionId
+                sessionId: sessionId,
+                metadata: result.metadata || {
+                    infoCompleteness: 0,
+                    readyToGenerate: false,
+                    collectedInfo: {
+                        gameType: null,
+                        genre: null,
+                        sensorUsage: [],
+                        difficulty: null,
+                        mechanics: [],
+                        additionalFeatures: []
+                    },
+                    nextAction: 'ask_more'
+                }
             });
         } catch (error) {
             console.error('❌ 게임 채팅 오류:', error);
