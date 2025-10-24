@@ -27,6 +27,29 @@ class DeveloperRoutes {
         this.markdownRenderer = new MarkdownRenderer();
         this.docsBasePath = path.join(__dirname, '../../docs');
 
+        // 💬 챗봇 세션 관리 (메모리 기반)
+        this.chatSessions = new Map(); // sessionId -> { messages: [], lastAccess: timestamp }
+        this.sessionTimeout = 30 * 60 * 1000; // 30분
+
+        // 🗑️ 세션 정리 타이머 (10분마다 실행)
+        setInterval(() => {
+            const now = Date.now();
+            let cleanedCount = 0;
+
+            for (const [sessionId, session] of this.chatSessions.entries()) {
+                if (now - session.lastAccess > this.sessionTimeout) {
+                    this.chatSessions.delete(sessionId);
+                    cleanedCount++;
+                }
+            }
+
+            if (cleanedCount > 0) {
+                console.log(`🗑️ 챗봇 세션 ${cleanedCount}개 정리됨 (30분 무활동)`);
+            }
+        }, 10 * 60 * 1000);
+
+        console.log('💬 챗봇 세션 관리 시스템 초기화됨');
+
         // 문서 트리 구조 정의
         this.documentTree = {
             'Root Docs': [
@@ -571,8 +594,186 @@ class DeveloperRoutes {
         }
 
         .generator-container {
-            max-width: 900px;
+            max-width: 1400px;
             margin: 0 auto;
+        }
+
+        /* 📊 정보 수집 진행률 바 */
+        .info-completeness-bar {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .completeness-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .completeness-label {
+            color: #CBD5E1;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .completeness-value {
+            color: #6366F1;
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .progress-bar-container {
+            height: 12px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366F1, #A855F7);
+            transition: width 0.5s ease;
+            border-radius: 9999px;
+        }
+
+        .completeness-status {
+            display: flex;
+            justify-content: center;
+        }
+
+        .readiness-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .readiness-badge.not-ready {
+            background: rgba(239, 68, 68, 0.2);
+            color: #FCA5A5;
+        }
+
+        .readiness-badge.ready {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86EFAC;
+        }
+
+        /* 2열 레이아웃 */
+        .generator-main-layout {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .generator-main-layout > .generator-chat-container {
+            flex: 1;
+        }
+
+        /* 명령 버튼 영역 */
+        .command-buttons-area {
+            display: flex;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-top: 1px solid rgba(100, 116, 139, 0.3);
+            border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .command-btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: rgba(100, 116, 139, 0.2);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 0.5rem;
+            color: #CBD5E1;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .command-btn:hover:not(:disabled) {
+            background: rgba(100, 116, 139, 0.3);
+            border-color: #6366F1;
+            color: #E2E8F0;
+            transform: translateY(-1px);
+        }
+
+        .command-btn.generate {
+            background: linear-gradient(135deg, #6366F1, #A855F7);
+            border-color: transparent;
+            color: white;
+        }
+
+        .command-btn.generate:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .command-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* 정보 수집 패널 */
+        .info-collection-panel {
+            width: 300px;
+            flex-shrink: 0;
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1rem;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .panel-title {
+            color: #E2E8F0;
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .panel-content {
+            padding: 1rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .info-section {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+        }
+
+        .info-section:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #94A3B8;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-value {
+            color: #E2E8F0;
+            font-size: 0.875rem;
+        }
+
+        .info-value.info-list {
+            color: #CBD5E1;
         }
 
         .generator-form {
@@ -1202,6 +1403,9 @@ class DeveloperRoutes {
         const chatInput = document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
 
+        // 💬 챗봇 세션 ID 관리
+        let chatSessionId = localStorage.getItem('chatSessionId') || null;
+
         async function sendMessage() {
             const message = chatInput.value.trim();
             if (!message) return;
@@ -1218,10 +1422,25 @@ class DeveloperRoutes {
                 const response = await fetch('/developer/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
+                    body: JSON.stringify({
+                        message: message,
+                        sessionId: chatSessionId // ✨ 세션 ID 전송
+                    })
                 });
 
                 const data = await response.json();
+
+                // ✨ 세션 ID 저장 (서버에서 반환)
+                if (data.sessionId) {
+                    chatSessionId = data.sessionId;
+                    localStorage.setItem('chatSessionId', chatSessionId);
+                    console.log('💬 챗봇 세션: ' + chatSessionId.substring(0, 8) + '...');
+                }
+
+                // 📊 캐시 통계 로깅 (개발 모드)
+                if (data.cacheStats) {
+                    console.log('📊 캐시 통계:', data.cacheStats);
+                }
 
                 // 로딩 인디케이터 제거
                 removeTypingIndicator(typingDiv);
@@ -1236,6 +1455,29 @@ class DeveloperRoutes {
             }
 
             sendBtn.disabled = false;
+        }
+
+        // 🔄 새 대화 시작 함수
+        function startNewConversation() {
+            if (confirm('💬 새 대화를 시작하시겠습니까?\\n현재 대화 내용이 초기화됩니다.')) {
+                // 세션 ID 초기화
+                chatSessionId = null;
+                localStorage.removeItem('chatSessionId');
+
+                // 채팅 메시지 초기화
+                chatMessages.innerHTML = '';
+
+                // 환영 메시지 추가
+                addMessage('assistant', '👋 안녕하세요! Sensor Game Hub v6.0 AI 어시스턴트입니다.\\n게임 개발에 대해 무엇이든 물어보세요!');
+
+                console.log('🔄 새 대화 세션 시작됨');
+            }
+        }
+
+        // 버튼에 새 대화 시작 핸들러 연결
+        const newChatBtn = document.getElementById('new-chat-btn');
+        if (newChatBtn) {
+            newChatBtn.addEventListener('click', startNewConversation);
         }
 
         function addMessage(role, content) {
@@ -1288,7 +1530,101 @@ class DeveloperRoutes {
             generatorChatMessages.scrollTop = generatorChatMessages.scrollHeight;
         }
 
-        // 진행 단계 업데이트 함수
+        // ✨ Phase 2: 정보 패널 업데이트 함수
+        function updateInfoPanel(metadata) {
+            if (!metadata) return;
+
+            // 1️⃣ 진행률 바 업데이트
+            const completeness = metadata.infoCompleteness || 0;
+            const progressBar = document.getElementById('info-progress-bar');
+            const completenessText = document.getElementById('completeness-percentage');
+
+            if (progressBar && completenessText) {
+                progressBar.style.width = completeness + '%';
+                completenessText.textContent = completeness + '%';
+            }
+
+            // 2️⃣ 준비 상태 배지 업데이트
+            const readyBadge = document.getElementById('readiness-badge');
+            const generateBtn = document.getElementById('cmd-generate-btn');
+
+            if (readyBadge) {
+                if (metadata.readyToGenerate) {
+                    readyBadge.className = 'readiness-badge ready';
+                    readyBadge.textContent = '✅ 게임 생성 준비 완료';
+                    if (generateBtn) generateBtn.disabled = false;
+                } else {
+                    readyBadge.className = 'readiness-badge not-ready';
+                    if (completeness < 30) {
+                        readyBadge.textContent = '⏳ 더 많은 정보가 필요합니다';
+                    } else if (completeness < 60) {
+                        readyBadge.textContent = '🔄 정보 수집 중...';
+                    } else {
+                        readyBadge.textContent = '🎯 거의 완성! 조금만 더...';
+                    }
+                    if (generateBtn) generateBtn.disabled = true;
+                }
+            }
+
+            // 3️⃣ 수집된 정보 업데이트
+            if (metadata.collectedInfo) {
+                const info = metadata.collectedInfo;
+
+                // 게임 타입
+                const gameTypeEl = document.getElementById('info-gameType');
+                if (gameTypeEl) {
+                    const typeMap = { 'solo': '🎮 1인 플레이', 'dual': '👥 2인 협력', 'multi': '🏆 다중 경쟁' };
+                    gameTypeEl.textContent = info.gameType ? (typeMap[info.gameType] || info.gameType) : '미정';
+                }
+
+                // 장르
+                const genreEl = document.getElementById('info-genre');
+                if (genreEl) {
+                    genreEl.textContent = info.genre || '미정';
+                }
+
+                // 센서 사용
+                const sensorEl = document.getElementById('info-sensorUsage');
+                if (sensorEl) {
+                    if (info.sensorUsage && info.sensorUsage.length > 0) {
+                        sensorEl.innerHTML = info.sensorUsage.map(s => '• ' + s).join('<br>');
+                    } else {
+                        sensorEl.textContent = '없음';
+                    }
+                }
+
+                // 난이도
+                const difficultyEl = document.getElementById('info-difficulty');
+                if (difficultyEl) {
+                    const diffMap = { '쉬움': '😊 쉬움', '보통': '😐 보통', '어려움': '😤 어려움' };
+                    difficultyEl.textContent = info.difficulty ? (diffMap[info.difficulty] || info.difficulty) : '미정';
+                }
+
+                // 핵심 메카닉
+                const mechanicsEl = document.getElementById('info-mechanics');
+                if (mechanicsEl) {
+                    if (info.mechanics && info.mechanics.length > 0) {
+                        mechanicsEl.innerHTML = info.mechanics.map(m => '• ' + m).join('<br>');
+                    } else {
+                        mechanicsEl.textContent = '없음';
+                    }
+                }
+
+                // 추가 기능
+                const featuresEl = document.getElementById('info-features');
+                if (featuresEl) {
+                    if (info.additionalFeatures && info.additionalFeatures.length > 0) {
+                        featuresEl.innerHTML = info.additionalFeatures.map(f => '• ' + f).join('<br>');
+                    } else {
+                        featuresEl.textContent = '없음';
+                    }
+                }
+            }
+
+            console.log('✅ 정보 패널 업데이트 완료:', metadata);
+        }
+
+        // 레거시: 진행 단계 업데이트 함수 (4단계 시스템, 하위 호환)
         function updateGeneratorProgress(stage) {
             const stageMap = {
                 'initial': 1,
@@ -1308,11 +1644,14 @@ class DeveloperRoutes {
 
             currentStage = stage;
 
-            // 확인 단계에서 생성 버튼 표시
-            if (stage === 'confirmation') {
-                generateActionArea.classList.remove('hidden');
-            } else {
-                generateActionArea.classList.add('hidden');
+            // 레거시: generate-action-area 처리 (더 이상 사용하지 않음)
+            const generateActionArea = document.getElementById('generate-action-area');
+            if (generateActionArea) {
+                if (stage === 'confirmation') {
+                    generateActionArea.classList.remove('hidden');
+                } else {
+                    generateActionArea.classList.add('hidden');
+                }
             }
         }
 
@@ -1375,6 +1714,12 @@ class DeveloperRoutes {
                         generatorSessionId = data.sessionId;
                     }
 
+                    // ✨ 메타데이터 처리 (Phase 2)
+                    if (data.metadata) {
+                        updateInfoPanel(data.metadata);
+                    }
+
+                    // 레거시: stage 처리 (하위 호환)
                     if (data.stage) {
                         updateGeneratorProgress(data.stage);
                     }
@@ -1396,6 +1741,40 @@ class DeveloperRoutes {
                 sendGeneratorMessage();
             }
         });
+
+        // ✨ Phase 2: 명령 버튼 이벤트 핸들러
+        const cmdSummaryBtn = document.getElementById('cmd-summary-btn');
+        const cmdModifyBtn = document.getElementById('cmd-modify-btn');
+        const cmdConfirmBtn = document.getElementById('cmd-confirm-btn');
+        const cmdGenerateBtn = document.getElementById('cmd-generate-btn');
+
+        if (cmdSummaryBtn) {
+            cmdSummaryBtn.addEventListener('click', () => {
+                generatorChatInput.value = '요약';
+                sendGeneratorMessage();
+            });
+        }
+
+        if (cmdModifyBtn) {
+            cmdModifyBtn.addEventListener('click', () => {
+                generatorChatInput.value = '수정';
+                sendGeneratorMessage();
+            });
+        }
+
+        if (cmdConfirmBtn) {
+            cmdConfirmBtn.addEventListener('click', () => {
+                generatorChatInput.value = '확인';
+                sendGeneratorMessage();
+            });
+        }
+
+        if (cmdGenerateBtn) {
+            cmdGenerateBtn.addEventListener('click', () => {
+                generatorChatInput.value = '생성';
+                sendGeneratorMessage();
+            });
+        }
 
         // 🔗 Socket.IO 연결 및 진행률 이벤트 리스너
         const socket = io();
@@ -1655,7 +2034,12 @@ class DeveloperRoutes {
                     class="chat-input"
                     placeholder="센서 게임 개발에 대해 질문하세요... (Shift+Enter: 줄바꿈, Enter: 전송)"
                 ></textarea>
-                <button id="send-btn" class="send-btn">전송</button>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button id="new-chat-btn" class="send-btn" style="flex: 0 0 auto; background: linear-gradient(135deg, #10B981, #059669); padding: 1rem 1.5rem;">
+                        🔄 새 대화
+                    </button>
+                    <button id="send-btn" class="send-btn" style="flex: 1;">전송</button>
+                </div>
             </div>
         </div>
         `;
@@ -1667,28 +2051,24 @@ class DeveloperRoutes {
     generateGeneratorHTML() {
         return `
         <div class="generator-container">
-            <!-- 진행 단계 표시 -->
-            <div class="generation-progress-bar">
-                <div class="progress-step active" data-step="1">
-                    <div class="step-number">1</div>
-                    <div class="step-label">아이디어</div>
+            <!-- 📊 정보 수집 진행률 바 (0-100%) -->
+            <div class="info-completeness-bar">
+                <div class="completeness-header">
+                    <span class="completeness-label">📊 정보 수집 진행률</span>
+                    <span id="completeness-percentage" class="completeness-value">0%</span>
                 </div>
-                <div class="progress-step" data-step="2">
-                    <div class="step-number">2</div>
-                    <div class="step-label">세부사항</div>
+                <div class="progress-bar-container">
+                    <div id="info-progress-bar" class="info-progress-fill" style="width: 0%"></div>
                 </div>
-                <div class="progress-step" data-step="3">
-                    <div class="step-number">3</div>
-                    <div class="step-label">메커니즘</div>
-                </div>
-                <div class="progress-step" data-step="4">
-                    <div class="step-number">4</div>
-                    <div class="step-label">확인</div>
+                <div class="completeness-status">
+                    <span id="readiness-badge" class="readiness-badge not-ready">⏳ 더 많은 정보가 필요합니다</span>
                 </div>
             </div>
 
-            <!-- 대화형 채팅 영역 -->
-            <div class="generator-chat-container">
+            <!-- 2열 레이아웃 (채팅 + 정보 패널) -->
+            <div class="generator-main-layout">
+                <!-- 왼쪽: 대화형 채팅 영역 -->
+                <div class="generator-chat-container">
                 <div id="generator-chat-messages" class="generator-chat-messages">
                     <div class="chat-message bot">
                         <div class="message-content">
@@ -1704,29 +2084,69 @@ class DeveloperRoutes {
                     </div>
                 </div>
 
+                <!-- 명령 버튼 영역 -->
+                <div class="command-buttons-area">
+                    <button id="cmd-summary-btn" class="command-btn" title="지금까지 수집된 정보 요약">
+                        📋 요약
+                    </button>
+                    <button id="cmd-modify-btn" class="command-btn" title="특정 정보 수정">
+                        ✏️ 수정
+                    </button>
+                    <button id="cmd-confirm-btn" class="command-btn" title="정보 확인 및 생성 준비">
+                        ✓ 확인
+                    </button>
+                    <button id="cmd-generate-btn" class="command-btn generate" title="게임 생성 시작" disabled>
+                        🚀 생성
+                    </button>
+                </div>
+
                 <!-- 입력 영역 -->
                 <div class="generator-chat-input-area">
                     <input
                         type="text"
                         id="generator-chat-input"
                         class="generator-chat-input"
-                        placeholder="게임 아이디어를 입력하세요..."
+                        placeholder="게임 아이디어를 입력하세요... (명령: 요약/수정/확인/생성)"
                     >
                     <button id="generator-send-btn" class="generator-send-btn">
                         <span>전송</span>
                     </button>
                 </div>
+            </div>
 
-                <!-- 생성 버튼 (확인 단계에서 표시) -->
-                <div id="generate-action-area" class="generate-action-area hidden">
-                    <button id="final-generate-btn" class="final-generate-btn">
-                        🚀 게임 생성 시작
-                    </button>
-                    <button id="modify-requirements-btn" class="modify-requirements-btn">
-                        ✏️ 요구사항 수정
-                    </button>
+            <!-- 오른쪽: 정보 수집 패널 -->
+            <div class="info-collection-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">📝 수집된 정보</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="info-section">
+                        <div class="info-label">🎮 게임 타입</div>
+                        <div id="info-gameType" class="info-value">미정</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-label">🎯 장르</div>
+                        <div id="info-genre" class="info-value">미정</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-label">📱 센서 사용</div>
+                        <div id="info-sensorUsage" class="info-value info-list">없음</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-label">🎲 난이도</div>
+                        <div id="info-difficulty" class="info-value">미정</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-label">⚙️ 핵심 메카닉</div>
+                        <div id="info-mechanics" class="info-value info-list">없음</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-label">✨ 추가 기능</div>
+                        <div id="info-features" class="info-value info-list">없음</div>
+                    </div>
                 </div>
             </div>
+        </div>
 
             <!-- 게임 생성 진행 모달 -->
             <div id="generation-modal" class="generation-modal hidden">
@@ -2374,34 +2794,80 @@ class DeveloperRoutes {
     }
 
     /**
-     * AI 챗봇 처리
+     * 💬 AI 챗봇 처리 (v2.0 - 세션 기반 대화 히스토리)
+     *
+     * Request: { message: string, sessionId?: string }
+     * Response: { response: string, sessionId: string, cacheStats?: object }
      */
     async handleChat(req, res) {
         try {
-            const { message } = req.body;
+            const { message, sessionId: clientSessionId } = req.body;
+
+            // ✅ 세션 ID 생성 또는 재사용
+            const sessionId = clientSessionId || `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
             // aiServiceGetter를 호출하여 현재 aiService 가져오기
             const aiService = this.aiServiceGetter();
 
             if (!aiService) {
                 return res.json({
-                    response: '❌ AI 서비스가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.'
+                    response: '❌ AI 서비스가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.',
+                    sessionId: sessionId
                 });
             }
 
-            // AI 서비스 호출 (processChat 메서드 사용)
-            // conversationHistory는 빈 배열로 전달 (필요시 세션 관리 구현 가능)
-            const result = await aiService.processChat(message, []);
+            // 📚 세션 가져오기 또는 생성
+            let session = this.chatSessions.get(sessionId);
+            if (!session) {
+                session = {
+                    messages: [],
+                    lastAccess: Date.now(),
+                    createdAt: Date.now()
+                };
+                this.chatSessions.set(sessionId, session);
+                console.log(`✨ 새 챗봇 세션 생성: ${sessionId}`);
+            }
+
+            // 📝 사용자 메시지 추가
+            session.messages.push({
+                role: 'user',
+                content: message
+            });
+            session.lastAccess = Date.now();
+
+            // 🤖 AI 서비스 호출 (전체 대화 히스토리 전달)
+            const result = await aiService.processChat(message, session.messages);
 
             if (result.success) {
-                res.json({ response: result.message });
+                // 💾 AI 응답 저장
+                session.messages.push({
+                    role: 'assistant',
+                    content: result.message
+                });
+
+                // 📊 캐시 통계 로깅 (개발 모드)
+                if (result.usage) {
+                    console.log(`💬 세션 ${sessionId.substring(0, 8)}... 응답 생성 (메시지 ${session.messages.length}개)`);
+                }
+
+                res.json({
+                    response: result.message,
+                    sessionId: sessionId,
+                    // 개발 모드: 캐시 통계 전송
+                    cacheStats: process.env.NODE_ENV === 'development' ? result.usage : undefined
+                });
             } else {
-                res.json({ response: '❌ ' + result.error });
+                // 에러 발생 시에도 세션 유지 (사용자 메시지는 저장됨)
+                res.json({
+                    response: '❌ ' + result.error,
+                    sessionId: sessionId
+                });
             }
         } catch (error) {
-            console.error('AI 챗봇 오류:', error);
+            console.error('❌ AI 챗봇 오류:', error);
             res.json({
-                response: '❌ 오류가 발생했습니다: ' + error.message
+                response: '❌ 오류가 발생했습니다: ' + error.message,
+                sessionId: req.body.sessionId // 기존 세션 ID 유지
             });
         }
     }

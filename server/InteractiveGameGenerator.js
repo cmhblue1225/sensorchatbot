@@ -170,20 +170,24 @@ class InteractiveGameGenerator {
                 startMethod: 'startNewSession'
             });
 
+            // ✨ 자유 대화 시스템: 단계 없이 자연스러운 대화
             const session = {
                 id: sessionId,
-                stage: 'initial', // initial -> details -> mechanics -> confirmation -> generation
-                gameRequirements: {
+                // ❌ stage 필드 제거: 4단계 강제 없음
+                conversationHistory: [],  // { role: 'user|assistant', content: '...' }
+                collectedInfo: {
+                    gameType: null,        // 'solo', 'dual', 'multi'
+                    genre: null,           // '액션', '퍼즐', '물리', '요리' 등
                     title: null,
                     description: null,
-                    gameType: null, // solo, dual, multi
-                    genre: null,
-                    sensorMechanics: [],
-                    gameplayElements: {},
-                    difficulty: null,
-                    specialRequirements: []
+                    mechanics: [],         // 핵심 메카닉
+                    sensorUsage: [],       // 센서 사용 방법
+                    difficulty: null,      // '쉬움', '보통', '어려움'
+                    visualStyle: null,     // 시각적 스타일
+                    additionalFeatures: [] // 특수 기능들
                 },
-                conversationHistory: [],
+                infoCompleteness: 0,       // 0-100% 정보 수집 완성도
+                readyToGenerate: false,    // 게임 생성 가능 여부
                 createdAt: new Date().toISOString(),
                 lastUpdated: new Date().toISOString(),
                 performanceTracking: performanceTracking // 성능 추적 참조 추가
@@ -198,20 +202,21 @@ class InteractiveGameGenerator {
 
             // 초기 환영 메시지 생성
             const welcomeMessage = await this.generateWelcomeMessage();
-            
+
             session.conversationHistory.push({
                 role: 'assistant',
-                content: welcomeMessage,
-                timestamp: new Date().toISOString(),
-                stage: 'initial'
+                content: welcomeMessage
             });
 
             return {
                 success: true,
                 sessionId: sessionId,
                 message: welcomeMessage,
-                stage: 'initial',
-                progress: this.getStageProgress('initial')
+                sessionData: {
+                    infoCompleteness: 0,
+                    readyToGenerate: false,
+                    collectedInfo: session.collectedInfo
+                }
             };
 
         } catch (error) {
@@ -224,7 +229,7 @@ class InteractiveGameGenerator {
     }
 
     /**
-     * 사용자 메시지 처리 및 응답 생성
+     * ✨ 자유 대화 시스템: 사용자 메시지 처리 및 응답 생성
      */
     async processUserMessage(sessionId, userMessage) {
         try {
@@ -233,31 +238,32 @@ class InteractiveGameGenerator {
                 throw new Error('세션을 찾을 수 없습니다.');
             }
 
-            // 사용자 메시지 기록
+            // 사용자 메시지 히스토리에 추가
             session.conversationHistory.push({
                 role: 'user',
-                content: userMessage,
-                timestamp: new Date().toISOString(),
-                stage: session.stage
+                content: userMessage
             });
 
-            // 현재 단계에 따른 메시지 처리
-            const response = await this.processMessageByStage(session, userMessage);
+            // ✨ 자유 대화 처리 (단계 없음)
+            const response = await this.processFreeformConversation(session, userMessage);
 
-            // AI 응답 기록
+            // AI 응답 히스토리에 추가
             session.conversationHistory.push({
                 role: 'assistant',
-                content: response.message,
-                timestamp: new Date().toISOString(),
-                stage: response.newStage || session.stage
+                content: response.message
             });
 
             // 세션 상태 업데이트
-            if (response.newStage) {
-                session.stage = response.newStage;
-            }
-            if (response.requirements) {
-                Object.assign(session.gameRequirements, response.requirements);
+            if (response.metadata) {
+                if (response.metadata.collectedInfo) {
+                    Object.assign(session.collectedInfo, response.metadata.collectedInfo);
+                }
+                if (typeof response.metadata.infoCompleteness === 'number') {
+                    session.infoCompleteness = response.metadata.infoCompleteness;
+                }
+                if (typeof response.metadata.readyToGenerate === 'boolean') {
+                    session.readyToGenerate = response.metadata.readyToGenerate;
+                }
             }
             session.lastUpdated = new Date().toISOString();
 
@@ -265,10 +271,11 @@ class InteractiveGameGenerator {
                 success: true,
                 sessionId: sessionId,
                 message: response.message,
-                stage: session.stage,
-                progress: this.getStageProgress(session.stage),
-                requirements: session.gameRequirements
-                // ✅ canGenerate 제거: 프론트엔드에서 stage === 'confirmation' 체크로 충분
+                sessionData: {
+                    infoCompleteness: session.infoCompleteness,
+                    readyToGenerate: session.readyToGenerate,
+                    collectedInfo: session.collectedInfo
+                }
             };
 
         } catch (error) {
@@ -281,9 +288,278 @@ class InteractiveGameGenerator {
     }
 
     /**
-     * 단계별 메시지 처리
+     * ✨ 자유 대화 처리 (Claude 4 Best Practices 적용)
+     *
+     * 단계 없이 자연스럽게 대화하며 게임 정보 수집
      */
-    async processMessageByStage(session, userMessage) {
+    async processFreeformConversation(session, userMessage) {
+        try {
+            console.log('💬 자유 대화 처리 중...');
+
+            // 1. 대화 프롬프트 생성
+            const conversationPrompt = this.buildConversationPrompt(session, userMessage);
+
+            // 2. Claude AI 호출 (프롬프트 캐싱 적용)
+            const aiResponse = await this.callClaudeForConversation(conversationPrompt, session.conversationHistory);
+
+            // 3. AI 응답 파싱
+            const { text, metadata } = this.parseAIResponse(aiResponse);
+
+            console.log('✅ 자유 대화 처리 완료');
+            console.log('📊 정보 완성도:', metadata?.infoCompleteness || 0, '%');
+            console.log('🎮 생성 가능:', metadata?.readyToGenerate || false);
+
+            return {
+                success: true,
+                message: text,
+                metadata: metadata || null
+            };
+
+        } catch (error) {
+            console.error('❌ 자유 대화 처리 실패:', error);
+            return {
+                success: false,
+                message: '죄송합니다. 응답 생성 중 오류가 발생했습니다. 다시 시도해주세요.',
+                metadata: null
+            };
+        }
+    }
+
+    /**
+     * 🧠 대화 프롬프트 생성 (Claude 4 Best Practices)
+     */
+    buildConversationPrompt(session, userMessage) {
+        return `당신은 Sensor Game Hub v6.0의 친절한 게임 기획 전문가입니다.
+
+<role_and_mission>
+**역할**: 사용자와 자연스러운 대화를 나누며 게임 아이디어를 구체화하는 전문가
+**미션**: 충분한 정보를 수집하여 완벽한 센서 게임을 생성할 수 있도록 돕기
+</role_and_mission>
+
+<conversation_guidelines>
+1. **자연스러운 대화**: 단계나 턴에 구애받지 않고 자유롭게 대화하세요
+2. **적극적인 질문**: 불확실한 부분은 구체적으로 질문하세요 (한 번에 1-2개)
+3. **중간 요약**: 중요한 정보가 모이면 자연스럽게 요약하여 확인받으세요
+4. **유연한 수정**: 사용자가 언제든 내용을 수정할 수 있도록 열린 태도를 유지하세요
+5. **명령 인식**: "요약해줘", "확인", "생성" 등의 명령을 즉시 인식하세요
+6. **마크다운 최소화**: **굵게**, *기울임*, ## 제목, - 리스트 등을 사용하지 마세요. 자연스러운 문장으로 대화하세요.
+</conversation_guidelines>
+
+<information_to_collect>
+필수 정보 (최소 수집):
+- **게임 타입** (solo/dual/multi): 혼자 플레이인지, 여러 명이 함께 하는지
+- **센서 사용법**: 어떤 센서를 어떻게 사용할지 (기울기/흔들기/회전)
+- **게임 목표**: 무엇을 달성하는 게임인지
+
+선택 정보 (더 좋은 게임을 위해):
+- 게임 장르 (액션/퍼즐/물리/요리/레이싱 등)
+- 게임 제목
+- 난이도 (쉬움/보통/어려움)
+- 시각적 스타일
+- 특수 기능 (타이머/점수/레벨/콤보 등)
+</information_to_collect>
+
+<commands_to_recognize>
+사용자가 다음 명령을 하면 즉시 응답하세요:
+- "요약" 또는 "정리" → 지금까지 수집한 정보를 정리하여 보여주고 확인 요청
+- "수정" → 특정 부분을 변경할 수 있도록 안내
+- "확인", "생성", "만들어줘", "만들어" → readyToGenerate: true 반환
+</commands_to_recognize>
+
+<output_format>
+응답 마지막에 반드시 다음 JSON을 포함하세요:
+
+JSON_START
+{
+  "collectedInfo": {
+    "gameType": "solo" | "dual" | "multi" | null,
+    "genre": "액션" | "퍼즐" | "물리" | "요리" | "레이싱" | null,
+    "title": "게임 제목" | null,
+    "description": "간단한 설명" | null,
+    "mechanics": ["메카닉1", "메카닉2"] | [],
+    "sensorUsage": ["기울기", "흔들기", "회전"] | [],
+    "difficulty": "쉬움" | "보통" | "어려움" | null,
+    "visualStyle": "설명" | null,
+    "additionalFeatures": ["타이머", "점수"] | []
+  },
+  "infoCompleteness": 0-100,
+  "readyToGenerate": false | true,
+  "nextAction": "ask_more" | "summarize" | "generate"
+}
+JSON_END
+
+**절대 금지**:
+- 백틱 3개 사용 금지
+- 마크다운 코드 블록 금지
+- HTML 태그 사용 금지
+- JSON 앞뒤로 JSON_START와 JSON_END 마커만 사용
+
+**예시**:
+사용자의 아이디어가 흥미롭네요! 센서를 활용한 게임이군요.
+
+JSON_START
+{"collectedInfo":{"gameType":"solo","genre":"액션",...},"infoCompleteness":50,"readyToGenerate":false,"nextAction":"ask_more"}
+JSON_END
+</output_format>
+
+<current_conversation_state>
+지금까지 수집된 정보:
+${JSON.stringify(session.collectedInfo, null, 2)}
+
+정보 완성도: ${session.infoCompleteness}%
+생성 가능: ${session.readyToGenerate}
+</current_conversation_state>
+
+<conversation_history>
+${session.conversationHistory.slice(-6).map(msg =>
+  `${msg.role === 'user' ? '사용자' : 'AI'}: ${msg.content}`
+).join('\n\n')}
+</conversation_history>
+
+<current_user_message>
+사용자: ${userMessage}
+</current_user_message>
+
+이제 위 메시지에 자연스럽게 응답하세요. 마크다운 없이 부드러운 문장으로 대화하고, 응답 마지막에 JSON을 포함하세요.`;
+    }
+
+    /**
+     * 🤖 Claude AI 호출 (프롬프트 캐싱 적용)
+     */
+    async callClaudeForConversation(systemPrompt, conversationHistory) {
+        // 더미 모드 체크
+        if (this.mockMode || !this.anthropicClient) {
+            console.log('🎭 더미 모드 - 기본 응답 생성');
+            return {
+                content: [{
+                    type: 'text',
+                    text: `좋아요! 어떤 게임을 만들고 싶으신가요? 혼자 플레이하는 게임인가요, 친구들과 함께 하는 게임인가요?
+
+JSON_START
+{"collectedInfo":{"gameType":null,"genre":null,"title":null,"description":null,"mechanics":[],"sensorUsage":[],"difficulty":null,"visualStyle":null,"additionalFeatures":[]},"infoCompleteness":10,"readyToGenerate":false,"nextAction":"ask_more"}
+JSON_END`
+                }]
+            };
+        }
+
+        try {
+            // 대화 히스토리를 증분 캐싱 포맷으로 변환
+            const messages = conversationHistory.map((msg, idx) => {
+                // 마지막 메시지에 캐싱 적용
+                if (idx === conversationHistory.length - 1) {
+                    return {
+                        role: msg.role,
+                        content: [{
+                            type: "text",
+                            text: msg.content,
+                            cache_control: { type: "ephemeral" }
+                        }]
+                    };
+                }
+                return { role: msg.role, content: msg.content };
+            });
+
+            const response = await this.anthropicClient.messages.create({
+                model: this.config.claudeModel,
+                max_tokens: 4096,  // 대화는 긴 응답 필요 없음
+                temperature: 0.3,  // 일관성 중요
+                // ✨ 시스템 프롬프트 캐싱 (5분 TTL)
+                system: [{
+                    type: "text",
+                    text: systemPrompt,
+                    cache_control: { type: "ephemeral" }
+                }],
+                messages: messages
+            });
+
+            // 캐시 통계 로깅
+            if (response.usage) {
+                const cacheRead = response.usage.cache_read_input_tokens || 0;
+                const cacheCreate = response.usage.cache_creation_input_tokens || 0;
+                console.log('📊 프롬프트 캐싱:', {
+                    cache_read: cacheRead,
+                    cache_create: cacheCreate,
+                    cache_hit: cacheRead > 0 ? '✅' : '❌'
+                });
+            }
+
+            return response;
+
+        } catch (error) {
+            console.error('❌ Claude API 호출 실패:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 📝 AI 응답 파싱 (텍스트 + JSON 메타데이터)
+     */
+    parseAIResponse(aiResponse) {
+        try {
+            let fullText = aiResponse.content[0].text;
+
+            // 1️⃣ 마크다운 코드 블록 제거 (```json ... ``` 형식)
+            fullText = fullText.replace(/```json\s*/g, '');
+            fullText = fullText.replace(/```\s*/g, '');
+
+            // 2️⃣ HTML 태그 제거 (<code>, <pre> 등)
+            fullText = fullText.replace(/<[^>]*>/g, '');
+
+            // 3️⃣ JSON_START ... JSON_END 사이의 JSON 추출
+            let metadata = null;
+            let text = fullText;
+
+            const jsonStartMatch = fullText.match(/JSON_START\s*([\s\S]*?)\s*JSON_END/);
+
+            if (jsonStartMatch) {
+                try {
+                    const jsonString = jsonStartMatch[1].trim();
+                    metadata = JSON.parse(jsonString);
+
+                    // JSON 부분 완전히 제거 (JSON_START ~ JSON_END까지)
+                    text = fullText.replace(/JSON_START[\s\S]*?JSON_END/, '').trim();
+
+                    console.log('✅ JSON 메타데이터 파싱 성공');
+                } catch (parseError) {
+                    console.warn('⚠️ JSON 파싱 실패:', parseError.message);
+                    // JSON_START/END 사이 내용 출력 (디버깅용)
+                    console.warn('JSON 원본:', jsonStartMatch[1]);
+                }
+            } else {
+                // 폴백: JSON_START/END 없으면 마지막 {...} 블록 찾기
+                const jsonMatch = fullText.match(/\{[\s\S]*\}(?=[^{]*$)/);
+                if (jsonMatch) {
+                    try {
+                        metadata = JSON.parse(jsonMatch[0]);
+                        text = fullText.substring(0, jsonMatch.index).trim();
+                        console.log('⚠️ JSON_START/END 마커 없음 - 폴백 파싱 사용');
+                    } catch (parseError) {
+                        console.warn('⚠️ 폴백 JSON 파싱도 실패:', parseError.message);
+                    }
+                }
+            }
+
+            // 4️⃣ 텍스트에서 남은 특수 문자 정리
+            text = text.replace(/\n{3,}/g, '\n\n');  // 연속 줄바꿈 정리
+            text = text.trim();
+
+            return { text, metadata };
+
+        } catch (error) {
+            console.error('❌ AI 응답 파싱 실패:', error);
+            return {
+                text: aiResponse.content[0].text,
+                metadata: null
+            };
+        }
+    }
+
+    /**
+     * ❌ 레거시: 단계별 메시지 처리 (사용 중지)
+     *
+     * 자유 대화 시스템(processFreeformConversation)으로 대체됨
+     */
+    async processMessageByStage_LEGACY(session, userMessage) {
         const context = await this.getRelevantContext(userMessage);
         
         switch (session.stage) {
@@ -1676,32 +1952,43 @@ ${context}
             if (!session) {
                 throw new Error('세션을 찾을 수 없습니다.');
             }
-            // 확인 단계 또는 generating 단계에서 게임 생성 가능
-            if (session.stage !== 'confirmation' && session.stage !== 'generating') {
-                throw new Error(`잘못된 세션 단계: ${session.stage}. 'confirmation' 또는 'generating' 단계에서만 게임을 생성할 수 있습니다.`);
+            // ✨ 자유 대화 시스템: readyToGenerate 체크
+            if (!session.readyToGenerate) {
+                throw new Error('아직 게임 생성 준비가 되지 않았습니다. 대화를 통해 필요한 정보를 완성해주세요.');
             }
-            
-            // 요구사항이 확정되었는지 확인
-            if (!session.gameRequirements.confirmed) {
-                throw new Error('게임 요구사항이 아직 확정되지 않았습니다. 대화를 통해 요구사항을 완성해주세요.');
-            }
-            
-            // 세션 단계를 generating으로 변경
-            session.stage = 'generating';
+
+            // ✨ collectedInfo를 gameRequirements 형식으로 변환
+            const requirements = {
+                title: session.collectedInfo.title || '센서 게임',
+                description: session.collectedInfo.description || '모바일 센서를 활용한 게임',
+                gameType: session.collectedInfo.gameType || 'solo',
+                genre: session.collectedInfo.genre || '액션',
+                sensorMechanics: session.collectedInfo.sensorUsage || ['기울기'],
+                difficulty: session.collectedInfo.difficulty || '보통',
+                gameplayElements: {
+                    mechanics: session.collectedInfo.mechanics || [],
+                    visualStyle: session.collectedInfo.visualStyle,
+                    additionalFeatures: session.collectedInfo.additionalFeatures || []
+                },
+                confirmed: true
+            };
+
+            // 임시로 gameRequirements에 할당 (기존 코드 호환성)
+            session.gameRequirements = requirements;
 
             // 게임 생성 시작 추적
             this.performanceMonitor.recordStageCompletion(sessionId, 'aiGeneration', {
                 startTime: Date.now()
             });
 
-            console.log(`🎮 최종 게임 생성 시작: ${session.gameRequirements.title}`);
-            console.log(`📝 사용자 요청: "${session.gameRequirements.description}"`);
+            console.log(`🎮 최종 게임 생성 시작: ${requirements.title}`);
+            console.log(`📝 사용자 요청: "${requirements.description}"`);
             console.log(`🔍 게임 사양:`, {
-                title: session.gameRequirements.title,
-                gameType: session.gameRequirements.gameType,
-                genre: session.gameRequirements.genre,
-                sensorMechanics: session.gameRequirements.sensorMechanics,
-                difficulty: session.gameRequirements.difficulty
+                title: requirements.title,
+                gameType: requirements.gameType,
+                genre: requirements.genre,
+                sensorMechanics: requirements.sensorMechanics,
+                difficulty: requirements.difficulty
             });
 
             // 🎯 Step 1: 게임 아이디어 분석 (0-20%)
@@ -1759,12 +2046,14 @@ ${context}
             console.log('🤖 Anthropic SDK 호출 시작...');
             console.log('🧠 Extended Thinking 활성화 (10K 토큰 사고 예산)');
             console.log('📚 1M 토큰 컨텍스트 윈도우 베타 활성화');
+            console.log('💾 프롬프트 캐싱 활성화 (RAG 문서 + 시스템 프롬프트)');
             console.log('⚠️ 참고: beta API는 스트리밍 미지원 - 응답 대기 시간 30-60초');
             const aiRequestStartTime = Date.now();
 
             // 🚀 Claude 4 Best Practices:
             // 1. Extended Thinking: 코딩 품질 20-30% 향상
             // 2. 1M Token Context: 대규모 컨텍스트 처리 (200K → 1M)
+            // 3. Prompt Caching: RAG 문서 + 시스템 프롬프트 캐싱 (비용 90% 절감)
             //
             // ⚠️ 중요: beta.messages.stream()은 지원하지 않음!
             // beta.messages.create()만 지원 (스트리밍 없이 한 번에 응답)
@@ -1772,6 +2061,14 @@ ${context}
             //
             // 🔥 중요: Extended Thinking 사용 시 temperature는 반드시 1이어야 함!
             // 참고: https://docs.claude.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
+            //
+            // ✨ 프롬프트 캐싱: 시스템 프롬프트와 RAG 문서를 분리하여 캐싱
+            // 참고: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching
+
+            // 프롬프트 분리: 시스템 부분 (캐싱 가능) + 게임 요구사항 (매번 변경)
+            const baseSystemPrompt = gameGenerationPrompt.split('📋 **게임 상세 사양:**')[0].trim();
+            const gameSpec = '📋 **게임 상세 사양:**' + gameGenerationPrompt.split('📋 **게임 상세 사양:**')[1];
+
             const message = await this.anthropicClient.beta.messages.create({
                 model: this.config.claudeModel,
                 max_tokens: this.config.maxTokens,  // 64,000 토큰
@@ -1781,9 +2078,22 @@ ${context}
                     type: 'enabled',
                     budget_tokens: 10000  // 10K 토큰 사고 예산
                 },
+                // ✨ 시스템 프롬프트 (캐싱 적용)
+                system: [
+                    {
+                        type: "text",
+                        text: baseSystemPrompt,
+                        cache_control: { type: "ephemeral" } // ✅ 시스템 프롬프트 캐싱
+                    },
+                    {
+                        type: "text",
+                        text: `\n\n📚 참고 문서 및 예제:\n\n${context}`,
+                        cache_control: { type: "ephemeral" } // ✅ RAG 문서 캐싱
+                    }
+                ],
                 messages: [{
                     role: 'user',
-                    content: gameGenerationPrompt
+                    content: gameSpec // 게임 요구사항만 user 메시지로 (매번 다름)
                 }]
             });
 
@@ -2046,6 +2356,26 @@ ${context}
                 console.log('⚠️ GameMaintenanceManager가 주입되지 않아 자동 등록을 건너뜁니다.');
             }
 
+            // ✨ Phase 3: 게임 설명 자동 생성
+            let gameExplanation = null;
+            try {
+                console.log('📝 게임 설명 생성 중...');
+                gameExplanation = await this.generateGameExplanation(metadata, gameCode);
+                console.log('✅ 게임 설명 생성 완료');
+
+                // Socket.IO로 게임 설명 전송
+                if (this.io) {
+                    this.io.emit('game-explanation', {
+                        sessionId,
+                        explanation: gameExplanation,
+                        gameId: saveResult.gameId
+                    });
+                }
+            } catch (explanationError) {
+                console.error('⚠️ 게임 설명 생성 실패:', explanationError.message);
+                // 게임은 이미 생성되었으므로 오류로 처리하지 않음
+            }
+
             return {
                 success: true,
                 sessionId: sessionId,
@@ -2056,6 +2386,7 @@ ${context}
                 gamePath: saveResult.gamePath,
                 gameId: saveResult.gameId,
                 playUrl: saveResult.playUrl,
+                explanation: gameExplanation,  // ✅ 게임 설명 포함
                 performanceStats: {
                     totalDuration: performanceTracking.totalDuration,
                     validationScore: validation.score,
@@ -2087,6 +2418,90 @@ ${context}
                     errorType: error.constructor.name
                 }
             };
+        }
+    }
+
+    /**
+     * 📝 게임 설명 자동 생성 (Phase 3)
+     *
+     * 생성된 게임의 조작법, 목표, 팁 등을 AI가 자동으로 설명
+     */
+    async generateGameExplanation(metadata, gameCode) {
+        try {
+            console.log('📝 게임 설명 생성 중...');
+
+            // 더미 모드 체크
+            if (this.mockMode || !this.anthropicClient) {
+                return `게임이 생성되었습니다! "${metadata.title}" 게임을 즐겨보세요.`;
+            }
+
+            const explanationPrompt = `생성된 게임에 대한 친절한 설명을 작성하세요.
+
+<game_metadata>
+제목: ${metadata.title}
+타입: ${metadata.gameType}
+장르: ${metadata.genre || '일반'}
+난이도: ${metadata.difficulty || '보통'}
+</game_metadata>
+
+<generated_code_analysis>
+생성된 코드를 분석하여 다음 정보를 추출하세요:
+- 실제 센서 사용 방식
+- 게임 목표 및 승리 조건
+- 점수/레벨 시스템
+- 특수 기능들
+
+코드 일부:
+${gameCode.substring(0, 8000)}
+</generated_code_analysis>
+
+<explanation_format>
+자연스러운 대화 형식으로 다음 내용을 포함하세요:
+
+1. **게임 소개** (한 줄로 간단히)
+   예: "스마트폰을 기울여서 공을 굴려 미로를 탈출하는 게임이에요!"
+
+2. **조작 방법** (구체적으로, 어떻게 센서를 사용하는지)
+   예: "스마트폰을 좌우로 기울이면 공이 그 방향으로 굴러가요. 기울기가 클수록 공이 빠르게 움직입니다."
+
+3. **게임 목표**
+   예: "벽에 부딪히지 않으면서 초록색 골인 지점에 도착하는 것이 목표예요."
+
+4. **플레이 팁** (2-3개)
+   - 첫 번째 팁
+   - 두 번째 팁
+   - 세 번째 팁
+
+5. **특별한 기능** (있다면)
+   예: "점수 시스템이 있어서 빠르게 클리어할수록 높은 점수를 받아요!"
+
+**중요**: 마크다운 없이 자연스러운 문장으로 작성하세요. 리스트는 사용해도 됩니다.
+</explanation_format>`;
+
+            const response = await this.anthropicClient.messages.create({
+                model: this.config.claudeModel,
+                max_tokens: 2048,  // 설명은 짧게
+                temperature: 0.3,  // 일관성 중요
+                system: [{
+                    type: "text",
+                    text: explanationPrompt,
+                    cache_control: { type: "ephemeral" }
+                }],
+                messages: [{
+                    role: 'user',
+                    content: '위 게임에 대한 설명을 작성해주세요.'
+                }]
+            });
+
+            const explanation = response.content[0].text;
+            console.log('✅ 게임 설명 생성 완료 (' + explanation.length + '자)');
+
+            return explanation;
+
+        } catch (error) {
+            console.error('❌ 게임 설명 생성 실패:', error);
+            // 기본 설명 반환
+            return `게임이 생성되었습니다! "${metadata.title}" 게임을 즐겨보세요.`;
         }
     }
 
@@ -2151,7 +2566,7 @@ ${context}
 
         try {
             // 🎯 Claude 4 Best Practice: 마크다운 최소화 시스템 프롬프트
-            const naturalConversationPrompt = `<avoid_excessive_markdown_and_bullet_points>
+            const systemPrompt = `<avoid_excessive_markdown_and_bullet_points>
 당신은 사용자와 자연스러운 대화를 나누는 게임 기획 전문가입니다.
 
 중요한 규칙:
@@ -2164,18 +2579,22 @@ ${context}
 예시:
 ❌ 나쁜 예: "**게임 타입**은 무엇인가요? - Solo - Dual - Multi"
 ✅ 좋은 예: "혼자 플레이하는 게임인가요, 아니면 친구들과 함께 하는 게임을 만들고 싶으신가요?"
-</avoid_excessive_markdown_and_bullet_points>
+</avoid_excessive_markdown_and_bullet_points>`;
 
-${prompt}`;
-
-            // Anthropic SDK 직접 사용 (LangChain top_p 문제 완전 우회)
+            // Anthropic SDK 직접 사용 + 프롬프트 캐싱
             const response = await this.anthropicClient.messages.create({
                 model: this.config.claudeModel,
                 max_tokens: 4096,  // 대화 단계는 적은 토큰
                 temperature: this.config.temperature,
+                // ✨ 시스템 프롬프트 캐싱 (5분 TTL)
+                system: [{
+                    type: "text",
+                    text: systemPrompt,
+                    cache_control: { type: "ephemeral" }
+                }],
                 messages: [{
                     role: 'user',
-                    content: naturalConversationPrompt
+                    content: prompt
                 }]
             });
 
