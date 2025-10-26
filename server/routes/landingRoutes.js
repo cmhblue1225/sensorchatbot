@@ -126,8 +126,9 @@ class LandingRoutes {
      */
     async getSystemStats() {
         try {
-            // 게임 수 (디렉토리 기반)
-            const totalGames = 12;
+            // 게임 수 (GameScanner에서 실제 게임 수 가져오기)
+            const games = this.gameService.getGames() || [];
+            const totalGames = games.length;
 
             // 문서 수
             const totalDocs = 35;
@@ -138,6 +139,8 @@ class LandingRoutes {
             // AI 기능 상태
             const aiStatus = this.aiService ? 'active' : 'inactive';
 
+            console.log(`📊 랜딩 페이지 통계 - 게임 수: ${totalGames}개`);
+
             return {
                 games: totalGames,
                 documents: totalDocs,
@@ -146,8 +149,10 @@ class LandingRoutes {
             };
         } catch (error) {
             console.error('통계 수집 실패:', error);
+            // 오류 발생 시에도 실제 게임 수를 가져오려고 시도
+            const games = this.gameService?.getGames() || [];
             return {
-                games: 12,
+                games: games.length || 0,
                 documents: 35,
                 vectors: 616,
                 aiEnabled: true
