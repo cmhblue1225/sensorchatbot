@@ -100,10 +100,6 @@ class DeveloperRoutes {
                 { path: 'examples/ui-components/index.md', title: '🎨 UI 컴포넌트 예제' },
                 { path: 'examples/optimization/index.md', title: '⚡ 최적화 예제' },
                 { path: 'examples/troubleshooting/index.md', title: '🔧 트러블슈팅 예제' }
-            ],
-            'Project Plans': [
-                { path: '계획서/revised_presentation_script.md', title: '📝 발표 스크립트' },
-                { path: '계획서/프로젝트_문서_검토_및_개선_제안.md', title: '📋 프로젝트 개선 제안' }
             ]
         };
 
