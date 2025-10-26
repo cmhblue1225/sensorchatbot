@@ -17,7 +17,7 @@ const multer = require('multer');
 const AdmZip = require('adm-zip');
 const { createClient } = require('@supabase/supabase-js');
 const MarkdownRenderer = require('../utils/markdownRenderer');
-const { checkCreatorAuth, optionalAuth } = require('../middleware/authMiddleware');
+const { checkCreatorAuth, optionalAuth, checkGameOwnership } = require('../middleware/authMiddleware');
 
 class DeveloperRoutes {
     constructor(gameScanner, aiServiceGetter) {
@@ -201,6 +201,11 @@ class DeveloperRoutes {
         // 게임 삭제 (Storage + DB)
         this.router.delete('/api/delete-game/:gameId', async (req, res) => {
             await this.handleDeleteGame(req, res);
+        });
+
+        // 🌐 게임 공개/비공개 전환 (인증 + 소유권 검증)
+        this.router.post('/api/toggle-game-visibility', checkCreatorAuth, checkGameOwnership, async (req, res) => {
+            await this.handleToggleGameVisibility(req, res);
         });
 
         // 🆕 계정 관리 API
@@ -2397,30 +2402,29 @@ class DeveloperRoutes {
 
                     if (data.success && data.data) {
                         const gamesGrid = document.getElementById('manager-games-grid');
-                        const games = data.data;
+                        const allGames = data.data;
 
-                        if (games.length === 0) {
-                            gamesGrid.innerHTML = '<p style="text-align: center; color: #94A3B8; grid-column: 1 / -1;">생성된 게임이 없습니다.</p>';
-                            return;
-                        }
-
-                        console.log('🎮 전체 게임 목록:', games.length, '개');
+                        console.log('🎮 전체 게임 목록:', allGames.length, '개');
                         console.log('📋 현재 사용자 ID:', currentUser?.id);
                         console.log('👑 관리자 여부:', isAdmin);
 
-                        gamesGrid.innerHTML = games.map(game => {
-                            // 현재 사용자가 이 게임의 소유자인지 확인
-                            const isOwner = currentUser && game.creator_id === currentUser.id;
-                            const canModify = isAdmin || isOwner;
+                        // ✅ Phase 3: 소유한 게임만 필터링 (관리자는 모든 게임 표시)
+                        const filteredGames = isAdmin
+                            ? allGames  // 관리자는 모든 게임 표시
+                            : allGames.filter(game => currentUser && game.creator_id === currentUser.id);  // 일반 사용자는 본인 게임만
 
-                            console.log(\`🎯 게임: \${game.id}, creator_id: \${game.creator_id}, isOwner: \${isOwner}, canModify: \${canModify}\`);
+                        console.log('✅ 필터링된 게임 목록:', filteredGames.length, '개');
 
-                            // 권한 배지
-                            const permissionBadge = isAdmin
+                        if (filteredGames.length === 0) {
+                            gamesGrid.innerHTML = '<p style="text-align: center; color: #94A3B8; grid-column: 1 / -1;">생성한 게임이 없습니다.</p>';
+                            return;
+                        }
+
+                        gamesGrid.innerHTML = filteredGames.map(game => {
+                            // 관리자 배지 (관리자에게만 표시)
+                            const adminBadge = isAdmin
                                 ? '<span style="padding: 0.25rem 0.5rem; margin-left: 0.5rem; border-radius: 8px; font-size: 0.7rem; font-weight: 600; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid #EF4444;">👑 관리자</span>'
-                                : isOwner
-                                    ? '<span style="padding: 0.25rem 0.5rem; margin-left: 0.5rem; border-radius: 8px; font-size: 0.7rem; font-weight: 600; background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid #10B981;">✓ 내 게임</span>'
-                                    : '<span style="padding: 0.25rem 0.5rem; margin-left: 0.5rem; border-radius: 8px; font-size: 0.7rem; font-weight: 600; background: rgba(71, 85, 105, 0.2); color: #94A3B8; border: 1px solid #64748B;">🔒 읽기 전용</span>';
+                                : '';
 
                             return \`
                             <div class="game-card" data-game-id="\${game.id}" style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 16px; padding: 1.5rem; transition: all 0.3s;">
@@ -2428,7 +2432,7 @@ class DeveloperRoutes {
                                     <div>
                                         <div style="display: flex; align-items: center;">
                                             <div style="font-size: 1.25rem; font-weight: 600; color: #E2E8F0; margin-bottom: 0.25rem;">\${game.title || game.id}</div>
-                                            \${permissionBadge}
+                                            \${adminBadge}
                                         </div>
                                         <div style="font-size: 0.875rem; color: #94A3B8;">\${game.id}</div>
                                     </div>
@@ -2437,9 +2441,10 @@ class DeveloperRoutes {
                                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 1rem;">
                                     <button onclick="playManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">▶️ 플레이</button>
                                     <button onclick="downloadManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(59, 130, 246, 0.2); color: #3B82F6; border: 1px solid #3B82F6; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">📥 다운로드</button>
-                                    <button onclick="deleteManagerGame('\${game.id}')" \${!canModify ? 'disabled' : ''} style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid #EF4444; font-size: 0.875rem; font-weight: 500; cursor: \${canModify ? 'pointer' : 'not-allowed'}; transition: all 0.2s; opacity: \${canModify ? '1' : '0.5'};">🗑️ 삭제</button>
-                                    <button onclick="openManagerBugModal('\${game.id}')" \${!canModify ? 'disabled' : ''} style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: \${canModify ? 'pointer' : 'not-allowed'}; transition: all 0.2s; opacity: \${canModify ? '1' : '0.5'};">🐛 버그 신고</button>
-                                    <button onclick="openManagerFeatureModal('\${game.id}')" \${!canModify ? 'disabled' : ''} style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: \${canModify ? 'pointer' : 'not-allowed'}; transition: all 0.2s; opacity: \${canModify ? '1' : '0.5'};">✨ 기능 추가</button>
+                                    <button onclick="toggleGameVisibility('\${game.id}', \${game.is_public})" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(\${game.is_public ? '16, 185, 129' : '251, 146, 60'}, 0.2); color: \${game.is_public ? '#10B981' : '#FB923C'}; border: 1px solid \${game.is_public ? '#10B981' : '#FB923C'}; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">\${game.is_public ? '🌐 공개' : '🔒 비공개'}</button>
+                                    <button onclick="deleteManagerGame('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid #EF4444; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">🗑️ 삭제</button>
+                                    <button onclick="openManagerBugModal('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">🐛 버그 신고</button>
+                                    <button onclick="openManagerFeatureModal('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">✨ 기능 추가</button>
                                     <button onclick="viewManagerHistory('\${game.id}')" style="padding: 0.5rem 1rem; border-radius: 8px; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(100, 116, 139, 0.5); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">📜 이력</button>
                                 </div>
                             </div>
@@ -2770,6 +2775,44 @@ class DeveloperRoutes {
                 } catch (error) {
                     console.error('다운로드 실패:', error);
                     alert('❌ 다운로드 중 오류가 발생했습니다.');
+                }
+            }
+
+            // 🌐 게임 공개/비공개 전환
+            async function toggleGameVisibility(gameId, currentIsPublic) {
+                const action = currentIsPublic ? '비공개로 전환' : '공개로 전환';
+                if (!confirm(\`"\${gameId}" 게임을 \${action}하시겠습니까?\`)) {
+                    return;
+                }
+
+                try {
+                    const token = localStorage.getItem('authToken');
+                    if (!token) {
+                        alert('❌ 로그인이 필요합니다.');
+                        return;
+                    }
+
+                    const response = await fetch('/developer/api/toggle-game-visibility', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': \`Bearer \${token}\`
+                        },
+                        body: JSON.stringify({ gameId })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const newStatus = data.is_public ? '🌐 공개' : '🔒 비공개';
+                        alert(\`✅ 게임이 \${newStatus}로 설정되었습니다!\`);
+                        loadManagerGames();  // 게임 목록 새로고침
+                    } else {
+                        alert('❌ ' + (data.error || '변경 실패'));
+                    }
+                } catch (error) {
+                    console.error('공개/비공개 전환 실패:', error);
+                    alert('❌ 변경 중 오류가 발생했습니다.');
                 }
             }
 
@@ -4136,6 +4179,77 @@ class DeveloperRoutes {
 
         } catch (error) {
             console.error('❌ 게임 삭제 오류:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * 🌐 게임 공개/비공개 전환 핸들러
+     * DB의 is_public 필드를 토글
+     */
+    async handleToggleGameVisibility(req, res) {
+        try {
+            const { gameId } = req.body;
+
+            if (!gameId) {
+                return res.status(400).json({
+                    success: false,
+                    error: '게임 ID가 필요합니다.'
+                });
+            }
+
+            console.log(`🌐 게임 공개/비공개 전환 요청 [게임 ID: ${gameId}]`);
+            console.log(`👤 요청 사용자 ID: ${req.user?.id}`);
+
+            if (!this.supabaseAdmin) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Supabase Admin 클라이언트가 초기화되지 않았습니다.'
+                });
+            }
+
+            // 현재 is_public 값 조회
+            const { data: currentGame, error: fetchError } = await this.supabaseAdmin
+                .from('generated_games')
+                .select('is_public')
+                .eq('game_id', gameId)
+                .single();
+
+            if (fetchError || !currentGame) {
+                console.error('❌ 게임 조회 실패:', fetchError);
+                return res.status(404).json({
+                    success: false,
+                    error: '게임을 찾을 수 없습니다.'
+                });
+            }
+
+            const newIsPublic = !currentGame.is_public;
+            console.log(`🔄 전환: ${currentGame.is_public} → ${newIsPublic}`);
+
+            // is_public 값 토글
+            const { error: updateError } = await this.supabaseAdmin
+                .from('generated_games')
+                .update({ is_public: newIsPublic })
+                .eq('game_id', gameId);
+
+            if (updateError) {
+                console.error('❌ DB 업데이트 실패:', updateError);
+                throw updateError;
+            }
+
+            console.log(`✅ 게임 "${gameId}" 공개 상태 변경 완료`);
+
+            res.json({
+                success: true,
+                is_public: newIsPublic,
+                message: `게임이 ${newIsPublic ? '공개' : '비공개'}로 설정되었습니다.`
+            });
+
+        } catch (error) {
+            console.error('❌ 공개/비공개 전환 오류:', error);
             res.status(500).json({
                 success: false,
                 error: error.message

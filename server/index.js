@@ -123,7 +123,7 @@ class GameServer {
         this.app.use('/', authRoutes.getRouter());
 
         // LandingRoutes 등록 (랜딩 페이지)
-        const landingRoutes = new LandingRoutes(this.gameScanner, () => this.aiAssistant);
+        const landingRoutes = new LandingRoutes(this.gameScanner, () => this.aiAssistant, this.supabaseClient);
         this.app.use('/', landingRoutes.getRouter());
 
         // DeveloperRoutes 등록 (개발자 센터)
@@ -166,10 +166,11 @@ class GameServer {
             try {
                 const games = this.gameScanner.getActiveGames();
 
-                // 각 게임에 버전 정보 및 creator_id 추가
+                // 각 게임에 버전 정보, creator_id, is_public 추가
                 const gamesWithVersion = await Promise.all(games.map(async (game) => {
                     let version = '1.0';
                     let creator_id = null;
+                    let is_public = true; // 기본값: 공개
 
                     // GameMaintenanceManager에서 버전 정보 가져오기
                     if (this.gameMaintenanceManager) {
@@ -184,28 +185,30 @@ class GameServer {
                         }
                     }
 
-                    // Supabase에서 creator_id 가져오기 (모든 게임)
+                    // Supabase에서 creator_id와 is_public 가져오기 (모든 게임)
                     if (this.supabaseClient) {
                         try {
                             const { data, error } = await this.supabaseClient
                                 .from('generated_games')
-                                .select('creator_id')
+                                .select('creator_id, is_public')
                                 .eq('game_id', game.id)
                                 .single();
 
                             if (!error && data) {
                                 creator_id = data.creator_id;
+                                is_public = data.is_public !== false; // null이나 undefined면 true
                             }
                         } catch (error) {
                             // DB에 없는 게임은 무시 (로컬 전용 게임)
-                            console.log(`게임 ${game.id}의 creator_id를 가져오지 못했습니다:`, error.message);
+                            console.log(`게임 ${game.id}의 creator_id/is_public을 가져오지 못했습니다:`, error.message);
                         }
                     }
 
                     return {
                         ...game,
                         version: version,
-                        creator_id: creator_id
+                        creator_id: creator_id,
+                        is_public: is_public
                     };
                 }));
 
@@ -386,6 +389,7 @@ class GameServer {
                         genre: metadata.genre || 'action',
                         storage_path: htmlPath,
                         creator_id: req.user?.id || null,  // 게임 제작자 ID 저장
+                        is_public: true,  // 기본값: 공개 (새 게임은 기본 공개)
                         metadata: {
                             ...metadata,
                             source: 'interactive-generator',
