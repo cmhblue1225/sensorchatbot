@@ -237,6 +237,7 @@ class DeveloperRoutes {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Developer Center - Sensor Game Hub v6.0</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1961,34 +1962,42 @@ class DeveloperRoutes {
         }
 
         // 결과 모달 닫기
-        document.getElementById('close-result-modal').addEventListener('click', () => {
-            document.getElementById('result-modal').classList.add('hidden');
-        });
+        const closeResultModalBtn = document.getElementById('close-result-modal');
+        if (closeResultModalBtn) {
+            closeResultModalBtn.addEventListener('click', () => {
+                const resultModal = document.getElementById('result-modal');
+                if (resultModal) {
+                    resultModal.classList.add('hidden');
+                }
+            });
+        }
 
         // 새 게임 만들기
-        document.getElementById('new-game-btn').addEventListener('click', () => {
-            document.getElementById('result-modal').classList.add('hidden');
-            currentGameData = null;
-            generatorSessionId = null;
-            currentStage = 'initial';
-            generatorChatMessages.innerHTML = '<div class="chat-message bot"><div class="message-content">🎮 <strong>Sensor Game Hub 대화형 게임 생성기에 오신 것을 환영합니다!</strong><br><br>저는 여러분의 게임 아이디어를 현실로 만들어드리는 AI 개발 파트너입니다.<br><br><strong>어떤 게임을 만들고 싶으신가요?</strong><br><br>예를 들어:<br>• "스마트폰을 기울여서 공을 굴리는 미로 게임"<br>• "친구와 함께 흔들어서 요리하는 협력 게임"<br>• "여러 명이 경쟁하는 반응속도 테스트 게임"<br><br>💡 아이디어를 자유롭게 말씀해주세요!</div></div>';
-            updateGeneratorProgress('initial');
-        });
+        const newGameBtn = document.getElementById('new-game-btn');
+        if (newGameBtn) {
+            newGameBtn.addEventListener('click', () => {
+                const resultModal = document.getElementById('result-modal');
+                if (resultModal) {
+                    resultModal.classList.add('hidden');
+                }
+                currentGameData = null;
+                generatorSessionId = null;
+                currentStage = 'initial';
+                generatorChatMessages.innerHTML = '<div class="chat-message bot"><div class="message-content">🎮 <strong>Sensor Game Hub 대화형 게임 생성기에 오신 것을 환영합니다!</strong><br><br>저는 여러분의 게임 아이디어를 현실로 만들어드리는 AI 개발 파트너입니다.<br><br><strong>어떤 게임을 만들고 싶으신가요?</strong><br><br>예를 들어:<br>• "스마트폰을 기울여서 공을 굴리는 미로 게임"<br>• "친구와 함께 흔들어서 요리하는 협력 게임"<br>• "여러 명이 경쟁하는 반응속도 테스트 게임"<br><br>💡 아이디어를 자유롭게 말씀해주세요!</div></div>';
+                updateGeneratorProgress('initial');
+            });
+        }
 
         // Quick Links
         document.querySelectorAll('.quick-link').forEach(link => {
             link.addEventListener('click', () => {
                 const tab = link.dataset.tab;
-                document.querySelector('[data-tab="' + tab + '"]').click();
+                const tabElement = document.querySelector('[data-tab="' + tab + '"]');
+                if (tabElement) {
+                    tabElement.click();
+                }
             });
         });
-
-        // marked 라이브러리 로드 (CDN)
-        if (typeof marked === 'undefined') {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js';
-            document.head.appendChild(script);
-        }
     </script>
 </body>
 </html>
@@ -2842,9 +2851,12 @@ class DeveloperRoutes {
             }
 
             // 게임 관리 탭이 활성화될 때 게임 목록 로드
-            document.querySelector('[data-tab="manager"]').addEventListener('click', () => {
-                setTimeout(loadManagerGames, 100);
-            });
+            const managerTab = document.querySelector('[data-tab="manager"]');
+            if (managerTab) {
+                managerTab.addEventListener('click', () => {
+                    setTimeout(loadManagerGames, 100);
+                });
+            }
         </script>
         `;
     }
