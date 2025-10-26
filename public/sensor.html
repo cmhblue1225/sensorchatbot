@@ -473,6 +473,147 @@
         .hidden {
             display: none !important;
         }
+
+        /* 센서 체크 기능 스타일 */
+        .sensor-check-button {
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+        }
+
+        .sensor-check-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .sensor-check-button:active {
+            transform: translateY(0);
+        }
+
+        .sensor-check-section {
+            margin-top: 15px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            max-height: 2000px;
+            opacity: 1;
+        }
+
+        .sensor-check-section.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        .sensor-results {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .sensor-results h3 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .sensor-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid #e0e0e0;
+            transition: all 0.2s ease;
+        }
+
+        .sensor-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .sensor-card.supported {
+            border-left-color: #10b981;
+            background: linear-gradient(90deg, #ecfdf5, #f8f9fa);
+        }
+
+        .sensor-card.not-supported {
+            border-left-color: #ef4444;
+            background: linear-gradient(90deg, #fef2f2, #f8f9fa);
+        }
+
+        .sensor-card.permission-required {
+            border-left-color: #f59e0b;
+            background: linear-gradient(90deg, #fffbeb, #f8f9fa);
+        }
+
+        .sensor-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .sensor-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sensor-status-icon {
+            font-size: 20px;
+        }
+
+        .sensor-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .sensor-permission-button {
+            margin-top: 8px;
+            padding: 8px 16px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sensor-permission-button:hover {
+            background: #d97706;
+        }
+
+        .sensor-sample-data {
+            margin-top: 8px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            color: #333;
+            border: 1px solid #e0e0e0;
+        }
+
+        .sensor-sample-data code {
+            display: block;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -494,7 +635,22 @@
         
         <!-- 메시지 -->
         <div class="message" id="message"></div>
-        
+
+        <!-- 센서 체크 버튼 -->
+        <button class="sensor-check-button" id="sensorCheckButton">
+            🔍 센서 체크하기
+        </button>
+
+        <!-- 센서 체크 결과 (접을 수 있는 섹션) -->
+        <div class="sensor-check-section collapsed" id="sensorCheckSection">
+            <div class="sensor-results" id="sensorResults">
+                <h3>📱 센서 지원 현황</h3>
+                <div id="sensorResultsContent">
+                    <!-- 센서 체크 결과가 여기에 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+
         <!-- 세션 입력 -->
         <div class="session-input-section" id="sessionInputSection">
             <div class="section-title">🎮 게임 세션 연결</div>
@@ -701,7 +857,15 @@
                 this.elements.startSensorBtn.addEventListener('click', () => {
                     this.startSensorCollection();
                 });
-                
+
+                // 센서 체크 버튼
+                const sensorCheckButton = document.getElementById('sensorCheckButton');
+                if (sensorCheckButton) {
+                    sensorCheckButton.addEventListener('click', () => {
+                        this.toggleSensorCheckSection();
+                    });
+                }
+
                 // 엔터키 처리
                 this.elements.sessionInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter' && !this.elements.connectButton.disabled) {
@@ -986,7 +1150,228 @@
                     this.elements.qrButton.disabled = true;
                 }
             }
-            
+
+            // 🔍 센서 체크 섹션 토글
+            toggleSensorCheckSection() {
+                const section = document.getElementById('sensorCheckSection');
+                const isCollapsed = section.classList.contains('collapsed');
+
+                if (isCollapsed) {
+                    // 열기 - 먼저 센서 체크 실행
+                    this.checkAllSensors();
+                    section.classList.remove('collapsed');
+                } else {
+                    // 닫기
+                    section.classList.add('collapsed');
+                }
+            }
+
+            // 🔍 모든 센서 체크
+            async checkAllSensors() {
+                const results = {};
+
+                // 1. DeviceMotionEvent (가속도, 회전 속도)
+                results.deviceMotion = {
+                    name: 'Device Motion',
+                    description: '가속도 및 회전 속도 센서',
+                    supported: typeof DeviceMotionEvent !== 'undefined',
+                    permissionRequired: typeof DeviceMotionEvent.requestPermission === 'function',
+                    permission: 'unknown',
+                    sampleData: null
+                };
+
+                // 2. DeviceOrientationEvent (방향, 기울기)
+                results.deviceOrientation = {
+                    name: 'Device Orientation',
+                    description: '기기 방향 및 기울기 센서',
+                    supported: typeof DeviceOrientationEvent !== 'undefined',
+                    permissionRequired: typeof DeviceOrientationEvent.requestPermission === 'function',
+                    permission: 'unknown',
+                    sampleData: null
+                };
+
+                // 3. Touch Events (터치 지원)
+                results.touch = {
+                    name: 'Touch Events',
+                    description: '멀티 터치 지원',
+                    supported: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
+                    permissionRequired: false,
+                    permission: 'granted',
+                    sampleData: navigator.maxTouchPoints > 0 ? `최대 ${navigator.maxTouchPoints}개 터치 포인트` : null
+                };
+
+                // 4. Screen Orientation (화면 회전)
+                results.screenOrientation = {
+                    name: 'Screen Orientation',
+                    description: '화면 방향 감지',
+                    supported: typeof screen.orientation !== 'undefined',
+                    permissionRequired: false,
+                    permission: 'granted',
+                    sampleData: screen.orientation ? screen.orientation.type : null
+                };
+
+                // 5. Permission API (권한 확인)
+                results.permissions = {
+                    name: 'Permissions API',
+                    description: 'iOS 13+ 센서 권한 API',
+                    supported: typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function',
+                    permissionRequired: false,
+                    permission: 'granted',
+                    sampleData: null
+                };
+
+                // iOS 13+ 권한 상태 확인 (이미 허용되었는지 확인)
+                if (results.deviceMotion.permissionRequired) {
+                    try {
+                        // 이미 허용된 경우 샘플 데이터 수집 가능
+                        const testHandler = (event) => {
+                            if (event.acceleration) {
+                                results.deviceMotion.permission = 'granted';
+                                results.deviceMotion.sampleData = {
+                                    x: event.acceleration.x?.toFixed(2) || 0,
+                                    y: event.acceleration.y?.toFixed(2) || 0,
+                                    z: event.acceleration.z?.toFixed(2) || 0
+                                };
+                            }
+                            window.removeEventListener('devicemotion', testHandler);
+                        };
+                        window.addEventListener('devicemotion', testHandler);
+                        setTimeout(() => {
+                            window.removeEventListener('devicemotion', testHandler);
+                            if (results.deviceMotion.permission === 'unknown') {
+                                results.deviceMotion.permission = 'prompt';
+                            }
+                        }, 500);
+                    } catch (e) {
+                        results.deviceMotion.permission = 'denied';
+                    }
+                }
+
+                // 방향 센서 권한 확인
+                if (results.deviceOrientation.permissionRequired) {
+                    try {
+                        const testHandler = (event) => {
+                            if (event.alpha !== null) {
+                                results.deviceOrientation.permission = 'granted';
+                                results.deviceOrientation.sampleData = {
+                                    alpha: event.alpha?.toFixed(2) || 0,
+                                    beta: event.beta?.toFixed(2) || 0,
+                                    gamma: event.gamma?.toFixed(2) || 0
+                                };
+                            }
+                            window.removeEventListener('deviceorientation', testHandler);
+                        };
+                        window.addEventListener('deviceorientation', testHandler);
+                        setTimeout(() => {
+                            window.removeEventListener('deviceorientation', testHandler);
+                            if (results.deviceOrientation.permission === 'unknown') {
+                                results.deviceOrientation.permission = 'prompt';
+                            }
+                        }, 500);
+                    } catch (e) {
+                        results.deviceOrientation.permission = 'denied';
+                    }
+                }
+
+                // 결과 표시 (약간의 딜레이를 주어 비동기 체크 완료 대기)
+                setTimeout(() => {
+                    this.displaySensorResults(results);
+                }, 600);
+            }
+
+            // 🔍 센서 체크 결과 표시
+            displaySensorResults(results) {
+                const container = document.getElementById('sensorResultsContent');
+                container.innerHTML = '';
+
+                for (const [key, sensor] of Object.entries(results)) {
+                    const card = document.createElement('div');
+                    card.className = 'sensor-card';
+
+                    // 상태에 따른 클래스 추가
+                    if (!sensor.supported) {
+                        card.classList.add('not-supported');
+                    } else if (sensor.permissionRequired && sensor.permission === 'prompt') {
+                        card.classList.add('permission-required');
+                    } else {
+                        card.classList.add('supported');
+                    }
+
+                    // 상태 아이콘 결정
+                    let statusIcon = '✅';
+                    if (!sensor.supported) {
+                        statusIcon = '❌';
+                    } else if (sensor.permissionRequired && sensor.permission === 'prompt') {
+                        statusIcon = '⚠️';
+                    }
+
+                    // 카드 HTML 생성
+                    let cardHTML = `
+                        <div class="sensor-card-header">
+                            <div class="sensor-name">
+                                <span class="sensor-status-icon">${statusIcon}</span>
+                                ${sensor.name}
+                            </div>
+                        </div>
+                        <div class="sensor-description">${sensor.description}</div>
+                    `;
+
+                    // 권한 요청 버튼 (iOS 13+)
+                    if (sensor.permissionRequired && sensor.permission === 'prompt') {
+                        cardHTML += `
+                            <button class="sensor-permission-button" onclick="controller.requestSensorPermission('${key}')">
+                                🔓 권한 요청하기
+                            </button>
+                        `;
+                    }
+
+                    // 샘플 데이터 표시
+                    if (sensor.sampleData) {
+                        if (typeof sensor.sampleData === 'string') {
+                            cardHTML += `
+                                <div class="sensor-sample-data">
+                                    <code>${sensor.sampleData}</code>
+                                </div>
+                            `;
+                        } else if (typeof sensor.sampleData === 'object') {
+                            const dataStr = JSON.stringify(sensor.sampleData, null, 2);
+                            cardHTML += `
+                                <div class="sensor-sample-data">
+                                    <code>샘플 데이터:\n${dataStr}</code>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    card.innerHTML = cardHTML;
+                    container.appendChild(card);
+                }
+            }
+
+            // 🔓 센서 권한 요청 (iOS 13+)
+            async requestSensorPermission(sensorType) {
+                try {
+                    let permission;
+
+                    if (sensorType === 'deviceMotion' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                        permission = await DeviceMotionEvent.requestPermission();
+                    } else if (sensorType === 'deviceOrientation' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        permission = await DeviceOrientationEvent.requestPermission();
+                    }
+
+                    if (permission === 'granted') {
+                        this.showMessage('센서 권한이 허용되었습니다!', 'success');
+                        // 다시 체크하여 업데이트
+                        setTimeout(() => this.checkAllSensors(), 500);
+                    } else {
+                        this.showMessage('센서 권한이 거부되었습니다.', 'error');
+                    }
+                } catch (error) {
+                    console.error('권한 요청 실패:', error);
+                    this.showMessage('권한 요청 중 오류가 발생했습니다.', 'error');
+                }
+            }
+
             showMessage(text, type = 'success') {
                 this.elements.message.textContent = text;
                 this.elements.message.className = `message ${type} visible`;
@@ -996,10 +1381,13 @@
                 }, 5000);
             }
         }
-        
+
+        // 전역 controller 변수 (권한 요청 버튼에서 접근하기 위해)
+        let controller;
+
         // 앱 시작
         document.addEventListener('DOMContentLoaded', () => {
-            new SensorController();
+            controller = new SensorController();
         });
     </script>
 </body>
