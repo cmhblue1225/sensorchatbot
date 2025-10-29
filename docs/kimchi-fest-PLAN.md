@@ -223,6 +223,14 @@ Handoff Summary (3-line 요약 템플릿)
 - Stop check: game.json이 UTF-8 유효 JSON으로 작성되고, 변경 로그에 최신 단계가 반영되었는지 확인.
 - RESUME_FROM: N/A (prototype pass 완료)
 
+## 2025-10-29T09:38:57+09:00
+- 완료 단계: 확장 설계 스텝 (버킷 진행도/애니 레이어 스켈레톤)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (버킷 진행도 UI, 애니메이션 레이어 구조/상태 스텁 추가)
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
+- Stop check: 플레이어 리스트에 버킷 진행도가 0%로 표시되고 애니메이션 레이어가 Inactive 상태로 노출되는지 확인.
+- RESUME_FROM: 확장 설계 후속 (애니메이션 연출 구현, 자산 매핑)
+
 ---
 
 ## 확장 설계 (김장 연출 업그레이드)

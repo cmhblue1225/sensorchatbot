@@ -305,6 +305,39 @@
             color: rgba(248, 250, 252, 0.85);
         }
 
+        .animation-layer {
+            position: relative;
+            border-radius: 1rem;
+            border: 1px dashed rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.38);
+            min-height: 140px;
+            margin-bottom: 1.1rem;
+            overflow: hidden;
+        }
+
+        .animation-layer[data-state="inactive"] {
+            opacity: 0.65;
+        }
+
+        .animation-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            text-align: center;
+            color: rgba(148, 163, 184, 0.75);
+            font-size: 0.9rem;
+            letter-spacing: 0.01em;
+        }
+
+        .animation-track {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
         .player-strip {
             border-radius: 0.9rem;
             border: 1px solid var(--border);
@@ -344,6 +377,47 @@
             background: rgba(15, 23, 42, 0.55);
             border: 1px solid rgba(148, 163, 184, 0.2);
             color: rgba(248, 250, 252, 0.9);
+        }
+
+        .bucket-progress {
+            position: relative;
+            width: 100%;
+            height: 12px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.2);
+            overflow: hidden;
+            --bucket-fill: 0%;
+        }
+
+        .bucket-progress::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            width: var(--bucket-fill, 0%);
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.85), rgba(250, 204, 21, 0.9));
+            transition: width 240ms ease;
+        }
+
+        .bucket-progress[data-tier="milestone"]::after {
+            box-shadow: 0 0 18px rgba(250, 204, 21, 0.35);
+        }
+
+        .bucket-progress[data-tier="complete"]::after {
+            background: linear-gradient(135deg, rgba(74, 222, 128, 0.95), rgba(250, 204, 21, 0.95));
+            box-shadow: 0 0 22px rgba(74, 222, 128, 0.45);
+        }
+
+        .bucket-caption {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            color: rgba(148, 163, 184, 0.82);
+        }
+
+        .bucket-caption strong {
+            color: rgba(248, 250, 252, 0.82);
+            font-weight: 600;
         }
 
         .player-list li.empty {
@@ -776,6 +850,12 @@
                         <span class="step-label">양념 바르기</span>
                     </div>
                 </div>
+                <div class="animation-layer" id="animation-layer" data-state="inactive" aria-hidden="true">
+                    <div class="animation-placeholder">
+                        양념/배추 애니메이션 레이어가 곧 추가됩니다.
+                    </div>
+                    <div class="animation-track" aria-hidden="true"></div>
+                </div>
                 <div class="player-strip">
                     <h4>연결된 기기</h4>
                     <ul id="player-list" class="player-list" aria-live="polite">
@@ -895,6 +975,9 @@
             const metronomePlaceholder = document.getElementById('metronome-placeholder');
             const metronomeIndicator = document.getElementById('metronome-indicator');
             const playfieldPlaceholder = document.getElementById('playfield-placeholder');
+            const animationLayerEl = document.getElementById('animation-layer');
+            const animationPlaceholderEl = animationLayerEl ? animationLayerEl.querySelector('.animation-placeholder') : null;
+            const animationTrackEl = animationLayerEl ? animationLayerEl.querySelector('.animation-track') : null;
             const logList = document.getElementById('shake-log');
             const logStatus = document.getElementById('log-status');
             const stageTitleEl = document.getElementById('stage-title');
@@ -932,7 +1015,11 @@
                 leader: null,
                 leaderTie: false,
                 sfxBus: null,
-                stagePulseTimeout: null
+                stagePulseTimeout: null,
+                animationQueue: [],
+                animationLayerEl,
+                animationPlaceholderEl,
+                animationTrackEl
             };
             const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
             const debugPanel = document.getElementById('debug-panel');
@@ -1008,6 +1095,34 @@
                 updateLeaderDisplay();
             }
 
+            function normalizeFillAmount(value) {
+                if (typeof value !== 'number' || Number.isNaN(value)) {
+                    return 0;
+                }
+                if (value < 0) {
+                    return 0;
+                }
+                if (value > 1) {
+                    return 1;
+                }
+                return value;
+            }
+
+            function deriveBucketTier(fill) {
+                if (fill >= 0.99) {
+                    return 'complete';
+                }
+                if (fill >= 0.75) {
+                    return 'milestone';
+                }
+                if (fill >= 0.5) {
+                    return 'milestone';
+                }
+                if (fill >= 0.25) {
+                    return 'milestone';
+                }
+                return null;
+            }
 
             function renderPlayerList() {
                 if (!playerListEl) {
@@ -1086,11 +1201,33 @@
 
                     breakdown.append(niceStat, offStat, missStat);
 
+                    const fillAmount = normalizeFillAmount(detail.fillAmount ?? 0);
+                    const bucketCaption = document.createElement('div');
+                    bucketCaption.className = 'bucket-caption';
+
+                    const bucketLabel = document.createElement('span');
+                    bucketLabel.textContent = '버킷 진행';
+
+                    const bucketValue = document.createElement('strong');
+                    bucketValue.textContent = `${Math.round(fillAmount * 100)}%`;
+
+                    bucketCaption.append(bucketLabel, bucketValue);
+
+                    const bucketProgress = document.createElement('div');
+                    bucketProgress.className = 'bucket-progress';
+                    bucketProgress.style.setProperty('--bucket-fill', `${(fillAmount * 100).toFixed(1)}%`);
+                    bucketProgress.setAttribute('role', 'img');
+                    bucketProgress.setAttribute('aria-label', `버킷 진행 ${Math.round(fillAmount * 100)}%`);
+                    const tier = deriveBucketTier(fillAmount);
+                    if (tier) {
+                        bucketProgress.dataset.tier = tier;
+                    }
+
                     if (detail.flashUntil && detail.flashUntil > now && detail.flashRating) {
                         item.dataset.flash = detail.flashRating;
                     }
 
-                    item.append(header, metaRow, breakdown);
+                    item.append(header, metaRow, breakdown, bucketCaption, bucketProgress);
                     playerListEl.append(item);
                 }
             }
@@ -1130,6 +1267,24 @@
                 }
             }
 
+            function setAnimationLayerMode(mode = 'inactive') {
+                if (!animationLayerEl) {
+                    return;
+                }
+                animationLayerEl.dataset.state = mode;
+                if (animationPlaceholderEl) {
+                    animationPlaceholderEl.hidden = mode !== 'inactive';
+                }
+            }
+
+            function resetAnimationLayer() {
+                setAnimationLayerMode('inactive');
+                if (animationTrackEl) {
+                    animationTrackEl.innerHTML = '';
+                }
+                state.animationQueue.length = 0;
+            }
+
                         function updateStagePanel(stageKey) {
                 const total = CONFIG.stageOrder.length;
                 const key = stageKey ?? state.currentStage ?? null;
@@ -1138,8 +1293,10 @@
                     stageEl.textContent = key ? (CONFIG.stageLabels[key] || key) : (state.session ? '라운드 대기 중' : '세션 대기 중');
                     if (!key) {
                         setStageResult('센서를 연결하면 게임 준비가 완료됩니다.', 'info');
+                        setAnimationLayerMode('inactive');
                     } else {
                         setStageResult('', 'info');
+                        setAnimationLayerMode(key === 'spread' ? 'active' : 'inactive');
                     }
                     return;
                 }
@@ -1162,6 +1319,7 @@
 
                     stageCycleEl.textContent = `0 / ${total} 단계`;
                     stageSteps.forEach((step) => step.classList.remove('active'));
+                    setAnimationLayerMode('inactive');
                     return;
                 }
 
@@ -1175,6 +1333,7 @@
                 stageCycleEl.textContent = `${index + 1} / ${total} 단계`;
                 stageSteps.forEach((step) => step.classList.toggle('active', step.dataset.stage === key));
                 setStageResult('', 'info');
+                setAnimationLayerMode(key === 'spread' ? 'active' : 'inactive');
             }
 
             function updatePlayerBadge() {
@@ -1289,6 +1448,7 @@ function resetJudgementState(summaryMessage) {
                     detail.lastDeltaMs = null;
                     detail.flashUntil = 0;
                     detail.flashRating = null;
+                    detail.fillAmount = 0;
                 });
                 state.leader = null;
                 state.leaderTie = false;
@@ -1297,6 +1457,7 @@ function resetJudgementState(summaryMessage) {
                 renderPlayerList();
                 updatePlayerBadge();
                 setStageResult('', 'info');
+                resetAnimationLayer();
             }
 
                         function ensurePlayerDetail(sensorId) {
@@ -1312,7 +1473,9 @@ function resetJudgementState(summaryMessage) {
                         lastRating: null,
                         lastDeltaMs: null,
                         flashUntil: 0,
-                        flashRating: null
+                        flashRating: null,
+                        fillAmount: 0,
+                        skinId: null
                     };
                     state.playersDetailed.set(sensorId, detail);
                     if (!state.playerLabels.has(sensorId)) {
