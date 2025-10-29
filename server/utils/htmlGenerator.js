@@ -1464,6 +1464,226 @@ class HtmlGenerator {
                         padding: 2rem;
                     }
                 }
+
+                /* User Guide Styles */
+                .user-guide-section {
+                    margin: 4rem 0;
+                    padding: 3rem;
+                    background: rgba(30, 41, 59, 0.4);
+                    border: 1px solid rgba(99, 102, 241, 0.3);
+                    border-radius: 24px;
+                }
+
+                .guide-main-title {
+                    font-size: 2.5rem;
+                    font-weight: 800;
+                    text-align: center;
+                    background: linear-gradient(135deg, #6366F1, #A855F7);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    margin-bottom: 1rem;
+                }
+
+                .guide-subtitle {
+                    text-align: center;
+                    font-size: 1.2rem;
+                    color: #CBD5E1;
+                    margin-bottom: 3rem;
+                }
+
+                .guide-container {
+                    max-width: 900px;
+                    margin: 0 auto;
+                }
+
+                .guide-item {
+                    background: rgba(15, 23, 42, 0.6);
+                    border: 2px solid rgba(99, 102, 241, 0.2);
+                    border-radius: 16px;
+                    margin-bottom: 1.5rem;
+                    overflow: hidden;
+                    transition: all 0.3s;
+                }
+
+                .guide-item:hover {
+                    border-color: rgba(99, 102, 241, 0.4);
+                }
+
+                .guide-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 1.5rem 2rem;
+                    cursor: pointer;
+                    user-select: none;
+                    transition: background 0.3s;
+                }
+
+                .guide-header:hover {
+                    background: rgba(99, 102, 241, 0.1);
+                }
+
+                .guide-title-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                }
+
+                .guide-number {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 40px;
+                    height: 40px;
+                    background: linear-gradient(135deg, #6366F1, #8B5CF6);
+                    border-radius: 50%;
+                    font-weight: 700;
+                    font-size: 1rem;
+                    color: white;
+                    flex-shrink: 0;
+                }
+
+                .guide-title {
+                    font-size: 1.3rem;
+                    font-weight: 600;
+                    color: #F8FAFC;
+                    margin: 0;
+                }
+
+                .guide-toggle {
+                    font-size: 1.2rem;
+                    color: #6366F1;
+                    transition: transform 0.3s;
+                }
+
+                .guide-item.active .guide-toggle {
+                    transform: rotate(180deg);
+                }
+
+                .guide-content {
+                    max-height: 0;
+                    overflow: hidden;
+                    transition: max-height 0.3s ease-out;
+                }
+
+                .guide-item.active .guide-content {
+                    max-height: 3000px;
+                    transition: max-height 0.5s ease-in;
+                }
+
+                .guide-step {
+                    padding: 2rem;
+                    color: #CBD5E1;
+                    line-height: 1.8;
+                }
+
+                .guide-step h4 {
+                    color: #F8FAFC;
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    margin-bottom: 1rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+
+                .guide-step h5 {
+                    color: #E2E8F0;
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    margin-top: 1.5rem;
+                    margin-bottom: 0.8rem;
+                }
+
+                .guide-step ul, .guide-step ol {
+                    margin: 1rem 0;
+                    padding-left: 2rem;
+                }
+
+                .guide-step li {
+                    margin-bottom: 0.8rem;
+                    color: #CBD5E1;
+                }
+
+                .guide-step li strong {
+                    color: #F8FAFC;
+                    font-weight: 600;
+                }
+
+                .guide-step ul ul {
+                    margin-top: 0.5rem;
+                }
+
+                .guide-step code {
+                    background: rgba(99, 102, 241, 0.2);
+                    color: #A5B4FC;
+                    padding: 0.2rem 0.6rem;
+                    border-radius: 6px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 0.9rem;
+                }
+
+                .guide-note {
+                    background: rgba(99, 102, 241, 0.1);
+                    border-left: 4px solid #6366F1;
+                    padding: 1rem 1.5rem;
+                    margin-top: 1.5rem;
+                    border-radius: 8px;
+                    color: #E2E8F0;
+                    line-height: 1.6;
+                }
+
+                .guide-example {
+                    background: rgba(139, 92, 246, 0.15);
+                    border-left: 4px solid #8B5CF6;
+                    padding: 1rem 1.5rem;
+                    margin: 1rem 0;
+                    border-radius: 8px;
+                    color: #E9D5FF;
+                    font-style: italic;
+                }
+
+                @media (max-width: 768px) {
+                    .user-guide-section {
+                        padding: 2rem 1rem;
+                        margin: 2rem 0;
+                    }
+
+                    .guide-main-title {
+                        font-size: 2rem;
+                    }
+
+                    .guide-subtitle {
+                        font-size: 1rem;
+                    }
+
+                    .guide-header {
+                        padding: 1rem 1.5rem;
+                    }
+
+                    .guide-title {
+                        font-size: 1.1rem;
+                    }
+
+                    .guide-number {
+                        width: 35px;
+                        height: 35px;
+                        font-size: 0.9rem;
+                    }
+
+                    .guide-step {
+                        padding: 1.5rem;
+                    }
+
+                    .guide-step h4 {
+                        font-size: 1.1rem;
+                    }
+
+                    .guide-step ul, .guide-step ol {
+                        padding-left: 1.5rem;
+                    }
+                }
             </style>
         `;
 
@@ -1553,6 +1773,202 @@ class HtmlGenerator {
                         </p>
                         <span class="nav-card-badge">${stats.documents} Docs + AI Tools</span>
                     </a>
+                </div>
+
+                <!-- User Guide Section -->
+                <div class="user-guide-section">
+                    <h2 class="guide-main-title">📖 사용자 가이드</h2>
+                    <p class="guide-subtitle">센서 게임 허브를 처음 사용하시나요? 단계별로 따라해보세요!</p>
+
+                    <div class="guide-container">
+                        <!-- Guide Item 1: 회원가입 및 로그인 -->
+                        <div class="guide-item">
+                            <div class="guide-header" onclick="toggleGuide(this)">
+                                <div class="guide-title-row">
+                                    <span class="guide-number">01</span>
+                                    <h3 class="guide-title">회원가입 및 로그인</h3>
+                                </div>
+                                <span class="guide-toggle">▼</span>
+                            </div>
+                            <div class="guide-content">
+                                <div class="guide-step">
+                                    <h4>🔑 로그인 방법</h4>
+                                    <ul>
+                                        <li><strong>일반 로그인:</strong> 상단의 "로그인" 버튼을 클릭하여 이메일과 비밀번호를 입력하세요.</li>
+                                        <li><strong>회원가입:</strong> "회원가입" 버튼을 클릭하여 이름, 닉네임, 이메일, 비밀번호를 입력하세요.</li>
+                                        <li><strong>테스트 계정:</strong> "🚀 테스트 계정으로 로그인" 버튼을 클릭하면 별도의 입력 없이 즉시 체험할 수 있습니다.</li>
+                                    </ul>
+                                    <div class="guide-note">
+                                        💡 <strong>Tip:</strong> 테스트 계정(test@test.com)으로 먼저 플랫폼을 체험해보세요!
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Guide Item 2: 게임 플레이 -->
+                        <div class="guide-item">
+                            <div class="guide-header" onclick="toggleGuide(this)">
+                                <div class="guide-title-row">
+                                    <span class="guide-number">02</span>
+                                    <h3 class="guide-title">게임 플레이 방법</h3>
+                                </div>
+                                <span class="guide-toggle">▼</span>
+                            </div>
+                            <div class="guide-content">
+                                <div class="guide-step">
+                                    <h4>🎮 게임 목록에서 게임 선택하기</h4>
+                                    <ol>
+                                        <li><strong>게임 목록 페이지 접속:</strong> 메인 화면에서 "🎮 게임 목록" 카드를 클릭하세요.</li>
+                                        <li><strong>게임 선택:</strong> 원하는 게임 카드를 클릭하여 게임 페이지로 이동합니다.</li>
+                                        <li><strong>QR 코드 스캔:</strong> 게임 화면에 표시되는 QR 코드를 스마트폰으로 스캔하세요.</li>
+                                        <li><strong>센서 연결:</strong> QR 코드를 스캔하면 센서 클라이언트 페이지로 이동하고, 자동으로 PC와 연결됩니다.</li>
+                                        <li><strong>게임 시작:</strong> 연결이 완료되면 스마트폰을 기울이거나 움직여 게임을 플레이하세요!</li>
+                                    </ol>
+                                    <div class="guide-note">
+                                        ⚠️ <strong>주의:</strong> iOS 기기는 센서 권한을 허용해야 합니다. 센서 클라이언트 페이지에서 권한 요청 팝업이 나타나면 "허용"을 선택하세요.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Guide Item 3: 센서 클라이언트 -->
+                        <div class="guide-item">
+                            <div class="guide-header" onclick="toggleGuide(this)">
+                                <div class="guide-title-row">
+                                    <span class="guide-number">03</span>
+                                    <h3 class="guide-title">센서 클라이언트 사용법</h3>
+                                </div>
+                                <span class="guide-toggle">▼</span>
+                            </div>
+                            <div class="guide-content">
+                                <div class="guide-step">
+                                    <h4>📱 스마트폰을 컨트롤러로 변신!</h4>
+                                    <ul>
+                                        <li><strong>직접 접속:</strong> 메인 화면에서 "📱 센서 클라이언트" 카드를 클릭하거나, 스마트폰에서 직접 <code>/sensor.html</code>로 접속하세요.</li>
+                                        <li><strong>세션 코드 입력:</strong> PC 게임 화면에 표시된 6자리 세션 코드를 입력하고 "연결하기" 버튼을 누르세요.</li>
+                                        <li><strong>센서 데이터 전송:</strong> 연결이 완료되면 스마트폰의 기울기, 가속도 센서 데이터가 실시간으로 PC로 전송됩니다.</li>
+                                        <li><strong>센서 정보 확인:</strong> 센서 클라이언트 화면에서 현재 센서 값(기울기, 가속도 등)을 실시간으로 확인할 수 있습니다.</li>
+                                    </ul>
+                                    <div class="guide-note">
+                                        💡 <strong>Tip:</strong> QR 코드를 스캔하면 세션 코드가 자동으로 입력되므로 더 편리합니다!
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Guide Item 4: AI 게임 생성기 -->
+                        <div class="guide-item">
+                            <div class="guide-header" onclick="toggleGuide(this)">
+                                <div class="guide-title-row">
+                                    <span class="guide-number">04</span>
+                                    <h3 class="guide-title">AI 게임 생성기 사용법</h3>
+                                </div>
+                                <span class="guide-toggle">▼</span>
+                            </div>
+                            <div class="guide-content">
+                                <div class="guide-step">
+                                    <h4>🤖 나만의 센서 게임을 만들어보세요!</h4>
+                                    <ol>
+                                        <li><strong>AI 게임 생성기 접속:</strong> 메인 화면에서 "🤖 AI 게임 생성기" 카드를 클릭하세요. (로그인 필요)</li>
+                                        <li><strong>게임 아이디어 입력:</strong> 만들고 싶은 게임에 대해 자연어로 설명하세요.
+                                            <div class="guide-example">
+                                                예시: "스마트폰을 기울여 공을 굴려 미로를 탈출하는 게임을 만들어줘"
+                                            </div>
+                                        </li>
+                                        <li><strong>대화형 생성 과정:</strong> AI와 대화하며 게임을 구체화하세요. AI가 질문하면 답변하여 게임을 정교하게 다듬을 수 있습니다.</li>
+                                        <li><strong>5단계 생성 프로세스:</strong>
+                                            <ul>
+                                                <li>Stage 1: 게임 아이디어 분석 (0-20%)</li>
+                                                <li>Stage 2: 유사 게임 검색 (20-40%)</li>
+                                                <li>Stage 3: AI 코드 생성 (40-80%)</li>
+                                                <li>Stage 4: 코드 품질 검증 (80-90%)</li>
+                                                <li>Stage 5: 게임 등록 및 완성 (90-100%)</li>
+                                            </ul>
+                                        </li>
+                                        <li><strong>게임 완성:</strong> 생성이 완료되면 게임 목록에 자동으로 추가되며, 바로 플레이할 수 있습니다!</li>
+                                    </ol>
+                                    <div class="guide-note">
+                                        ✨ <strong>품질 보장:</strong> 모든 생성된 게임은 최소 95점 이상의 품질 점수를 보장합니다!
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Guide Item 5: 개발자 센터 -->
+                        <div class="guide-item">
+                            <div class="guide-header" onclick="toggleGuide(this)">
+                                <div class="guide-title-row">
+                                    <span class="guide-number">05</span>
+                                    <h3 class="guide-title">개발자 센터 활용하기</h3>
+                                </div>
+                                <span class="guide-toggle">▼</span>
+                            </div>
+                            <div class="guide-content">
+                                <div class="guide-step">
+                                    <h4>👨‍💻 고급 개발 도구 및 문서</h4>
+                                    <p>개발자 센터에서는 다양한 개발 도구와 문서를 제공합니다. (로그인 필요)</p>
+
+                                    <h5>📚 문서 섹션</h5>
+                                    <ul>
+                                        <li><strong>카테고리별 문서:</strong> API, 게임 개발, 센서, SessionSDK 등 35개 이상의 문서를 제공합니다.</li>
+                                        <li><strong>검색 기능:</strong> 필요한 문서를 빠르게 찾을 수 있습니다.</li>
+                                    </ul>
+
+                                    <h5>🤖 AI 어시스턴트</h5>
+                                    <ul>
+                                        <li><strong>RAG 기반 챗봇:</strong> 616개의 벡터 임베딩을 활용한 지능형 AI가 개발 관련 질문에 답변합니다.</li>
+                                        <li><strong>문서 기반 답변:</strong> 프로젝트 문서를 기반으로 정확한 정보를 제공합니다.</li>
+                                    </ul>
+
+                                    <h5>🛠️ 게임 관리</h5>
+                                    <ul>
+                                        <li><strong>버그 리포트:</strong> 생성된 게임에 버그가 있다면 AI가 자동으로 수정합니다.</li>
+                                        <li><strong>기능 추가:</strong> 기존 게임에 새로운 기능을 추가할 수 있습니다.</li>
+                                        <li><strong>버전 관리:</strong> 모든 수정 이력이 자동으로 관리되며, 버전별로 롤백 가능합니다.</li>
+                                        <li><strong>권한 관리:</strong> 본인이 만든 게임만 수정할 수 있습니다. (admin@admin.com은 모든 게임 접근 가능)</li>
+                                    </ul>
+
+                                    <h5>📊 통계 대시보드</h5>
+                                    <ul>
+                                        <li><strong>실시간 통계:</strong> 총 게임 수, 문서 수, AI 벡터 수 등을 확인할 수 있습니다.</li>
+                                        <li><strong>게임 성능:</strong> 각 게임의 품질 점수와 버전 정보를 확인할 수 있습니다.</li>
+                                    </ul>
+
+                                    <div class="guide-note">
+                                        💼 <strong>권한:</strong> 개발자 센터의 일부 기능(AI 게임 생성기, 게임 관리)은 로그인이 필요합니다. 문서와 AI 어시스턴트는 비로그인 상태에서도 사용 가능합니다.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Guide Item 6: 공개/비공개 설정 -->
+                        <div class="guide-item">
+                            <div class="guide-header" onclick="toggleGuide(this)">
+                                <div class="guide-title-row">
+                                    <span class="guide-number">06</span>
+                                    <h3 class="guide-title">게임 공개/비공개 설정</h3>
+                                </div>
+                                <span class="guide-toggle">▼</span>
+                            </div>
+                            <div class="guide-content">
+                                <div class="guide-step">
+                                    <h4>🔒 내 게임 관리하기</h4>
+                                    <ul>
+                                        <li><strong>공개 게임:</strong> 모든 사용자가 게임 목록에서 볼 수 있고 플레이할 수 있습니다.</li>
+                                        <li><strong>비공개 게임:</strong> 게임 소유자만 게임 목록에서 볼 수 있습니다. 다른 사용자에게는 표시되지 않습니다.</li>
+                                        <li><strong>권한 배지:</strong> 게임 카드에 권한 상태가 표시됩니다.
+                                            <ul>
+                                                <li>👑 관리자 권한 (admin@admin.com)</li>
+                                                <li>✓ 내가 만든 게임</li>
+                                                <li>🔒 읽기 전용 (다른 사람이 만든 공개 게임)</li>
+                                            </ul>
+                                        </li>
+                                        <li><strong>권한 제어:</strong> 본인이 만든 게임과 관리자(admin@admin.com)만 게임을 수정하거나 삭제할 수 있습니다.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Platform Features -->
@@ -1671,6 +2087,12 @@ class HtmlGenerator {
                 console.log('✅ Landing page loaded successfully');
                 await checkAuthStatus();
             });
+
+            // 가이드 토글 함수
+            function toggleGuide(headerElement) {
+                const guideItem = headerElement.parentElement;
+                guideItem.classList.toggle('active');
+            }
 
             // 인증 상태 확인
             async function checkAuthStatus() {
