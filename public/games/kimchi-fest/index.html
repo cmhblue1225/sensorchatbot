@@ -955,6 +955,16 @@
                     throttleMs: 33,
                     threshold: 3.2,
                     refractoryMs: 120
+                },
+                bucket: {
+                    niceGain: 0.08,
+                    offGain: 0.045,
+                    missPenalty: -0.05,
+                    stageMultipliers: {
+                        gather: 1,
+                        spread: 1.2
+                    },
+                    thresholds: [0.25, 0.5, 0.75, 1]
                 }
             };
 
@@ -1122,6 +1132,68 @@
                     return 'milestone';
                 }
                 return null;
+            }
+
+            function getBucketGain(rating) {
+                const config = CONFIG.bucket;
+                if (!config) {
+                    return 0;
+                }
+                switch (rating) {
+                    case 'nice':
+                        return config.niceGain ?? 0;
+                    case 'off':
+                        return config.offGain ?? 0;
+                    case 'miss':
+                        return config.missPenalty ?? 0;
+                    default:
+                        return 0;
+                }
+            }
+
+            function applyBucketProgress(sensorId, detail, rating, stageKey) {
+                const config = CONFIG.bucket;
+                if (!detail || !config) {
+                    return;
+                }
+
+                const baseGain = getBucketGain(rating);
+                if (!baseGain) {
+                    return;
+                }
+
+                const multiplier = stageKey && config.stageMultipliers
+                    ? (config.stageMultipliers[stageKey] ?? 1)
+                    : 1;
+                const previousFill = detail.fillAmount ?? 0;
+                const adjusted = baseGain * multiplier;
+                const nextFill = normalizeFillAmount(previousFill + adjusted);
+
+                detail.fillAmount = nextFill;
+                detail.bucketLastUpdated = performance.now();
+
+                const thresholds = Array.isArray(config.thresholds) ? config.thresholds : [];
+                let nextMilestone = 0;
+                for (let index = 0; index < thresholds.length; index += 1) {
+                    if (nextFill >= thresholds[index]) {
+                        nextMilestone = index + 1;
+                    }
+                }
+
+                const currentMilestone = detail.bucketMilestone ?? 0;
+                if (nextMilestone !== currentMilestone) {
+                    detail.bucketMilestone = nextMilestone;
+                    if (nextMilestone > currentMilestone) {
+                        state.animationQueue.push({
+                            type: 'bucket-milestone',
+                            sensorId,
+                            milestone: nextMilestone,
+                            fillAmount: nextFill,
+                            stageKey,
+                            at: detail.bucketLastUpdated
+                        });
+                    }
+                }
             }
 
             function renderPlayerList() {
@@ -1449,6 +1521,8 @@ function resetJudgementState(summaryMessage) {
                     detail.flashUntil = 0;
                     detail.flashRating = null;
                     detail.fillAmount = 0;
+                    detail.bucketMilestone = 0;
+                    detail.bucketLastUpdated = 0;
                 });
                 state.leader = null;
                 state.leaderTie = false;
@@ -1475,6 +1549,8 @@ function resetJudgementState(summaryMessage) {
                         flashUntil: 0,
                         flashRating: null,
                         fillAmount: 0,
+                        bucketMilestone: 0,
+                        bucketLastUpdated: 0,
                         skinId: null
                     };
                     state.playersDetailed.set(sensorId, detail);
@@ -1824,6 +1900,13 @@ function ensureSensorState(sensorId) {
                 detail.lastDeltaMs = deltaValue;
                 detail.flashUntil = performance.now() + 420;
                 detail.flashRating = rating;
+
+                const resolvedStage = stageKey
+                    || state.currentStage
+                    || (typeof state.stageIndex === 'number' && CONFIG.stageOrder?.[state.stageIndex])
+                    || CONFIG.stageOrder?.[0]
+                    || null;
+                applyBucketProgress(sensorId || 'unknown', detail, rating, resolvedStage);
 
                 updateTotalsFromPlayers();
                 playJudgementSFX(rating);

@@ -231,6 +231,14 @@ Handoff Summary (3-line 요약 템플릿)
 - Stop check: 플레이어 리스트에 버킷 진행도가 0%로 표시되고 애니메이션 레이어가 Inactive 상태로 노출되는지 확인.
 - RESUME_FROM: 확장 설계 후속 (애니메이션 연출 구현, 자산 매핑)
 
+## 2025-10-30T14:33:17+09:00
+- 완료 단계: 확장 설계 진행 (버킷 진행도 로직 연결)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (판정별 fillAmount 누적, 단계별 배수, 마일스톤 큐 로직 추가)
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
+- Stop check: 라운드 중 판정(Nice/Off/Miss)을 발생시키면 버킷 %가 가감되고 spread 단계에서 증가량이 커지는지 확인.
+- RESUME_FROM: 확장 설계 후속 (버킷 마일스톤 연출/애니메이션 재생, 자산 매핑)
+
 ---
 
 ## 확장 설계 (김장 연출 업그레이드)
