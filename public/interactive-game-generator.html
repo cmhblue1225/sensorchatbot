@@ -225,8 +225,11 @@
             color: var(--white);
             font-size: 1rem;
             resize: none;
-            min-height: 44px;
-            max-height: 120px;
+            min-height: 60px;
+            max-height: 150px;
+            line-height: 1.5;
+            overflow-y: auto;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         .message-input:focus {
@@ -631,7 +634,7 @@
             // 자동 크기 조절
             messageInput.addEventListener('input', function() {
                 this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+                this.style.height = Math.min(this.scrollHeight, 150) + 'px';
             });
 
             // 게임 생성
@@ -652,7 +655,10 @@
             addMessageToChat(message, 'user');
             messageInput.value = '';
             messageInput.style.height = 'auto';
-            
+
+            // ✨ 로딩 메시지 추가
+            addLoadingMessage();
+
             showLoading(true);
             disableInput();
 
@@ -669,7 +675,10 @@
                 });
 
                 const result = await response.json();
-                
+
+                // ✨ 로딩 메시지 제거
+                removeLoadingMessage();
+
                 if (result.success) {
                     // AI 응답 표시
                     addMessageToChat(result.message, 'ai');
@@ -687,6 +696,8 @@
                 }
 
             } catch (error) {
+                // ✨ 에러 시에도 로딩 메시지 제거
+                removeLoadingMessage();
                 console.error('❌ 메시지 전송 실패:', error);
                 showError('네트워크 오류가 발생했습니다.');
             } finally {
@@ -797,7 +808,7 @@
         // 채팅에 메시지 추가
         function addMessageToChat(message, type) {
             const messagesContainer = document.getElementById('chatMessages');
-            
+
             // 환영 메시지 제거
             const welcomeMsg = messagesContainer.querySelector('.welcome-message');
             if (welcomeMsg) {
@@ -806,16 +817,43 @@
 
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
-            
+
             const avatar = type === 'user' ? '👤' : '🤖';
-            
+
             messageDiv.innerHTML = `
                 <div class="message-avatar">${avatar}</div>
                 <div class="message-content">${formatMessage(message)}</div>
             `;
-            
+
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 로딩 메시지 추가
+        function addLoadingMessage() {
+            const messagesContainer = document.getElementById('chatMessages');
+
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message ai';
+            loadingDiv.id = 'ai-loading-message';
+
+            loadingDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    AI가 응답을 생성하고 있습니다<span class="loading-dots"></span>
+                </div>
+            `;
+
+            messagesContainer.appendChild(loadingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 로딩 메시지 제거
+        function removeLoadingMessage() {
+            const loadingDiv = document.getElementById('ai-loading-message');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
         }
 
         // 메시지 포맷팅
