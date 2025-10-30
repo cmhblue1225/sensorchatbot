@@ -2532,11 +2532,12 @@ ${gameCode.substring(0, 8000)}
 
             for (const query of queries) {
                 try {
-                    // Phase 3-3 개선: k=2→5, similarity threshold 추가
+                    // Phase 3-3 개선: k=2→5
+                    // ⚠️ filter 제거: Supabase match_documents가 filter 파라미터를 지원하지 않음
                     const retriever = this.vectorStore.asRetriever({
                         k: 5,  // 검색 결과 증가 (기존 2 → 5)
-                        searchType: 'similarity',
-                        filter: { similarity_threshold: 0.7 }  // 유사도 70% 이상
+                        searchType: 'similarity'
+                        // filter 제거됨 - Supabase 함수 호환성 문제 해결
                     });
 
                     const docs = await retriever.getRelevantDocuments(query);
@@ -3218,21 +3219,25 @@ ${gameCode.substring(0, 8000)}
                 metadataPath = path.join(gamePath, 'game.json');
                 readmePath = path.join(gamePath, 'README.md');
             }
-            
-            // 🔍 게임 자동 검증 실행 (메타데이터 포함)
-            console.log(`🔍 게임 검증 시작: ${gameId}`);
-            const validationResult = await this.gameValidator.validateGame(gameId, gamePath, metadata);
 
-            // 검증 보고서 생성 및 출력
-            const validationReport = this.gameValidator.generateReport(validationResult);
-            console.log(validationReport);
+            // 🔍 게임 자동 검증 실행 (로컬 파일이 있을 때만)
+            let validationResult = null;
+            let validationReport = null;
 
-            // 검증 결과를 파일로 저장 (로컬 저장 시에만)
-            let reportPath = null;
             if (saveToLocal) {
-                reportPath = path.join(gamePath, 'VALIDATION_REPORT.md');
+                console.log(`🔍 게임 검증 시작: ${gameId}`);
+                validationResult = await this.gameValidator.validateGame(gameId, gamePath, metadata);
+
+                // 검증 보고서 생성 및 출력
+                validationReport = this.gameValidator.generateReport(validationResult);
+                console.log(validationReport);
+
+                // 검증 결과를 파일로 저장
+                const reportPath = path.join(gamePath, 'VALIDATION_REPORT.md');
                 await fs.writeFile(reportPath, validationReport, 'utf8');
                 console.log(`📋 검증 보고서 로컬 저장: ${reportPath}`);
+            } else {
+                console.log('☁️  Storage 전용 모드: 검증 건너뜀 (로컬 파일 없음)');
             }
 
             // 🌐 Supabase Storage에 업로드 (프로덕션 배포용)
