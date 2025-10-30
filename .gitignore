@@ -128,3 +128,7 @@ test-results/
 
 #claude 파일
 CLAUDE.md
+
+# 졸업작품 보고서 (개인 문서, Git 추적 제외)
+docs/졸업작품보고서*.md
+docs/diagrams/*.html
