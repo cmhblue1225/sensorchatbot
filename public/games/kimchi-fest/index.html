@@ -338,6 +338,58 @@
             pointer-events: none;
         }
 
+        .animation-event {
+            position: absolute;
+            inset: 15% 10%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.65);
+            border: 2px solid rgba(250, 204, 21, 0.65);
+            color: #f8fafc;
+            text-align: center;
+            font-weight: 600;
+            animation: bucket-pop 960ms ease-out forwards;
+            box-shadow: 0 16px 28px rgba(15, 23, 42, 0.65);
+        }
+
+        .animation-event[data-milestone="4"] {
+            border-color: rgba(74, 222, 128, 0.9);
+            box-shadow: 0 18px 34px rgba(74, 222, 128, 0.45);
+        }
+
+        .animation-event strong {
+            font-size: 1.35rem;
+            letter-spacing: 0.02em;
+        }
+
+        .animation-event span {
+            font-size: 0.85rem;
+            color: rgba(248, 250, 252, 0.75);
+        }
+
+        @keyframes bucket-pop {
+            0% {
+                opacity: 0;
+                transform: scale(0.6) rotate(-4deg);
+            }
+            35% {
+                opacity: 1;
+                transform: scale(1.05) rotate(1deg);
+            }
+            65% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.7) translateY(18px);
+            }
+        }
+
         .player-strip {
             border-radius: 0.9rem;
             border: 1px solid var(--border);
@@ -1029,7 +1081,10 @@
                 animationQueue: [],
                 animationLayerEl,
                 animationPlaceholderEl,
-                animationTrackEl
+                animationTrackEl,
+                animationFrameId: null,
+                activeAnimations: new Set(),
+                animationTimers: new Set()
             };
             const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
             const debugPanel = document.getElementById('debug-panel');
@@ -1192,6 +1247,7 @@
                             stageKey,
                             at: detail.bucketLastUpdated
                         });
+                        ensureAnimationLoop();
                     }
                 }
             }
@@ -1355,6 +1411,107 @@
                     animationTrackEl.innerHTML = '';
                 }
                 state.animationQueue.length = 0;
+                stopAnimationLoop();
+            }
+
+            function ensureAnimationLoop() {
+                if (state.animationFrameId !== null) {
+                    return;
+                }
+                state.animationFrameId = window.requestAnimationFrame(runAnimationLoop);
+            }
+
+            function stopAnimationLoop() {
+                if (state.animationFrameId !== null) {
+                    window.cancelAnimationFrame(state.animationFrameId);
+                    state.animationFrameId = null;
+                }
+                state.animationTimers.forEach((timerId) => window.clearTimeout(timerId));
+                state.animationTimers.clear();
+                state.activeAnimations.forEach((node) => {
+                    if (node && typeof node.remove === 'function') {
+                        node.remove();
+                    }
+                });
+                state.activeAnimations.clear();
+            }
+
+            function runAnimationLoop() {
+                processAnimationQueue();
+                if (state.animationQueue.length || state.activeAnimations.size) {
+                    state.animationFrameId = window.requestAnimationFrame(runAnimationLoop);
+                } else {
+                    state.animationFrameId = null;
+                }
+            }
+
+            function processAnimationQueue() {
+                if (!state.animationQueue.length) {
+                    return;
+                }
+                const events = state.animationQueue.splice(0);
+                events.forEach((event) => playAnimationEvent(event));
+            }
+
+            function playAnimationEvent(event) {
+                if (!event) {
+                    return;
+                }
+                switch (event.type) {
+                    case 'bucket-milestone':
+                        playBucketMilestoneAnimation(event);
+                        break;
+                    default:
+                        console.debug('[Animation] Unhandled event', event);
+                        break;
+                }
+            }
+
+            function playBucketMilestoneAnimation(event) {
+                if (!animationTrackEl) {
+                    return;
+                }
+
+                setAnimationLayerMode('active');
+
+                const milestone = Number(event.milestone ?? 0);
+                const percent = Math.max(0, Math.round((event.fillAmount ?? 0) * 100));
+                const totalMilestones = Array.isArray(CONFIG.bucket?.thresholds)
+                    ? CONFIG.bucket.thresholds.length
+                    : 0;
+                const stageLabel = CONFIG.stageLabels?.[event.stageKey] || '버킷 진행';
+
+                const node = document.createElement('div');
+                node.className = 'animation-event bucket-milestone';
+                if (milestone) {
+                    node.dataset.milestone = String(milestone);
+                }
+                if (event.stageKey) {
+                    node.dataset.stage = event.stageKey;
+                }
+
+                const message = milestone >= totalMilestones
+                    ? '버킷 완료!'
+                    : `${stageLabel}`;
+
+                node.innerHTML = `
+                    <strong>${percent}%</strong>
+                    <span>${message}</span>
+                `;
+
+                animationTrackEl.append(node);
+                state.activeAnimations.add(node);
+
+                const duration = milestone >= totalMilestones ? 1600 : 1200;
+                const timerId = window.setTimeout(() => {
+                    state.activeAnimations.delete(node);
+                    state.animationTimers.delete(timerId);
+                    node.remove();
+                    if (!state.activeAnimations.size && !state.animationQueue.length && state.currentStage !== 'spread') {
+                        setAnimationLayerMode('inactive');
+                    }
+                }, duration);
+                state.animationTimers.add(timerId);
             }
 
                         function updateStagePanel(stageKey) {
