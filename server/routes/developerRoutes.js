@@ -947,6 +947,13 @@ class DeveloperRoutes {
             border-radius: 0.5rem;
             color: #E2E8F0;
             font-size: 0.875rem;
+            min-height: 60px;
+            max-height: 200px;
+            resize: vertical;
+            line-height: 1.5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-y: auto;
+            transition: border-color 0.2s ease;
         }
 
         .generator-chat-input:focus {
@@ -1771,11 +1778,31 @@ class DeveloperRoutes {
             generatorChatInput.focus();
         }
 
-        generatorSendBtn.addEventListener('click', sendGeneratorMessage);
-        generatorChatInput.addEventListener('keypress', (e) => {
+        // Textarea 자동 높이 조절 함수
+        function autoResizeTextarea() {
+            generatorChatInput.style.height = 'auto';
+            const newHeight = Math.min(Math.max(generatorChatInput.scrollHeight, 60), 200);
+            generatorChatInput.style.height = newHeight + 'px';
+        }
+
+        // 입력 시 자동 높이 조절
+        generatorChatInput.addEventListener('input', autoResizeTextarea);
+
+        // 초기 높이 설정
+        autoResizeTextarea();
+
+        generatorSendBtn.addEventListener('click', () => {
+            sendGeneratorMessage();
+            // 메시지 전송 후 높이 초기화
+            setTimeout(autoResizeTextarea, 0);
+        });
+
+        generatorChatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendGeneratorMessage();
+                // 메시지 전송 후 높이 초기화
+                setTimeout(autoResizeTextarea, 0);
             }
         });
 
@@ -2153,12 +2180,12 @@ class DeveloperRoutes {
 
                 <!-- 입력 영역 -->
                 <div class="generator-chat-input-area">
-                    <input
-                        type="text"
+                    <textarea
                         id="generator-chat-input"
                         class="generator-chat-input"
-                        placeholder="게임 아이디어를 입력하세요... (명령: 요약/수정/확인/생성)"
-                    >
+                        rows="3"
+                        placeholder="게임 아이디어를 자유롭게 입력하세요... (Shift+Enter: 줄바꿈)"
+                    ></textarea>
                     <button id="generator-send-btn" class="generator-send-btn">
                         <span>전송</span>
                     </button>
