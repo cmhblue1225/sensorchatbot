@@ -1,0 +1,73 @@
+{
+    "version": "0.1.0",
+    "updatedAt": "2025-10-30T00:00:00Z",
+    "skins": [
+        {
+            "id": "default",
+            "name": "Classic Kimchi Crew",
+            "thumbnail": "/assets/kimchi-fest/skins/default/thumbnail.png",
+            "frames": {
+                "idle": "/assets/kimchi-fest/skins/default/idle.png",
+                "nice": "/assets/kimchi-fest/skins/default/nice.png",
+                "off": "/assets/kimchi-fest/skins/default/off.png",
+                "miss": "/assets/kimchi-fest/skins/default/miss.png"
+            }
+        }
+    ],
+    "bucket": {
+        "milestones": [
+            {
+                "milestone": 1,
+                "label": "김장 시작!",
+                "effect": "spark-minor",
+                "sound": "/assets/kimchi-fest/audio/bucket_m1.mp3"
+            },
+            {
+                "milestone": 2,
+                "label": "절이기 완성!",
+                "effect": "spark-mid",
+                "sound": "/assets/kimchi-fest/audio/bucket_m2.mp3"
+            },
+            {
+                "milestone": 3,
+                "label": "양념 배합 완료!",
+                "effect": "spark-major",
+                "sound": "/assets/kimchi-fest/audio/bucket_m3.mp3"
+            },
+            {
+                "milestone": 4,
+                "label": "버킷 가득!",
+                "effect": "spark-grand",
+                "sound": "/assets/kimchi-fest/audio/bucket_complete.mp3"
+            }
+        ],
+        "background": "/assets/kimchi-fest/visuals/bucket-backdrop.png",
+        "textures": {
+            "kimchi": "/assets/kimchi-fest/visuals/kimchi-texture.png",
+            "seasoning": "/assets/kimchi-fest/visuals/seasoning-splash.png"
+        }
+    },
+    "effects": {
+        "spark-minor": {
+            "type": "particle",
+            "duration": 900,
+            "asset": "/assets/kimchi-fest/effects/spark-minor.json"
+        },
+        "spark-mid": {
+            "type": "particle",
+            "duration": 1100,
+            "asset": "/assets/kimchi-fest/effects/spark-mid.json"
+        },
+        "spark-major": {
+            "type": "particle",
+            "duration": 1300,
+            "asset": "/assets/kimchi-fest/effects/spark-major.json"
+        },
+        "spark-grand": {
+            "type": "particle",
+            "duration": 1600,
+            "asset": "/assets/kimchi-fest/effects/spark-grand.json"
+        }
+    }
+}
+

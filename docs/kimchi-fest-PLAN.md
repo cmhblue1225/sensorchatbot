@@ -247,6 +247,15 @@ Handoff Summary (3-line 요약 템플릿)
 - Stop check: 버킷 마일스톤 진입 시 애니메이션 레이어에 팝업이 표시되고 일정 시간 후 사라지는지, 라운드 리셋 시 진행 바/애니메이션 큐가 초기화되는지 확인.
 - RESUME_FROM: 확장 설계 후속 (애니메이션 자산/스킨 매핑, stage별 연출 강화)
 
+## 2025-10-30T17:08:18+09:00
+- 완료 단계: 확장 설계 진행 (자산 매니페스트 로더)
+- 변경 파일/경로:
+  - public/assets/kimchi-fest/manifest.json (스킨/버킷/이펙트 매핑 초안 추가)
+  - public/games/kimchi-fest/index.html (매니페스트 기본값/로더/마일스톤 레이블 연계)
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
+- Stop check: 콘솔에서 `window.state.assetManifest`가 로드된 매니페스트를 반환하고, 가져온 마일스톤 레이블이 애니메이션 팝업에 반영되는지 확인.
+- RESUME_FROM: 확장 설계 후속 (자산 실제 연동, 스테이지별 시각/사운드 연출 적용)
+
 ---
 
 ## 확장 설계 (김장 연출 업그레이드)

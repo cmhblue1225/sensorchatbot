@@ -980,6 +980,35 @@
     <script src="/js/SessionSDK.js" defer></script>
     <script>
         (function () {
+            const DEFAULT_ASSET_MANIFEST = {
+                version: '0.0.0',
+                updatedAt: null,
+                skins: [
+                    {
+                        id: 'default',
+                        name: 'Default Crew',
+                        thumbnail: null,
+                        frames: {
+                            idle: null,
+                            nice: null,
+                            off: null,
+                            miss: null
+                        }
+                    }
+                ],
+                bucket: {
+                    milestones: [
+                        { milestone: 1, label: '버킷 25% 달성', effect: null, sound: null },
+                        { milestone: 2, label: '버킷 50% 달성', effect: null, sound: null },
+                        { milestone: 3, label: '버킷 75% 달성', effect: null, sound: null },
+                        { milestone: 4, label: '버킷 완료!', effect: null, sound: null }
+                    ],
+                    background: null,
+                    textures: {}
+                },
+                effects: {}
+            };
+
             const CONFIG = {
                 bpm: 110,
                 roundDurationMs: 45_000,
@@ -1017,6 +1046,9 @@
                         spread: 1.2
                     },
                     thresholds: [0.25, 0.5, 0.75, 1]
+                },
+                assets: {
+                    manifestUrl: '/assets/kimchi-fest/manifest.json'
                 }
             };
 
@@ -1084,7 +1116,9 @@
                 animationTrackEl,
                 animationFrameId: null,
                 activeAnimations: new Set(),
-                animationTimers: new Set()
+                animationTimers: new Set(),
+                assetManifest: null,
+                assetStatus: 'idle'
             };
             const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
             const debugPanel = document.getElementById('debug-panel');
@@ -1414,6 +1448,47 @@
                 stopAnimationLoop();
             }
 
+            async function loadAssetManifest() {
+                if (state.assetStatus === 'loading') {
+                    return state.assetManifest;
+                }
+                state.assetStatus = 'loading';
+                let manifest = null;
+                const url = CONFIG.assets?.manifestUrl;
+                if (url) {
+                    try {
+                        const response = await fetch(url, { cache: 'no-store' });
+                        if (response.ok) {
+                            manifest = await response.json();
+                            state.assetStatus = 'ready';
+                        } else {
+                            console.warn('[Assets] manifest fetch failed', response.status, response.statusText);
+                        }
+                    } catch (error) {
+                        console.warn('[Assets] manifest fetch error', error);
+                    }
+                }
+
+                if (!manifest) {
+                    manifest = typeof structuredClone === 'function'
+                        ? structuredClone(DEFAULT_ASSET_MANIFEST)
+                        : JSON.parse(JSON.stringify(DEFAULT_ASSET_MANIFEST));
+                    state.assetStatus = 'fallback';
+                }
+
+                state.assetManifest = manifest;
+                return manifest;
+            }
+
+            function getBucketMilestoneInfo(milestone) {
+                const manifest = state.assetManifest;
+                const list = manifest?.bucket?.milestones;
+                if (!Array.isArray(list)) {
+                    return null;
+                }
+                return list.find((entry) => Number(entry?.milestone) === Number(milestone)) ?? null;
+            }
+
             function ensureAnimationLoop() {
                 if (state.animationFrameId !== null) {
                     return;
@@ -1480,6 +1555,7 @@
                     ? CONFIG.bucket.thresholds.length
                     : 0;
                 const stageLabel = CONFIG.stageLabels?.[event.stageKey] || '버킷 진행';
+                const milestoneInfo = getBucketMilestoneInfo(milestone);
 
                 const node = document.createElement('div');
                 node.className = 'animation-event bucket-milestone';
@@ -1490,9 +1566,8 @@
                     node.dataset.stage = event.stageKey;
                 }
 
-                const message = milestone >= totalMilestones
-                    ? '버킷 완료!'
-                    : `${stageLabel}`;
+                const message = milestoneInfo?.label
+                    || (milestone >= totalMilestones ? '버킷 완료!' : `${stageLabel}`);
 
                 node.innerHTML = `
                     <strong>${percent}%</strong>
@@ -2474,6 +2549,10 @@ function ensureSensorState(sensorId) {
                 updateStagePanel();
                 updateJudgementSummary('라운드를 시작하면 판정 로그가 표시됩니다.');
                 setupDebugPanel();
+
+                loadAssetManifest().catch((error) => {
+                    console.warn('[Assets] manifest load failed', error);
+                });
 
                 registerSDKEvents();
                 attachHandlers();
