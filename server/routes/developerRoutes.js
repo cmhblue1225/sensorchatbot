@@ -1579,16 +1579,14 @@ class DeveloperRoutes {
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'chat-message bot typing';
             loadingDiv.id = 'loading-indicator';
-            loadingDiv.innerHTML = `
-                <div class="message-content">
-                    🤖 AI가 응답을 생성하고 있습니다
-                    <div class="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                </div>
-            `;
+            loadingDiv.innerHTML = '<div class="message-content">' +
+                '🤖 AI가 응답을 생성하고 있습니다' +
+                '<div class="typing-indicator">' +
+                '<span></span>' +
+                '<span></span>' +
+                '<span></span>' +
+                '</div>' +
+                '</div>';
             generatorChatMessages.appendChild(loadingDiv);
             generatorChatMessages.scrollTop = generatorChatMessages.scrollHeight;
         }
