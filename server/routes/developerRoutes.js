@@ -1729,9 +1729,13 @@ class DeveloperRoutes {
             if (generatorSessionId) return; // 이미 세션이 있으면 리턴
 
             try {
+                const token = localStorage.getItem('authToken');
                 const response = await fetch('/developer/api/start-game-session', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({
                         initialMessage: ''
                     })
@@ -1768,9 +1772,13 @@ class DeveloperRoutes {
             addLoadingIndicator();
 
             try {
+                const token = localStorage.getItem('authToken');
                 const response = await fetch('/developer/api/game-chat', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({
                         sessionId: generatorSessionId,
                         message: message
@@ -1949,9 +1957,13 @@ class DeveloperRoutes {
             updateProgressUI(1, 0, '게임 생성 시작...');
 
             try {
+                const token = localStorage.getItem('authToken');
                 const response = await fetch('/developer/api/finalize-game', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({
                         sessionId: generatorSessionId
                     })
