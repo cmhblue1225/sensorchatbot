@@ -1734,7 +1734,7 @@ class DeveloperRoutes {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': 'Bearer ' + token
                     },
                     body: JSON.stringify({
                         initialMessage: ''
@@ -1777,7 +1777,7 @@ class DeveloperRoutes {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': 'Bearer ' + token
                     },
                     body: JSON.stringify({
                         sessionId: generatorSessionId,
@@ -1962,7 +1962,7 @@ class DeveloperRoutes {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': 'Bearer ' + token
                     },
                     body: JSON.stringify({
                         sessionId: generatorSessionId
