@@ -947,7 +947,7 @@ class DeveloperRoutes {
             border-radius: 0.5rem;
             color: #E2E8F0;
             font-size: 0.875rem;
-            min-height: 60px;
+            min-height: 80px;
             max-height: 200px;
             resize: vertical;
             line-height: 1.5;
@@ -1574,6 +1574,33 @@ class DeveloperRoutes {
             generatorChatMessages.scrollTop = generatorChatMessages.scrollHeight;
         }
 
+        // ✨ 로딩 인디케이터 추가
+        function addLoadingIndicator() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'chat-message bot typing';
+            loadingDiv.id = 'loading-indicator';
+            loadingDiv.innerHTML = `
+                <div class="message-content">
+                    🤖 AI가 응답을 생성하고 있습니다
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+            generatorChatMessages.appendChild(loadingDiv);
+            generatorChatMessages.scrollTop = generatorChatMessages.scrollHeight;
+        }
+
+        // ✨ 로딩 인디케이터 제거
+        function removeLoadingIndicator() {
+            const loadingDiv = document.getElementById('loading-indicator');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+        }
+
         // ✨ Phase 2: 정보 패널 업데이트 함수
         function updateInfoPanel(metadata) {
             if (!metadata) return;
@@ -1739,6 +1766,9 @@ class DeveloperRoutes {
             generatorChatInput.value = '';
             generatorSendBtn.disabled = true;
 
+            // ✨ 로딩 인디케이터 추가
+            addLoadingIndicator();
+
             try {
                 const response = await fetch('/developer/api/game-chat', {
                     method: 'POST',
@@ -1750,6 +1780,9 @@ class DeveloperRoutes {
                 });
 
                 const data = await response.json();
+
+                // ✨ 로딩 인디케이터 제거
+                removeLoadingIndicator();
 
                 if (data.success) {
                     addGeneratorMessage(data.message, true);
@@ -1771,6 +1804,8 @@ class DeveloperRoutes {
                     addGeneratorMessage('❌ ' + data.error, true);
                 }
             } catch (error) {
+                // ✨ 에러 시에도 로딩 인디케이터 제거
+                removeLoadingIndicator();
                 addGeneratorMessage('❌ 오류가 발생했습니다.', true);
             }
 
