@@ -2693,6 +2693,12 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             border-radius: 0.5rem;
             color: #E2E8F0;
             font-size: 0.875rem;
+            resize: none;
+            min-height: 60px;
+            max-height: 150px;
+            line-height: 1.5;
+            overflow-y: auto;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         .generator-chat-input:focus {
@@ -2978,12 +2984,12 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
 
                 <!-- 입력 영역 -->
                 <div class="generator-chat-input-area">
-                    <input
-                        type="text"
+                    <textarea
                         id="generator-chat-input"
                         class="generator-chat-input"
                         placeholder="게임 아이디어를 입력하세요... (명령: 요약/수정/확인/생성)"
-                    >
+                        rows="2"
+                    ></textarea>
                     <button id="generator-send-btn" class="generator-send-btn">
                         <span>전송</span>
                     </button>
@@ -3190,6 +3196,25 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
+        // ✨ 로딩 메시지 추가
+        function addLoadingMessage() {
+            const messagesContainer = document.getElementById('generator-chat-messages');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'chat-message bot';
+            loadingDiv.id = 'ai-loading-message';
+            loadingDiv.innerHTML = '<div class="message-content">🤖 AI가 응답을 생성하고 있습니다<span class="loading-dots"></span></div>';
+            messagesContainer.appendChild(loadingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // ✨ 로딩 메시지 제거
+        function removeLoadingMessage() {
+            const loadingDiv = document.getElementById('ai-loading-message');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+        }
+
         // 메시지 전송 함수
         async function sendGeneratorMessage() {
             const input = document.getElementById('generator-chat-input');
@@ -3209,6 +3234,9 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
             addGeneratorMessage(message, false);
             input.value = '';
 
+            // ✨ 로딩 메시지 추가
+            addLoadingMessage();
+
             const sendBtn = document.getElementById('generator-send-btn');
             sendBtn.disabled = true;
             sendBtn.innerHTML = '<span>전송 중...</span>';
@@ -3226,6 +3254,9 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                     });
 
                     const startData = await startResponse.json();
+
+                    // ✨ 로딩 메시지 제거
+                    removeLoadingMessage();
 
                     if (startData.success) {
                         generatorSessionId = startData.sessionId;
@@ -3254,6 +3285,9 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
 
                     const chatData = await chatResponse.json();
 
+                    // ✨ 로딩 메시지 제거
+                    removeLoadingMessage();
+
                     if (chatData.success) {
                         addGeneratorMessage(chatData.aiResponse, true);
 
@@ -3271,6 +3305,8 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                     }
                 }
             } catch (error) {
+                // ✨ 에러 시에도 로딩 메시지 제거
+                removeLoadingMessage();
                 addGeneratorMessage('❌ 네트워크 오류가 발생했습니다.', true);
                 console.error('Error:', error);
             }
@@ -3410,6 +3446,12 @@ ${gameData.result.gameSpec.rules.map(rule => `- ${rule}`).join('\n')}
                     e.preventDefault();
                     sendGeneratorMessage();
                 }
+            });
+
+            // ✨ Textarea 자동 크기 조절
+            generatorChatInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 150) + 'px';
             });
 
             // ✨ Phase 2: 명령 버튼 이벤트 핸들러
