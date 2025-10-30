@@ -28,6 +28,45 @@
 - 게임 생성 시 v1.0 자동 등록, 버그 수정/기능 추가 시 자동 버전 증가
 - DB 영구 저장으로 서버 재시작 후에도 버전 유지
 
+### Interactive Game Generator UI 개선 (2025-10-30)
+
+**⚠️ 중요**: `/interactive-game-generator`는 현재 유일하게 사용 중인 게임 생성기입니다. 절대 수정하지 마세요!
+
+**실제 구현 위치:**
+- **라우트**: `/interactive-game-generator` (server/index.js:155-157)
+- **구현 메서드**: `generateStandaloneGameGeneratorPage()` (server/index.js:2401+)
+- **주의**: `public/` 디렉토리의 HTML 파일이 아닌, 동적으로 생성되는 페이지입니다
+
+**최근 UI 개선 사항:**
+1. **멀티라인 입력창** (server/index.js:2981-2986)
+   - `<input type="text">` → `<textarea rows="2">` 변경
+   - 최소 높이 60px, 최대 높이 150px
+   - 자동 크기 조절 (scrollHeight 기반, lines 3452-3455)
+   - 텍스트가 길어지면 자동으로 줄바꿈
+
+2. **로딩 인디케이터** (server/index.js:3199-3216)
+   - AI 응답 생성 중 "🤖 AI가 응답을 생성하고 있습니다..." 메시지 표시
+   - 애니메이션 점(dots) 효과
+   - `addLoadingMessage()`, `removeLoadingMessage()` 함수 구현
+   - sendGeneratorMessage() 함수에 통합 (lines 3238, 3259, 3289, 3309)
+
+3. **CSS 개선** (server/index.js:2688-2702)
+   - `resize: none`, `line-height: 1.5`
+   - `overflow-y: auto` (스크롤 지원)
+   - 일관된 폰트 패밀리 적용
+
+**삭제된 레거시 파일 (사용하지 않음):**
+- ❌ `public/ai-game-generator.html` - 구버전
+- ❌ `public/interactive-game-generator-legacy.html` - 백업 버전
+- ❌ `public/interactive-game-generator.html` - 미사용 정적 파일
+- ❌ Routes (server/index.js:145-147, 150-152) - 레거시 라우트
+
+**작업 시 주의사항:**
+- interactive-game-generator 관련 작업은 반드시 `server/index.js`의 `generateStandaloneGameGeneratorPage()` 메서드를 수정해야 함
+- `public/` 디렉토리의 HTML 파일은 실제로 서빙되지 않음
+- 모든 기능이 유지되어야 함 (세션 관리, 대화형 생성, 진행률 표시 등)
+- URL: https://sensorchatbot.onrender.com/interactive-game-generator
+
 ---
 
 ## 핵심 파일 구조

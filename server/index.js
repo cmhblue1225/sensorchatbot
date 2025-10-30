@@ -140,18 +140,8 @@ class GameServer {
         this.app.get('/ai-assistant', (req, res) => {
             res.send(this.generateAIAssistantPage());
         });
-        
-        // AI 게임 생성기 페이지 (기존)
-        this.app.get('/ai-game-generator', (req, res) => {
-            res.sendFile(path.join(__dirname, '../public/ai-game-generator.html'));
-        });
 
-        // 대화형 게임 생성기 페이지 - 구버전 (백업)
-        this.app.get('/interactive-game-generator-legacy', (req, res) => {
-            res.sendFile(path.join(__dirname, '../public/interactive-game-generator-legacy.html'));
-        });
-
-        // 대화형 게임 생성기 페이지 - 신버전 (Phase 2 UI)
+        // 대화형 게임 생성기 페이지 (유일하게 사용 중)
         this.app.get('/interactive-game-generator', (req, res) => {
             res.send(this.generateStandaloneGameGeneratorPage());
         });
