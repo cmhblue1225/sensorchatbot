@@ -265,6 +265,22 @@ Handoff Summary (3-line 요약 템플릿)
 - Stop check: `?debug=1` 모드에서 N/O/M 판정 버튼을 눌러 플레이어 카드의 아바타 이미지가 각각 Nice/Off/Miss 포즈로 전환되고 약 1초 뒤 idle로 복귀하는지, manifest에 프레임 경로가 없을 경우 이니셜 fallback이 노출되는지 확인.
 - RESUME_FROM: 확장 설계 후속 (실제 스킨 자산 추가, spread 단계용 실시간 연출 보완)
 
+## 2025-10-31T10:39:37+09:00
+- 완료 단계: 확장 설계 진행 (플레이필드 중심 UI 재배치)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (메인 레이아웃 전환, HUD/세션 오버레이, DEV 패널 토글 추가)
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
+- Stop check: 메인 화면이 캐릭터 플레이 필드 중심으로 표시되고 HUD/세션 정보가 오버레이로 노출되는지, DEV PANEL 토글로 기존 디버그/로그 패널을 열고 닫을 수 있는지 확인.
+- RESUME_FROM: 확장 설계 후속 (플레이필드 씬 구성 및 캐릭터/배추 연출 삽입)
+
+## 2025-10-31T11:01:28+09:00
+- 완료 단계: 확장 설계 진행 (플레이필드 씬 레이아웃 스텁)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (scene ground/캐릭터/배추/이펙트 레이어 DOM 및 placeholder 스타일 추가)
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
+- Stop check: 플레이필드에 테이블·캐릭터·배추 레이어 스텁이 표시되고, DEV 패널이 게임 화면 밖 좌하단에 위치하는지 확인.
+- RESUME_FROM: 확장 설계 후속 (실제 스프라이트/애니메이션 자산 주입, 판정 이벤트와 연동)
+
 ---
 
 ## 확장 설계 (김장 연출 업그레이드)

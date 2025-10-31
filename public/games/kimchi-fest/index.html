@@ -62,107 +62,269 @@
             margin: 0 auto;
         }
 
-        .hud {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 1rem;
-        }
-
-        .card {
-            padding: 1.1rem;
-            border-radius: 1rem;
-            background: var(--panel);
-            border: 1px solid var(--border);
-            box-shadow: 0 24px 40px rgba(15, 23, 42, 0.35);
-        }
-
-        .card h2 {
-            margin: 0 0 0.5rem;
-            font-size: 1rem;
-            font-weight: 600;
-            color: rgba(248, 250, 252, 0.86);
-        }
-
-        .card p {
-            margin: 0;
-            font-size: 1.75rem;
-            font-weight: 700;
-            letter-spacing: 0.01em;
-        }
-
-        #score-card p {
-            color: var(--accent-strong);
-        }
-
-        .stage-board {
+        .game-stage {
             flex: 1;
-            display: grid;
-            gap: 1rem;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 2rem 1.5rem 2.5rem;
+            gap: 0;
         }
 
-        .placeholder {
-            border: 1px dashed var(--border);
-            border-radius: 1rem;
-            padding: 1.5rem;
+        .playfield {
+            position: relative;
+            width: min(1280px, 90vw);
+            height: min(760px, 68vw);
+            border-radius: 2rem;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            background: radial-gradient(circle at top, rgba(59, 130, 246, 0.22), rgba(15, 23, 42, 0.92) 56%);
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(15, 23, 42, 0.5), 0 30px 60px rgba(15, 23, 42, 0.35);
+        }
+
+        .stage-overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
             display: flex;
             flex-direction: column;
-            align-items: stretch;
-            justify-content: flex-start;
-            gap: 1rem;
-            color: var(--muted);
-            background: rgba(15, 23, 42, 0.6);
-            position: relative;
-            overflow: hidden;
+            gap: 0.45rem;
+            max-width: clamp(240px, 28vw, 360px);
+            z-index: 5;
         }
 
-        .placeholder.beat-active::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: rgba(248, 113, 113, 0.25);
-            animation: beat-pulse 180ms ease-out;
-        }
-
-        @keyframes beat-pulse {
-            from {
-                opacity: 0.8;
-            }
-            to {
-                opacity: 0;
-            }
-        }
-
-        #metronome-indicator {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        #metronome-indicator span {
-            font-size: 0.95rem;
-            display: block;
-            margin-top: 0.5rem;
-            color: rgba(248, 250, 252, 0.65);
-        }
-
-        .log-head {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 1rem;
-        }
-
-        .log-head h3 {
+        .stage-overlay h3 {
             margin: 0;
-            font-size: 1rem;
+            font-size: 1.45rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            color: rgba(248, 250, 252, 0.92);
+        }
+
+        .stage-overlay p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: rgba(248, 250, 252, 0.7);
+        }
+
+        .stage-overlay .stage-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(148, 163, 184, 0.75);
+        }
+
+        .stage-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .stage-badge {
+            font-size: 0.85rem;
+            padding: 0.38rem 0.95rem;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.65);
             color: rgba(248, 250, 252, 0.85);
         }
 
-        #log-status {
+        .stage-progress {
+            position: absolute;
+            top: 2rem;
+            right: 50%;
+            transform: translateX(50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 4;
+        }
+
+        .stage-step {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.6rem 1rem;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            transition: all 0.25s ease;
+        }
+
+        .stage-step.active {
+            border-color: rgba(250, 204, 21, 0.8);
+            background: rgba(250, 204, 21, 0.18);
+            box-shadow: 0 12px 24px rgba(250, 204, 21, 0.18);
+        }
+
+        .stage-step .step-index {
+            width: 32px;
+            height: 32px;
+            border-radius: 999px;
+            background: rgba(248, 250, 252, 0.12);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .hud-chips {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 0.75rem;
+            z-index: 6;
+        }
+
+        .hud-chip {
+            border-radius: 1rem;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            padding: 0.75rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            min-width: 110px;
+            box-shadow: 0 16px 28px rgba(15, 23, 42, 0.4);
+        }
+
+        .hud-chip span {
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(148, 163, 184, 0.75);
+        }
+
+        .hud-chip strong {
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+
+        #hud-score strong {
+            color: var(--accent-strong);
+        }
+
+        .session-overlay {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-radius: 1rem;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: 0 18px 32px rgba(15, 23, 42, 0.45);
+            z-index: 6;
+        }
+
+        .session-overlay .session-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .session-overlay .session-code {
+            font-weight: 700;
+            letter-spacing: 0.06em;
+        }
+
+        .session-overlay #qr-container {
+            min-width: 160px;
+            min-height: 160px;
+            border: 1px dashed rgba(148, 163, 184, 0.35);
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0.9rem;
+            color: rgba(248, 250, 252, 0.65);
+            background: rgba(15, 23, 42, 0.55);
+        }
+
+        .dev-toggle {
+            position: fixed;
+            bottom: 1.6rem;
+            left: 1.6rem;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            color: rgba(248, 250, 252, 0.85);
+            padding: 0.65rem 1.4rem;
+            border-radius: 999px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            box-shadow: 0 16px 28px rgba(15, 23, 42, 0.4);
+            z-index: 21;
+        }
+
+        .dev-panel {
+            position: fixed;
+            left: 1.6rem;
+            bottom: calc(1.6rem + 3.4rem);
+            transform: none;
+            width: 320px;
+            max-height: min(72vh, 560px);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1.25rem;
+            border-radius: 1.2rem;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: 0 30px 60px rgba(15, 23, 42, 0.55);
+            z-index: 20;
+            overflow-y: auto;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s ease;
+        }
+
+        .dev-panel[data-open="true"] {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .dev-panel header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .dev-panel header h3 {
             margin: 0;
-            font-size: 0.85rem;
-            color: var(--muted);
+            font-size: 1rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: rgba(248, 250, 252, 0.78);
+        }
+
+        .dev-panel header button {
+            background: none;
+            border: none;
+            color: rgba(248, 250, 252, 0.6);
+            font-size: 1.4rem;
+            cursor: pointer;
+        }
+
+        .dev-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .dev-section h4 {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(248, 250, 252, 0.85);
         }
 
         .log-list {
@@ -240,6 +402,43 @@
             color: var(--muted);
         }
 
+        .metronome-panel {
+            gap: 0.6rem;
+            position: relative;
+        }
+
+        #metronome-indicator {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        #metronome-indicator span {
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 0.4rem;
+            color: rgba(248, 250, 252, 0.6);
+        }
+
+        .metronome-panel.beat-active::after {
+            content: "";
+            position: absolute;
+            inset: -0.4rem;
+            border-radius: 1.4rem;
+            background: rgba(248, 113, 113, 0.18);
+            animation: beat-pulse 180ms ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes beat-pulse {
+            from {
+                opacity: 0.9;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+
         .stage-badges {
             display: flex;
             gap: 0.5rem;
@@ -305,40 +504,165 @@
             color: rgba(248, 250, 252, 0.85);
         }
 
-        .animation-layer {
-            position: relative;
-            border-radius: 1rem;
-            border: 1px dashed rgba(148, 163, 184, 0.35);
-            background: rgba(15, 23, 42, 0.38);
-            min-height: 140px;
-            margin-bottom: 1.1rem;
-            overflow: hidden;
-            background-size: cover;
-            background-position: center;
-            transition: background-image 240ms ease, background-color 240ms ease;
+        .stage-step .step-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(248, 250, 252, 0.85);
         }
 
-        .animation-layer[data-state="inactive"] {
-            opacity: 0.65;
-        }
-
-        .animation-placeholder {
+        .scene-backdrop {
             position: absolute;
             inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem;
-            text-align: center;
-            color: rgba(148, 163, 184, 0.75);
-            font-size: 0.9rem;
-            letter-spacing: 0.01em;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.85) 88%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .scene-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .scene-layer[data-layer="ground"] {
+            z-index: 2;
+        }
+
+        .scene-layer[data-layer="characters"] {
+            z-index: 3;
+        }
+
+        .scene-layer[data-layer="effects"] {
+            z-index: 4;
+        }
+
+        .scene-crates {
+            position: absolute;
+            bottom: 8%;
+            right: 6%;
+            width: clamp(120px, 16vw, 220px);
+            height: clamp(80px, 10vw, 150px);
+            border-radius: 1.2rem;
+            background: linear-gradient(180deg, rgba(100, 116, 139, 0.4), rgba(30, 41, 59, 0.9));
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.45);
+        }
+
+        .scene-table {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(540px, 70vw, 880px);
+            height: clamp(140px, 16vw, 240px);
+            border-radius: 180px 180px 60px 60px / 90px 90px 50px 50px;
+            background: linear-gradient(180deg, rgba(248, 113, 113, 0.18), rgba(15, 23, 42, 0.82));
+            border: 1px solid rgba(248, 250, 252, 0.1);
+            box-shadow: inset 0 24px 40px rgba(15, 23, 42, 0.45);
+        }
+
+        .cabbage-base {
+            position: absolute;
+            bottom: clamp(60px, 9vw, 120px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(320px, 42vw, 520px);
+            height: clamp(180px, 24vw, 320px);
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 30%, rgba(248, 113, 113, 0.3), rgba(15, 23, 42, 0.65));
+            filter: blur(1px);
+            box-shadow: 0 24px 40px rgba(15, 23, 42, 0.55);
+        }
+
+        .cabbage-seasoning {
+            position: absolute;
+            bottom: clamp(90px, 11vw, 150px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(280px, 38vw, 480px);
+            height: clamp(140px, 18vw, 260px);
+            border-radius: 56% 44% 48% 52%;
+            background: radial-gradient(circle at 50% 40%, rgba(244, 114, 182, 0.65), rgba(14, 116, 144, 0.18));
+            opacity: 0.15;
+            transition: opacity 260ms ease;
+        }
+
+        [data-seasoned="true"] .cabbage-seasoning {
+            opacity: 0.75;
+        }
+
+        .cabbage-seasoning[data-state="base"] {
+            opacity: 0.15;
+        }
+
+        .cabbage-seasoning[data-state="low"] {
+            opacity: 0.35;
+        }
+
+        .cabbage-seasoning[data-state="mid"] {
+            opacity: 0.55;
+        }
+
+        .cabbage-seasoning[data-state="high"] {
+            opacity: 0.75;
+        }
+
+        .cabbage-seasoning[data-state="complete"] {
+            opacity: 0.9;
+            box-shadow: 0 0 32px rgba(248, 113, 113, 0.35);
+        }
+
+        .character-shadow {
+            position: absolute;
+            bottom: clamp(55px, 7vw, 110px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(240px, 34vw, 420px);
+            height: clamp(75px, 12vw, 160px);
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.5);
+            filter: blur(20px);
+            opacity: 0.45;
+        }
+
+        .character-shell {
+            position: absolute;
+            bottom: clamp(120px, 18vw, 240px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(240px, 32vw, 380px);
+            height: clamp(320px, 44vw, 520px);
+            display: grid;
+            grid-template-rows: 45% 35% 20%;
+            pointer-events: none;
+        }
+
+        .character-body,
+        .character-hands,
+        .character-tool {
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .character-body {
+            grid-row: 1 / span 2;
+            filter: drop-shadow(0 18px 28px rgba(15, 23, 42, 0.55));
+        }
+
+        .character-hands {
+            grid-row: 2 / span 2;
+        }
+
+        .character-tool {
+            grid-row: 2 / span 1;
         }
 
         .animation-track {
             position: absolute;
             inset: 0;
             pointer-events: none;
+            z-index: 5;
         }
 
         .animation-event {
@@ -630,15 +954,58 @@
             color: var(--muted);
         }
 
+        @media (max-width: 1400px) {
+            .game-stage {
+                padding: 2rem 1.5rem 2.5rem;
+            }
+            .playfield {
+                width: min(1200px, 92vw);
+                height: min(720px, 68vw);
+            }
+        }
+
         @media (max-width: 960px) {
-            main {
-                padding: 1rem;
+            .game-stage {
+                padding: 1.5rem 1rem 2rem;
+            }
+            .playfield {
+                width: 100%;
+                height: min(680px, 80vw);
+            }
+            .dev-panel {
+                left: 50%;
+                bottom: calc(1.6rem + 3.4rem);
+                transform: translateX(-50%);
+                width: min(360px, 92vw);
             }
         }
 
         @media (max-width: 720px) {
-            .stage-board {
-                grid-template-columns: 1fr;
+            .hud-chips {
+                flex-direction: column;
+                top: 1.4rem;
+                right: 1.4rem;
+            }
+            .session-overlay {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .session-overlay #qr-container {
+                min-width: 0;
+            }
+            .dev-toggle {
+                left: 1.4rem;
+                bottom: 1.4rem;
+            }
+            .stage-progress {
+                top: auto;
+                bottom: 1.5rem;
+                right: 50%;
+                transform: translateX(50%);
+            }
+            .dev-panel {
+                bottom: calc(1.4rem + 3.4rem);
+                width: 92vw;
             }
         }
     
@@ -913,126 +1280,140 @@
         <h1>Kimchi Fest</h1>
         <p class="subtitle">리듬에 맞춰 김장을 완성해 보세요!</p>
     </header>
-    <main>
-        <section class="hud" aria-label="HUD metrics">
-            <div class="card" id="timer-card">
-                <h2>남은 시간</h2>
-                <p id="timer">00:45</p>
-            </div>
-            <div class="card" id="score-card">
-                <h2>총 점수</h2>
-                <p id="score">--</p>
-            </div>
-            <div class="card" id="players-card">
-                <h2>연결 기기 수</h2>
-                <p id="player-count">0</p>
-            </div>
-            <div class="card" id="stage-card">
-                <h2>현재 단계</h2>
-                <p id="stage">Waiting</p>
-            </div>
-        </section>
-
-        <section class="stage-board" aria-label="Game panels">
-            <div class="placeholder" id="metronome-placeholder">
-                <div id="metronome-indicator">
-                    메트로놈
-                    <span>110 BPM</span>
+    <main class="game-stage">
+        <div class="playfield" id="playfield-placeholder">
+            <div class="stage-overlay">
+                <p class="stage-label">현재 단계 · <span id="stage">Waiting</span></p>
+                <h3 id="stage-title">스테이지 대기 중</h3>
+                <p id="stage-instruction">라운드를 시작하면 단계 안내가 표시됩니다.</p>
+                <p id="stage-result" class="stage-result" aria-live="polite"></p>
+                <div class="stage-badges">
+                    <span id="player-badge" class="stage-badge">싱글 모드</span>
+                    <span id="stage-cycle" class="stage-badge">0 / 2 단계</span>
                 </div>
             </div>
-            <div class="placeholder" id="playfield-placeholder">
-                <div class="stage-head">
-                    <div>
-                        <h3 id="stage-title">스테이지 대기 중</h3>
-                        <p id="stage-instruction">라운드를 시작하면 단계 안내가 표시됩니다.</p>
-                        <p id="stage-result" class="stage-result" aria-live="polite"></p>
-                    </div>
-                    <div class="stage-badges">
-                        <span id="player-badge" class="stage-badge">싱글 모드</span>
-                        <span id="stage-cycle" class="stage-badge">0 / 2 단계</span>
-                    </div>
+            <div class="stage-progress" role="list">
+                <div class="stage-step active" data-stage="gather" role="listitem">
+                    <span class="step-index">1</span>
+                    <span class="step-label">재료 모으기</span>
                 </div>
-                <div class="stage-progress" role="list">
-                    <div class="stage-step active" data-stage="gather" role="listitem">
-                        <span class="step-index">1</span>
-                        <span class="step-label">재료 모으기</span>
-                    </div>
-                    <div class="stage-step" data-stage="spread" role="listitem">
-                        <span class="step-index">2</span>
-                        <span class="step-label">양념 바르기</span>
-                    </div>
-                </div>
-                <div class="animation-layer" id="animation-layer" data-state="inactive" aria-hidden="true">
-                    <div class="animation-placeholder">
-                        양념/배추 애니메이션 레이어가 곧 추가됩니다.
-                    </div>
-                    <div class="animation-track" aria-hidden="true"></div>
-                </div>
-                <div class="player-strip">
-                    <h4>연결된 기기</h4>
-                    <ul id="player-list" class="player-list" aria-live="polite">
-                        <li class="empty">연결된 센서가 없습니다.</li>
-                    </ul>
+                <div class="stage-step" data-stage="spread" role="listitem">
+                    <span class="step-index">2</span>
+                    <span class="step-label">양념 바르기</span>
                 </div>
             </div>
-            <div class="placeholder" id="feedback-placeholder">
-                <div class="feedback-top">
-                    <div class="summary-grid">
-                        <div class="summary-chip" data-rating="nice">
-                            <span class="chip-label">정확</span>
-                            <span class="chip-value" id="summary-nice">0</span>
-                        </div>
-                        <div class="summary-chip" data-rating="off">
-                            <span class="chip-label">살짝</span>
-                            <span class="chip-value" id="summary-off">0</span>
-                        </div>
-                        <div class="summary-chip" data-rating="miss">
-                            <span class="chip-label">빗나감</span>
-                            <span class="chip-value" id="summary-miss">0</span>
-                        </div>
-                    </div>
-                    <p id="log-status">라운드를 시작하면 판정 로그가 표시됩니다.</p>
+            <div class="scene-backdrop" aria-hidden="true"></div>
+            <div class="scene-layer" data-layer="ground" id="scene-ground" aria-hidden="true">
+                <div class="scene-crates" aria-hidden="true"></div>
+                <div class="scene-table" aria-hidden="true"></div>
+            </div>
+            <div class="scene-layer" data-layer="cabbage" id="scene-cabbage" aria-hidden="true">
+                <div class="cabbage-base" aria-hidden="true"></div>
+                <div class="cabbage-seasoning" aria-hidden="true"></div>
+            </div>
+            <div class="scene-layer" data-layer="characters" id="scene-characters" aria-hidden="true">
+                <div class="character-shadow" aria-hidden="true"></div>
+                <div class="character-shell" id="character-shell" aria-hidden="true">
+                    <div class="character-body" id="character-body" aria-hidden="true"></div>
+                    <div class="character-hands" id="character-hands" aria-hidden="true"></div>
+                    <div class="character-tool" id="character-tool" aria-hidden="true"></div>
                 </div>
-                <ol id="shake-log" class="log-list" aria-live="polite"></ol>
             </div>
-        </section>
-
-        <section class="card debug-panel" id="debug-panel" aria-label="테스트 도구">
-            <h2>감도/판정 조정</h2>
-            <p class="debug-help">URL에 <code>?debug=1</code>을 붙이면 활성화됩니다. 버튼을 눌러 판정과 가속도 변화를 바로 확인할 수 있습니다.</p>
-            <div class="debug-grid">
-                <label>
-                    가속도 임계값 (m/s²)
-                    <input type="range" min="2.0" max="5.0" step="0.1" data-setting="threshold" />
-                    <span data-display="threshold">-</span>
-                </label>
-                <label>
-                    정확 판정 (Nice) 범위(ms)
-                    <input type="range" min="40" max="100" step="5" data-setting="nice" />
-                    <span data-display="nice">-</span>
-                </label>
-                <label>
-                    살짝 판정 (Off) 범위(ms)
-                    <input type="range" min="100" max="200" step="5" data-setting="off" />
-                    <span data-display="off">-</span>
-                </label>
+            <div class="scene-layer" data-layer="effects" id="scene-effects" aria-hidden="true"></div>
+            <div class="animation-track" id="animation-layer" aria-hidden="true"></div>
+            <div class="hud-chips" aria-label="게임 정보">
+                <article class="hud-chip" id="hud-timer">
+                    <span>남은 시간</span>
+                    <strong id="timer">00:45</strong>
+                </article>
+                <article class="hud-chip" id="hud-score">
+                    <span>총 점수</span>
+                    <strong id="score">--</strong>
+                </article>
+                <article class="hud-chip" id="hud-players">
+                    <span>연결 기기 수</span>
+                    <strong id="player-count">0</strong>
+                </article>
             </div>
-            <div class="debug-buttons">
-                <button type="button" data-rating="nice">정확 판정 (키 N)</button>
-                <button type="button" data-rating="off">살짝 판정 (키 O)</button>
-                <button type="button" data-rating="miss">빗나감 판정 (키 M)</button>
+            <div class="session-overlay" aria-label="세션 제어">
+                <div class="session-info" aria-live="polite">
+                    <div class="session-code">Session Code: <span id="session-code">----</span></div>
+                    <div id="qr-container">세션을 생성하면 이 영역에 QR 코드가 표시됩니다.</div>
+                </div>
+                <button id="start-button" disabled>SDK 초기화 중...</button>
             </div>
-        </section>
-<section class="card" aria-label="Session controls">
-            <h2>세션 제어</h2>
-            <p>SessionSDK로 게임 세션을 생성하고 참가자용 QR 코드를 제공합니다.</p>
-            <div class="session-info" aria-live="polite">
-                <div class="session-code">Session Code: <span id="session-code">----</span></div>
-                <div id="qr-container">세션을 생성하면 이 영역에 QR 코드가 표시됩니다.</div>
-            </div>
-            <button id="start-button" disabled>SDK 초기화 중...</button>
-        </section>
+        </div>
+        <button class="dev-toggle" id="dev-toggle" type="button">DEV PANEL</button>
     </main>
+    <aside class="dev-panel" id="dev-panel" data-open="false" aria-label="개발자 HUD" aria-hidden="true">
+        <header>
+            <h3>Developer HUD</h3>
+            <button type="button" data-action="close" aria-label="닫기">&times;</button>
+        </header>
+        <section class="dev-section metronome-panel" id="metronome-placeholder">
+            <h4>메트로놈</h4>
+            <div id="metronome-indicator">
+                메트로놈
+                <span>110 BPM</span>
+            </div>
+        </section>
+        <section class="dev-section" id="players-panel">
+            <h4>연결된 기기</h4>
+            <ul id="player-list" class="player-list" aria-live="polite">
+                <li class="empty">연결된 센서가 없습니다.</li>
+            </ul>
+        </section>
+        <section class="dev-section" id="feedback-placeholder">
+            <h4>판정 요약</h4>
+            <div class="summary-grid">
+                <div class="summary-chip" data-rating="nice">
+                    <span class="chip-label">정확</span>
+                    <span class="chip-value" id="summary-nice">0</span>
+                </div>
+                <div class="summary-chip" data-rating="off">
+                    <span class="chip-label">살짝</span>
+                    <span class="chip-value" id="summary-off">0</span>
+                </div>
+                <div class="summary-chip" data-rating="miss">
+                    <span class="chip-label">빗나감</span>
+                    <span class="chip-value" id="summary-miss">0</span>
+                </div>
+            </div>
+            <p id="log-status">라운드를 시작하면 판정 로그가 표시됩니다.</p>
+        </section>
+        <section class="dev-section">
+            <h4>판정 로그</h4>
+            <ol id="shake-log" class="log-list" aria-live="polite"></ol>
+        </section>
+        <section class="dev-section debug-wrapper">
+            <div class="debug-panel" id="debug-panel" aria-label="테스트 도구">
+                <h2>감도/판정 조정</h2>
+                <p class="debug-help">URL에 <code>?debug=1</code>을 붙이면 활성화됩니다. 버튼을 눌러 판정과 가속도 변화를 바로 확인할 수 있습니다.</p>
+                <div class="debug-grid">
+                    <label>
+                        가속도 임계값 (m/s²)
+                        <input type="range" min="2.0" max="5.0" step="0.1" data-setting="threshold" />
+                        <span data-display="threshold">-</span>
+                    </label>
+                    <label>
+                        정확 판정 (Nice) 범위(ms)
+                        <input type="range" min="40" max="100" step="5" data-setting="nice" />
+                        <span data-display="nice">-</span>
+                    </label>
+                    <label>
+                        살짝 판정 (Off) 범위(ms)
+                        <input type="range" min="100" max="200" step="5" data-setting="off" />
+                        <span data-display="off">-</span>
+                    </label>
+                </div>
+                <div class="debug-buttons">
+                    <button type="button" data-rating="nice">정확 판정 (키 N)</button>
+                    <button type="button" data-rating="off">살짝 판정 (키 O)</button>
+                    <button type="button" data-rating="miss">빗나감 판정 (키 M)</button>
+                </div>
+            </div>
+        </section>
+    </aside>
     <footer>
         <small>Kimchi Fest Prototype \u00b7 Sensor Game Hub v6.0</small>
     </footer>
@@ -1137,8 +1518,17 @@
             const metronomeIndicator = document.getElementById('metronome-indicator');
             const playfieldPlaceholder = document.getElementById('playfield-placeholder');
             const animationLayerEl = document.getElementById('animation-layer');
-            const animationPlaceholderEl = animationLayerEl ? animationLayerEl.querySelector('.animation-placeholder') : null;
-            const animationTrackEl = animationLayerEl ? animationLayerEl.querySelector('.animation-track') : null;
+            const animationTrackEl = animationLayerEl || null;
+            const sceneGroundEl = document.getElementById('scene-ground');
+            const sceneCharactersEl = document.getElementById('scene-characters');
+            const sceneEffectsEl = document.getElementById('scene-effects');
+            const characterBodyEl = document.getElementById('character-body');
+            const characterHandsEl = document.getElementById('character-hands');
+            const characterToolEl = document.getElementById('character-tool');
+            const characterShadowEl = document.querySelector('.character-shadow');
+            const cabbageBaseEl = document.querySelector('.cabbage-base');
+            const cabbageSeasoningEl = document.querySelector('.cabbage-seasoning');
+            const sceneCabbageEl = document.getElementById('scene-cabbage');
             const logList = document.getElementById('shake-log');
             const logStatus = document.getElementById('log-status');
             const stageTitleEl = document.getElementById('stage-title');
@@ -1151,6 +1541,9 @@
             const summaryNiceEl = document.getElementById('summary-nice');
             const summaryOffEl = document.getElementById('summary-off');
             const summaryMissEl = document.getElementById('summary-miss');
+            const devToggleBtn = document.getElementById('dev-toggle');
+            const devPanelEl = document.getElementById('dev-panel');
+            const devPanelCloseBtn = devPanelEl ? devPanelEl.querySelector('[data-action="close"]') : null;
 
             const state = {
                 sdk: null,
@@ -1179,7 +1572,6 @@
                 stagePulseTimeout: null,
                 animationQueue: [],
                 animationLayerEl,
-                animationPlaceholderEl,
                 animationTrackEl,
                 animationFrameId: null,
                 activeAnimations: new Set(),
@@ -1525,9 +1917,6 @@
                     return;
                 }
                 animationLayerEl.dataset.state = mode;
-                if (animationPlaceholderEl) {
-                    animationPlaceholderEl.hidden = mode !== 'inactive';
-                }
             }
 
             function resetAnimationLayer() {
@@ -1614,6 +2003,57 @@
                 }
             }
 
+            function applySkinFrames(frameKey = 'idle') {
+                const skinId = getDefaultSkinId();
+                const frames = findSkinById(skinId)?.frames || {};
+                const frameUrl = frames[frameKey] || frames['idle'] || null;
+                if (characterBodyEl) {
+                    if (frameUrl) {
+                        characterBodyEl.style.backgroundImage = `url(${frameUrl})`;
+                        characterBodyEl.dataset.skin = skinId;
+                    } else {
+                        characterBodyEl.style.removeProperty('background-image');
+                        characterBodyEl.removeAttribute('data-skin');
+                    }
+                }
+                if (characterHandsEl) {
+                    characterHandsEl.style.backgroundImage = frameUrl ? `url(${frameUrl})` : '';
+                }
+                if (characterToolEl) {
+                    characterToolEl.style.backgroundImage = frameUrl ? `url(${frameUrl})` : '';
+                }
+                if (characterShadowEl) {
+                    characterShadowEl.style.opacity = frameUrl ? '0.45' : '0.2';
+                }
+            }
+
+            function updateSeasoningVisual() {
+                if (!cabbageSeasoningEl) {
+                    return;
+                }
+                let highestFill = 0;
+                state.playersDetailed.forEach((detail) => {
+                    if (detail && typeof detail.fillAmount === 'number') {
+                        highestFill = Math.max(highestFill, detail.fillAmount);
+                    }
+                });
+                highestFill = Math.max(0, Math.min(1, highestFill));
+                let stateKey = 'base';
+                if (highestFill >= 0.95) {
+                    stateKey = 'complete';
+                } else if (highestFill >= 0.7) {
+                    stateKey = 'high';
+                } else if (highestFill >= 0.45) {
+                    stateKey = 'mid';
+                } else if (highestFill >= 0.2) {
+                    stateKey = 'low';
+                }
+                cabbageSeasoningEl.dataset.state = stateKey;
+                if (sceneCabbageEl) {
+                    sceneCabbageEl.dataset.fill = highestFill.toFixed(2);
+                }
+            }
+
             function setAvatarFrame(detail, frameKey, durationMs = 900) {
                 if (!detail) {
                     return;
@@ -1621,20 +2061,25 @@
                 ensureDetailSkin(detail);
                 detail.avatarFrame = frameKey;
                 detail.avatarFrameUntil = performance.now() + durationMs;
+                applySkinFrames(frameKey);
             }
 
             function applyManifestBucketVisuals(manifest) {
-                if (!animationLayerEl) {
-                    return;
-                }
                 const background = manifest?.bucket?.background || null;
-                if (background) {
-                    animationLayerEl.style.backgroundImage = `url(${background})`;
-                    animationLayerEl.dataset.background = 'manifest';
-                } else {
-                    animationLayerEl.style.removeProperty('background-image');
-                    animationLayerEl.dataset.background = 'default';
+                if (sceneGroundEl) {
+                    if (background) {
+                        sceneGroundEl.style.backgroundImage = `url(${background})`;
+                        sceneGroundEl.dataset.background = 'manifest';
+                    } else {
+                        sceneGroundEl.style.removeProperty('background-image');
+                        sceneGroundEl.dataset.background = 'default';
+                    }
                 }
+                const texture = manifest?.bucket?.textures?.seasoning || null;
+                if (cabbageSeasoningEl) {
+                    cabbageSeasoningEl.style.backgroundImage = texture ? `url(${texture})` : '';
+                }
+                applySkinFrames('idle');
             }
 
             function applyEffectStyling(node, effectId) {
@@ -1652,6 +2097,20 @@
                     return;
                 }
                 console.debug('[Effect]', effectId, context ?? {});
+            }
+
+            function toggleDevPanel(forceState) {
+                if (!devPanelEl) {
+                    return;
+                }
+                const isOpen = devPanelEl.dataset.open === 'true';
+                const next = typeof forceState === 'boolean' ? forceState : !isOpen;
+                devPanelEl.dataset.open = next ? 'true' : 'false';
+                devPanelEl.setAttribute('aria-hidden', next ? 'false' : 'true');
+                if (devToggleBtn) {
+                    devToggleBtn.textContent = next ? 'DEV PANEL ▲' : 'DEV PANEL';
+                    devToggleBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+                }
             }
 
             function ensureAnimationLoop() {
@@ -1941,6 +2400,7 @@ function resetJudgementState(summaryMessage) {
                 updatePlayerBadge();
                 setStageResult('', 'info');
                 resetAnimationLayer();
+                updateSeasoningVisual();
             }
 
                         function ensurePlayerDetail(sensorId) {
@@ -2320,6 +2780,7 @@ function ensureSensorState(sensorId) {
                     || CONFIG.stageOrder?.[0]
                     || null;
                 applyBucketProgress(sensorId || 'unknown', detail, rating, resolvedStage);
+                updateSeasoningVisual();
 
                 updateTotalsFromPlayers();
                 playJudgementSFX(rating);
@@ -2733,6 +3194,20 @@ function ensureSensorState(sensorId) {
                 updateStagePanel();
                 updateJudgementSummary('라운드를 시작하면 판정 로그가 표시됩니다.');
                 setupDebugPanel();
+
+                if (devToggleBtn) {
+                    devToggleBtn.addEventListener('click', () => toggleDevPanel());
+                    devToggleBtn.setAttribute('aria-expanded', 'false');
+                }
+                if (devPanelCloseBtn) {
+                    devPanelCloseBtn.addEventListener('click', () => toggleDevPanel(false));
+                }
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape') {
+                        toggleDevPanel(false);
+                    }
+                });
+                toggleDevPanel(false);
 
                 loadAssetManifest().catch((error) => {
                     console.warn('[Assets] manifest load failed', error);
