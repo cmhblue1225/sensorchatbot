@@ -250,11 +250,20 @@ Handoff Summary (3-line 요약 템플릿)
 ## 2025-10-30T17:08:18+09:00
 - 완료 단계: 확장 설계 진행 (자산 매니페스트 로더)
 - 변경 파일/경로:
-  - public/assets/kimchi-fest/manifest.json (스킨/버킷/이펙트 매핑 초안 추가)
+  - public/games/kimchi-fest/manifest.json (스킨/버킷/이펙트 매핑 초안 추가)
   - public/games/kimchi-fest/index.html (매니페스트 기본값/로더, 레이블/배경/이펙트 연결)
   - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
 - Stop check: 콘솔에서 `window.state.assetManifest`가 로드된 매니페스트를 반환하고, 애니 레이어 배경이 매니페스트 배경으로 교체되며 팝업에 해당 레이블과 효과 클래스(테두리 색)가 반영되는지 확인.
 - RESUME_FROM: 확장 설계 후속 (자산 실제 연동, 스테이지별 시각/사운드 연출 적용)
+
+## 2025-10-31T09:59:06+09:00
+- 완료 단계: 확장 설계 진행 (판정 기반 아바타 프레임)
+- 변경 파일/경로:
+  - public/games/kimchi-fest/index.html (플레이어 아바타 DOM/CSS 추가, 판정별 프레임 전환 로직, 스킨 헬퍼 함수)
+  - public/games/kimchi-fest/manifest.json (게임 폴더 내 자산 매니페스트 경로 조정)
+  - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트, 테스트 항목 추가)
+- Stop check: `?debug=1` 모드에서 N/O/M 판정 버튼을 눌러 플레이어 카드의 아바타 이미지가 각각 Nice/Off/Miss 포즈로 전환되고 약 1초 뒤 idle로 복귀하는지, manifest에 프레임 경로가 없을 경우 이니셜 fallback이 노출되는지 확인.
+- RESUME_FROM: 확장 설계 후속 (실제 스킨 자산 추가, spread 단계용 실시간 연출 보완)
 
 ---
 

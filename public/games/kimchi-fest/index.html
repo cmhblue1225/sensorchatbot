@@ -705,6 +705,43 @@
             gap: 0.75rem;
         }
 
+        .player-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.6);
+            background-size: cover;
+            background-position: center;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-avatar::after {
+            content: attr(data-fallback);
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: rgba(248, 250, 252, 0.6);
+            letter-spacing: 0.04em;
+        }
+
+        .player-avatar[data-has-image="true"]::after {
+            content: "";
+        }
+
+        .player-top-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
         .player-score {
             font-weight: 700;
             font-size: 1rem;
@@ -1078,7 +1115,7 @@
                     thresholds: [0.25, 0.5, 0.75, 1]
                 },
                 assets: {
-                    manifestUrl: '/assets/kimchi-fest/manifest.json'
+                    manifestUrl: '/games/kimchi-fest/manifest.json'
                 }
             };
 
@@ -1341,9 +1378,29 @@
                 for (const { sensorId, detail, label } of entries) {
                     const item = document.createElement('li');
                     item.dataset.sensorId = sensorId;
+                    ensureDetailSkin(detail);
 
                     const header = document.createElement('div');
                     header.className = 'player-top';
+
+                    if (detail.avatarFrame && detail.avatarFrameUntil && detail.avatarFrameUntil < now) {
+                        detail.avatarFrame = null;
+                        detail.avatarFrameUntil = 0;
+                    }
+
+                    const currentFrame = detail.avatarFrame ? detail.avatarFrame : 'idle';
+                    const frameUrl = getSkinFrameUrl(detail.skinId, currentFrame);
+                    const avatar = document.createElement('div');
+                    avatar.className = 'player-avatar';
+                    const fallbackChar = (label || sensorId || '?').toString().trim().charAt(0).toUpperCase() || '?';
+                    avatar.dataset.fallback = fallbackChar;
+                    if (frameUrl) {
+                        avatar.style.backgroundImage = `url(${frameUrl})`;
+                        avatar.dataset.hasImage = 'true';
+                    } else {
+                        avatar.style.removeProperty('background-image');
+                        avatar.dataset.hasImage = 'false';
+                    }
 
                     const idSpan = document.createElement('span');
                     idSpan.className = 'player-id';
@@ -1353,7 +1410,11 @@
                     scoreSpan.className = 'player-score';
                     scoreSpan.textContent = `${detail.score}\uc810`;
 
-                    header.append(idSpan, scoreSpan);
+                    const topText = document.createElement('div');
+                    topText.className = 'player-top-text';
+                    topText.append(idSpan, scoreSpan);
+
+                    header.append(avatar, topText);
 
                     const metaRow = document.createElement('div');
                     metaRow.className = 'player-meta';
@@ -1503,11 +1564,12 @@
                     manifest = typeof structuredClone === 'function'
                         ? structuredClone(DEFAULT_ASSET_MANIFEST)
                         : JSON.parse(JSON.stringify(DEFAULT_ASSET_MANIFEST));
-                state.assetStatus = 'fallback';
+                    state.assetStatus = 'fallback';
                 }
 
                 state.assetManifest = manifest;
                 applyManifestBucketVisuals(manifest);
+                renderPlayerList();
                 return manifest;
             }
 
@@ -1518,6 +1580,47 @@
                     return null;
                 }
                 return list.find((entry) => Number(entry?.milestone) === Number(milestone)) ?? null;
+            }
+
+            function getActiveManifest() {
+                return state.assetManifest ?? DEFAULT_ASSET_MANIFEST;
+            }
+
+            function getDefaultSkinId() {
+                const manifest = getActiveManifest();
+                const first = Array.isArray(manifest.skins) ? manifest.skins[0] : null;
+                return first?.id || 'default';
+            }
+
+            function findSkinById(skinId) {
+                const manifest = getActiveManifest();
+                if (!Array.isArray(manifest.skins)) {
+                    return null;
+                }
+                return manifest.skins.find((skin) => skin?.id === skinId) ?? manifest.skins[0] ?? null;
+            }
+
+            function getSkinFrameUrl(skinId, frameKey) {
+                const skin = findSkinById(skinId);
+                if (!skin) {
+                    return null;
+                }
+                return skin.frames?.[frameKey] || null;
+            }
+
+            function ensureDetailSkin(detail) {
+                if (!detail.skinId) {
+                    detail.skinId = getDefaultSkinId();
+                }
+            }
+
+            function setAvatarFrame(detail, frameKey, durationMs = 900) {
+                if (!detail) {
+                    return;
+                }
+                ensureDetailSkin(detail);
+                detail.avatarFrame = frameKey;
+                detail.avatarFrameUntil = performance.now() + durationMs;
             }
 
             function applyManifestBucketVisuals(manifest) {
@@ -1827,6 +1930,8 @@ function resetJudgementState(summaryMessage) {
                     detail.fillAmount = 0;
                     detail.bucketMilestone = 0;
                     detail.bucketLastUpdated = 0;
+                    detail.avatarFrame = null;
+                    detail.avatarFrameUntil = 0;
                 });
                 state.leader = null;
                 state.leaderTie = false;
@@ -1855,7 +1960,9 @@ function resetJudgementState(summaryMessage) {
                         fillAmount: 0,
                         bucketMilestone: 0,
                         bucketLastUpdated: 0,
-                        skinId: null
+                        skinId: null,
+                        avatarFrame: null,
+                        avatarFrameUntil: 0
                     };
                     state.playersDetailed.set(sensorId, detail);
                     if (!state.playerLabels.has(sensorId)) {
@@ -2204,6 +2311,8 @@ function ensureSensorState(sensorId) {
                 detail.lastDeltaMs = deltaValue;
                 detail.flashUntil = performance.now() + 420;
                 detail.flashRating = rating;
+                const avatarFrameKey = rating === 'nice' ? 'nice' : rating === 'off' ? 'off' : rating === 'miss' ? 'miss' : 'idle';
+                setAvatarFrame(detail, avatarFrameKey, rating === 'miss' ? 1200 : 900);
 
                 const resolvedStage = stageKey
                     || state.currentStage
@@ -2234,6 +2343,9 @@ function ensureSensorState(sensorId) {
                 updatePlayerBadge();
                 updateJudgementSummary();
                 state.currentBeatResolved = true;
+                if (!detail.avatarFrame || detail.avatarFrame === 'idle') {
+                    ensureDetailSkin(detail);
+                }
             }
 
                         function finalizeBeat() {
