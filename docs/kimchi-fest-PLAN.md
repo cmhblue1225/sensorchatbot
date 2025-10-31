@@ -251,9 +251,9 @@ Handoff Summary (3-line 요약 템플릿)
 - 완료 단계: 확장 설계 진행 (자산 매니페스트 로더)
 - 변경 파일/경로:
   - public/assets/kimchi-fest/manifest.json (스킨/버킷/이펙트 매핑 초안 추가)
-  - public/games/kimchi-fest/index.html (매니페스트 기본값/로더/마일스톤 레이블 연계)
+  - public/games/kimchi-fest/index.html (매니페스트 기본값/로더, 레이블/배경/이펙트 연결)
   - sensorchatbot/docs/kimchi-fest-PLAN.md (Progress Log 업데이트)
-- Stop check: 콘솔에서 `window.state.assetManifest`가 로드된 매니페스트를 반환하고, 가져온 마일스톤 레이블이 애니메이션 팝업에 반영되는지 확인.
+- Stop check: 콘솔에서 `window.state.assetManifest`가 로드된 매니페스트를 반환하고, 애니 레이어 배경이 매니페스트 배경으로 교체되며 팝업에 해당 레이블과 효과 클래스(테두리 색)가 반영되는지 확인.
 - RESUME_FROM: 확장 설계 후속 (자산 실제 연동, 스테이지별 시각/사운드 연출 적용)
 
 ---
