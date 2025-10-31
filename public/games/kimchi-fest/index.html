@@ -205,6 +205,41 @@
             color: var(--accent-strong);
         }
 
+        #hud-bucket {
+            position: relative;
+            overflow: hidden;
+        }
+
+        #hud-bucket::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(250, 204, 21, 0.18), rgba(248, 113, 113, 0.12));
+            opacity: 0;
+            transition: opacity 220ms ease;
+            pointer-events: none;
+        }
+
+        #hud-bucket[data-fill-state="low"]::after {
+            opacity: 0.35;
+        }
+
+        #hud-bucket[data-fill-state="mid"]::after {
+            opacity: 0.55;
+        }
+
+        #hud-bucket[data-fill-state="high"]::after {
+            opacity: 0.75;
+        }
+
+        #hud-bucket[data-fill-state="complete"]::after {
+            opacity: 0.95;
+        }
+
+        #hud-bucket strong {
+            color: var(--accent);
+        }
+
         .session-overlay {
             position: absolute;
             bottom: 2rem;
@@ -582,17 +617,14 @@
             width: clamp(280px, 38vw, 480px);
             height: clamp(140px, 18vw, 260px);
             border-radius: 56% 44% 48% 52%;
-            background: radial-gradient(circle at 50% 40%, rgba(244, 114, 182, 0.65), rgba(14, 116, 144, 0.18));
-            opacity: 0.15;
+            background: radial-gradient(circle at 38% 32%, rgba(248, 113, 113, 0.72), rgba(252, 211, 77, 0.25));
+            mix-blend-mode: screen;
+            opacity: 0.1;
             transition: opacity 260ms ease;
         }
 
-        [data-seasoned="true"] .cabbage-seasoning {
-            opacity: 0.75;
-        }
-
         .cabbage-seasoning[data-state="base"] {
-            opacity: 0.15;
+            opacity: 0.1;
         }
 
         .cabbage-seasoning[data-state="low"] {
@@ -600,16 +632,17 @@
         }
 
         .cabbage-seasoning[data-state="mid"] {
-            opacity: 0.55;
+            opacity: 0.58;
         }
 
         .cabbage-seasoning[data-state="high"] {
-            opacity: 0.75;
+            opacity: 0.78;
+            box-shadow: 0 0 24px rgba(248, 113, 113, 0.28);
         }
 
         .cabbage-seasoning[data-state="complete"] {
-            opacity: 0.9;
-            box-shadow: 0 0 32px rgba(248, 113, 113, 0.35);
+            opacity: 1;
+            box-shadow: 0 0 40px rgba(248, 113, 113, 0.45);
         }
 
         .character-shadow {
@@ -643,6 +676,18 @@
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
+            transition: background-image 200ms ease, opacity 180ms ease;
+        }
+
+        .character-body[data-placeholder="true"] {
+            background-image: radial-gradient(circle at 45% 20%, rgba(248, 250, 252, 0.92), rgba(251, 191, 36, 0.4) 32%, rgba(15, 23, 42, 0.0) 68%),
+                radial-gradient(circle at 55% 68%, rgba(248, 113, 113, 0.45), rgba(15, 23, 42, 0.0) 55%);
+            opacity: 0.65;
+        }
+
+        .character-hands[data-placeholder="true"],
+        .character-tool[data-placeholder="true"] {
+            opacity: 0;
         }
 
         .character-body {
@@ -1314,9 +1359,9 @@
             <div class="scene-layer" data-layer="characters" id="scene-characters" aria-hidden="true">
                 <div class="character-shadow" aria-hidden="true"></div>
                 <div class="character-shell" id="character-shell" aria-hidden="true">
-                    <div class="character-body" id="character-body" aria-hidden="true"></div>
-                    <div class="character-hands" id="character-hands" aria-hidden="true"></div>
-                    <div class="character-tool" id="character-tool" aria-hidden="true"></div>
+                    <div class="character-body" id="character-body" aria-hidden="true" data-placeholder="true"></div>
+                    <div class="character-hands" id="character-hands" aria-hidden="true" data-placeholder="true"></div>
+                    <div class="character-tool" id="character-tool" aria-hidden="true" data-placeholder="true"></div>
                 </div>
             </div>
             <div class="scene-layer" data-layer="effects" id="scene-effects" aria-hidden="true"></div>
@@ -1333,6 +1378,10 @@
                 <article class="hud-chip" id="hud-players">
                     <span>연결 기기 수</span>
                     <strong id="player-count">0</strong>
+                </article>
+                <article class="hud-chip" id="hud-bucket" data-fill-state="base">
+                    <span>버킷 진행도</span>
+                    <strong><span id="hud-bucket-value">0</span>%</strong>
                 </article>
             </div>
             <div class="session-overlay" aria-label="세션 제어">
@@ -1541,6 +1590,8 @@
             const summaryNiceEl = document.getElementById('summary-nice');
             const summaryOffEl = document.getElementById('summary-off');
             const summaryMissEl = document.getElementById('summary-miss');
+            const hudBucketEl = document.getElementById('hud-bucket');
+            const hudBucketValueEl = document.getElementById('hud-bucket-value');
             const devToggleBtn = document.getElementById('dev-toggle');
             const devPanelEl = document.getElementById('dev-panel');
             const devPanelCloseBtn = devPanelEl ? devPanelEl.querySelector('[data-action="close"]') : null;
@@ -1959,6 +2010,7 @@
                 state.assetManifest = manifest;
                 applyManifestBucketVisuals(manifest);
                 renderPlayerList();
+                updateSeasoningVisual();
                 return manifest;
             }
 
@@ -2011,16 +2063,30 @@
                     if (frameUrl) {
                         characterBodyEl.style.backgroundImage = `url(${frameUrl})`;
                         characterBodyEl.dataset.skin = skinId;
+                        characterBodyEl.dataset.placeholder = 'false';
                     } else {
                         characterBodyEl.style.removeProperty('background-image');
                         characterBodyEl.removeAttribute('data-skin');
+                        characterBodyEl.dataset.placeholder = 'true';
                     }
                 }
                 if (characterHandsEl) {
-                    characterHandsEl.style.backgroundImage = frameUrl ? `url(${frameUrl})` : '';
+                    if (frameUrl) {
+                        characterHandsEl.style.backgroundImage = `url(${frameUrl})`;
+                        characterHandsEl.dataset.placeholder = 'false';
+                    } else {
+                        characterHandsEl.style.removeProperty('background-image');
+                        characterHandsEl.dataset.placeholder = 'true';
+                    }
                 }
                 if (characterToolEl) {
-                    characterToolEl.style.backgroundImage = frameUrl ? `url(${frameUrl})` : '';
+                    if (frameUrl) {
+                        characterToolEl.style.backgroundImage = `url(${frameUrl})`;
+                        characterToolEl.dataset.placeholder = 'false';
+                    } else {
+                        characterToolEl.style.removeProperty('background-image');
+                        characterToolEl.dataset.placeholder = 'true';
+                    }
                 }
                 if (characterShadowEl) {
                     characterShadowEl.style.opacity = frameUrl ? '0.45' : '0.2';
@@ -2051,6 +2117,13 @@
                 cabbageSeasoningEl.dataset.state = stateKey;
                 if (sceneCabbageEl) {
                     sceneCabbageEl.dataset.fill = highestFill.toFixed(2);
+                }
+                const percent = Math.round(highestFill * 100);
+                if (hudBucketValueEl) {
+                    hudBucketValueEl.textContent = percent.toString();
+                }
+                if (hudBucketEl) {
+                    hudBucketEl.dataset.fillState = stateKey;
                 }
             }
 
