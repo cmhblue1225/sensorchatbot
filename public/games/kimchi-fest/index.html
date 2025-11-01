@@ -1,0 +1,3297 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23f97316'/%3E%3Ctext x='8' y='11' font-size='9' text-anchor='middle' fill='white' font-family='Arial, sans-serif'%3EK%3C/text%3E%3C/svg%3E" />
+    <title>Kimchi Fest | Prototype Shell</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            --panel: rgba(15, 23, 42, 0.72);
+            --border: rgba(148, 163, 184, 0.25);
+            --muted: rgba(148, 163, 184, 0.75);
+            --accent: #f97316;
+            --accent-strong: #facc15;
+            --nice: #4ade80;
+            --off: #fbbf24;
+            --miss: #f87171;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 48%), #0f172a;
+        }
+
+        header,
+        footer {
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: 0.04em;
+        }
+
+        header .subtitle {
+            margin-top: 0.5rem;
+            font-size: 1rem;
+            color: var(--muted);
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1080px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .game-stage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 2rem 1.5rem 2.5rem;
+            gap: 0;
+        }
+
+        .playfield {
+            position: relative;
+            width: min(1280px, 90vw);
+            height: min(760px, 68vw);
+            border-radius: 2rem;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            background: radial-gradient(circle at top, rgba(59, 130, 246, 0.22), rgba(15, 23, 42, 0.92) 56%);
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(15, 23, 42, 0.5), 0 30px 60px rgba(15, 23, 42, 0.35);
+        }
+
+        .stage-overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+            max-width: clamp(240px, 28vw, 360px);
+            z-index: 5;
+        }
+
+        .stage-overlay h3 {
+            margin: 0;
+            font-size: 1.45rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            color: rgba(248, 250, 252, 0.92);
+        }
+
+        .stage-overlay p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: rgba(248, 250, 252, 0.7);
+        }
+
+        .stage-overlay .stage-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(148, 163, 184, 0.75);
+        }
+
+        .stage-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .stage-badge {
+            font-size: 0.85rem;
+            padding: 0.38rem 0.95rem;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.65);
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .stage-progress {
+            position: absolute;
+            top: 2rem;
+            right: 50%;
+            transform: translateX(50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 4;
+        }
+
+        .stage-step {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.6rem 1rem;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            transition: all 0.25s ease;
+        }
+
+        .stage-step.active {
+            border-color: rgba(250, 204, 21, 0.8);
+            background: rgba(250, 204, 21, 0.18);
+            box-shadow: 0 12px 24px rgba(250, 204, 21, 0.18);
+        }
+
+        .stage-step .step-index {
+            width: 32px;
+            height: 32px;
+            border-radius: 999px;
+            background: rgba(248, 250, 252, 0.12);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .hud-chips {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 0.75rem;
+            z-index: 6;
+        }
+
+        .hud-chip {
+            border-radius: 1rem;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            padding: 0.75rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            min-width: 110px;
+            box-shadow: 0 16px 28px rgba(15, 23, 42, 0.4);
+        }
+
+        .hud-chip span {
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(148, 163, 184, 0.75);
+        }
+
+        .hud-chip strong {
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+
+        #hud-score strong {
+            color: var(--accent-strong);
+        }
+
+        #hud-bucket {
+            position: relative;
+            overflow: hidden;
+        }
+
+        #hud-bucket::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(250, 204, 21, 0.18), rgba(248, 113, 113, 0.12));
+            opacity: 0;
+            transition: opacity 220ms ease;
+            pointer-events: none;
+        }
+
+        #hud-bucket[data-fill-state="low"]::after {
+            opacity: 0.35;
+        }
+
+        #hud-bucket[data-fill-state="mid"]::after {
+            opacity: 0.55;
+        }
+
+        #hud-bucket[data-fill-state="high"]::after {
+            opacity: 0.75;
+        }
+
+        #hud-bucket[data-fill-state="complete"]::after {
+            opacity: 0.95;
+        }
+
+        #hud-bucket strong {
+            color: var(--accent);
+        }
+
+        .session-overlay {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-radius: 1rem;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: 0 18px 32px rgba(15, 23, 42, 0.45);
+            z-index: 6;
+        }
+
+        .session-overlay .session-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .session-overlay .session-code {
+            font-weight: 700;
+            letter-spacing: 0.06em;
+        }
+
+        .session-overlay #qr-container {
+            min-width: 160px;
+            min-height: 160px;
+            border: 1px dashed rgba(148, 163, 184, 0.35);
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0.9rem;
+            color: rgba(248, 250, 252, 0.65);
+            background: rgba(15, 23, 42, 0.55);
+        }
+
+        .dev-toggle {
+            position: fixed;
+            bottom: 1.6rem;
+            left: 1.6rem;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            color: rgba(248, 250, 252, 0.85);
+            padding: 0.65rem 1.4rem;
+            border-radius: 999px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            box-shadow: 0 16px 28px rgba(15, 23, 42, 0.4);
+            z-index: 21;
+        }
+
+        .dev-panel {
+            position: fixed;
+            left: 1.6rem;
+            bottom: calc(1.6rem + 3.4rem);
+            transform: none;
+            width: 320px;
+            max-height: min(72vh, 560px);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1.25rem;
+            border-radius: 1.2rem;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: 0 30px 60px rgba(15, 23, 42, 0.55);
+            z-index: 20;
+            overflow-y: auto;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s ease;
+        }
+
+        .dev-panel[data-open="true"] {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .dev-panel header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .dev-panel header h3 {
+            margin: 0;
+            font-size: 1rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: rgba(248, 250, 252, 0.78);
+        }
+
+        .dev-panel header button {
+            background: none;
+            border: none;
+            color: rgba(248, 250, 252, 0.6);
+            font-size: 1.4rem;
+            cursor: pointer;
+        }
+
+        .dev-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .dev-section h4 {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .log-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .log-list li {
+            background: rgba(15, 23, 42, 0.55);
+            border: 1px solid var(--border);
+            border-radius: 0.85rem;
+            padding: 0.75rem 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .log-list li[data-rating="nice"] {
+            border-left: 4px solid var(--nice);
+        }
+
+        .log-list li[data-rating="off"] {
+            border-left: 4px solid var(--off);
+        }
+
+        .log-list li[data-rating="miss"] {
+            border-left: 4px solid var(--miss);
+        }
+
+        .log-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .log-line strong {
+            font-size: 0.95rem;
+            color: #f8fafc;
+        }
+
+        .log-line span {
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .log-meta {
+            font-size: 0.82rem;
+            color: rgba(148, 163, 184, 0.82);
+        }
+
+        .stage-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stage-head h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: rgba(248, 250, 252, 0.9);
+        }
+
+        .stage-head p {
+            margin: 0.35rem 0 0;
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+
+        .metronome-panel {
+            gap: 0.6rem;
+            position: relative;
+        }
+
+        #metronome-indicator {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        #metronome-indicator span {
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 0.4rem;
+            color: rgba(248, 250, 252, 0.6);
+        }
+
+        .metronome-panel.beat-active::after {
+            content: "";
+            position: absolute;
+            inset: -0.4rem;
+            border-radius: 1.4rem;
+            background: rgba(248, 113, 113, 0.18);
+            animation: beat-pulse 180ms ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes beat-pulse {
+            from {
+                opacity: 0.9;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+
+        .stage-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .stage-badge {
+            font-size: 0.85rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(148, 163, 184, 0.12);
+            color: rgba(248, 250, 252, 0.75);
+        }
+
+        .stage-progress {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .stage-step {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.75rem;
+            border-radius: 0.9rem;
+            border: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.45);
+            transition: all 0.25s ease;
+        }
+
+        .stage-step.active {
+            border-color: rgba(250, 204, 21, 0.7);
+            background: rgba(250, 204, 21, 0.18);
+            box-shadow: 0 12px 24px rgba(250, 204, 21, 0.15);
+        }
+
+        .stage-step .step-index {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(248, 250, 252, 0.1);
+            font-weight: 600;
+            font-size: 1rem;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .stage-step.active .step-index {
+            background: var(--accent);
+            color: #0f172a;
+        }
+
+        .stage-step .step-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .stage-step .step-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .scene-backdrop {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.85) 88%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .scene-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .scene-layer[data-layer="ground"] {
+            z-index: 2;
+        }
+
+        .scene-layer[data-layer="characters"] {
+            z-index: 3;
+        }
+
+        .scene-layer[data-layer="effects"] {
+            z-index: 4;
+        }
+
+        .scene-crates {
+            position: absolute;
+            bottom: 8%;
+            right: 6%;
+            width: clamp(120px, 16vw, 220px);
+            height: clamp(80px, 10vw, 150px);
+            border-radius: 1.2rem;
+            background: linear-gradient(180deg, rgba(100, 116, 139, 0.4), rgba(30, 41, 59, 0.9));
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.45);
+        }
+
+        .scene-table {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(540px, 70vw, 880px);
+            height: clamp(140px, 16vw, 240px);
+            border-radius: 180px 180px 60px 60px / 90px 90px 50px 50px;
+            background: linear-gradient(180deg, rgba(248, 113, 113, 0.18), rgba(15, 23, 42, 0.82));
+            border: 1px solid rgba(248, 250, 252, 0.1);
+            box-shadow: inset 0 24px 40px rgba(15, 23, 42, 0.45);
+        }
+
+        .cabbage-base {
+            position: absolute;
+            bottom: clamp(60px, 9vw, 120px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(320px, 42vw, 520px);
+            height: clamp(180px, 24vw, 320px);
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 30%, rgba(248, 113, 113, 0.3), rgba(15, 23, 42, 0.65));
+            filter: blur(1px);
+            box-shadow: 0 24px 40px rgba(15, 23, 42, 0.55);
+        }
+
+        .cabbage-seasoning {
+            position: absolute;
+            bottom: clamp(90px, 11vw, 150px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(280px, 38vw, 480px);
+            height: clamp(140px, 18vw, 260px);
+            border-radius: 56% 44% 48% 52%;
+            background: radial-gradient(circle at 38% 32%, rgba(248, 113, 113, 0.72), rgba(252, 211, 77, 0.25));
+            mix-blend-mode: screen;
+            opacity: 0.1;
+            transition: opacity 260ms ease;
+        }
+
+        .cabbage-seasoning[data-state="base"] {
+            opacity: 0.1;
+        }
+
+        .cabbage-seasoning[data-state="low"] {
+            opacity: 0.35;
+        }
+
+        .cabbage-seasoning[data-state="mid"] {
+            opacity: 0.58;
+        }
+
+        .cabbage-seasoning[data-state="high"] {
+            opacity: 0.78;
+            box-shadow: 0 0 24px rgba(248, 113, 113, 0.28);
+        }
+
+        .cabbage-seasoning[data-state="complete"] {
+            opacity: 1;
+            box-shadow: 0 0 40px rgba(248, 113, 113, 0.45);
+        }
+
+        .character-shadow {
+            position: absolute;
+            bottom: clamp(55px, 7vw, 110px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(240px, 34vw, 420px);
+            height: clamp(75px, 12vw, 160px);
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.5);
+            filter: blur(20px);
+            opacity: 0.45;
+        }
+
+        .character-shell {
+            position: absolute;
+            bottom: clamp(120px, 18vw, 240px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(240px, 32vw, 380px);
+            height: clamp(320px, 44vw, 520px);
+            display: grid;
+            grid-template-rows: 45% 35% 20%;
+            pointer-events: none;
+        }
+
+        .character-body,
+        .character-hands,
+        .character-tool {
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transition: background-image 200ms ease, opacity 180ms ease;
+        }
+
+        .character-body[data-placeholder="true"] {
+            background-image: radial-gradient(circle at 45% 20%, rgba(248, 250, 252, 0.92), rgba(251, 191, 36, 0.4) 32%, rgba(15, 23, 42, 0.0) 68%),
+                radial-gradient(circle at 55% 68%, rgba(248, 113, 113, 0.45), rgba(15, 23, 42, 0.0) 55%);
+            opacity: 0.65;
+        }
+
+        .character-hands[data-placeholder="true"],
+        .character-tool[data-placeholder="true"] {
+            opacity: 0;
+        }
+
+        .character-body {
+            grid-row: 1 / span 2;
+            filter: drop-shadow(0 18px 28px rgba(15, 23, 42, 0.55));
+        }
+
+        .character-hands {
+            grid-row: 2 / span 2;
+        }
+
+        .character-tool {
+            grid-row: 2 / span 1;
+        }
+
+        .animation-track {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .animation-event {
+            position: absolute;
+            inset: 15% 10%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.65);
+            border: 2px solid rgba(250, 204, 21, 0.65);
+            color: #f8fafc;
+            text-align: center;
+            font-weight: 600;
+            animation: bucket-pop 960ms ease-out forwards;
+            box-shadow: 0 16px 28px rgba(15, 23, 42, 0.65);
+        }
+
+        .animation-event[data-milestone="4"] {
+            border-color: rgba(74, 222, 128, 0.9);
+            box-shadow: 0 18px 34px rgba(74, 222, 128, 0.45);
+        }
+
+        .animation-event.effect-spark-minor {
+            border-color: rgba(59, 130, 246, 0.75);
+            box-shadow: 0 18px 34px rgba(59, 130, 246, 0.35);
+        }
+
+        .animation-event.effect-spark-mid {
+            border-color: rgba(56, 189, 248, 0.8);
+            box-shadow: 0 20px 36px rgba(56, 189, 248, 0.4);
+        }
+
+        .animation-event.effect-spark-major {
+            border-color: rgba(249, 115, 22, 0.9);
+            box-shadow: 0 24px 40px rgba(249, 115, 22, 0.45);
+        }
+
+        .animation-event.effect-spark-grand {
+            border-color: rgba(250, 204, 21, 0.95);
+            box-shadow: 0 28px 48px rgba(250, 204, 21, 0.55);
+        }
+
+        .animation-event strong {
+            font-size: 1.35rem;
+            letter-spacing: 0.02em;
+        }
+
+        .animation-event span {
+            font-size: 0.85rem;
+            color: rgba(248, 250, 252, 0.75);
+        }
+
+        @keyframes bucket-pop {
+            0% {
+                opacity: 0;
+                transform: scale(0.6) rotate(-4deg);
+            }
+            35% {
+                opacity: 1;
+                transform: scale(1.05) rotate(1deg);
+            }
+            65% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.7) translateY(18px);
+            }
+        }
+
+        .player-strip {
+            border-radius: 0.9rem;
+            border: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.4);
+            padding: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .player-strip h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: rgba(248, 250, 252, 0.85);
+        }
+
+        .player-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 180px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+        }
+
+        .player-list li {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            align-items: stretch;
+            padding: 0.55rem 0.75rem;
+            border-radius: 0.75rem;
+            background: rgba(15, 23, 42, 0.55);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: rgba(248, 250, 252, 0.9);
+        }
+
+        .bucket-progress {
+            position: relative;
+            width: 100%;
+            height: 12px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.2);
+            overflow: hidden;
+            --bucket-fill: 0%;
+        }
+
+        .bucket-progress::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            width: var(--bucket-fill, 0%);
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.85), rgba(250, 204, 21, 0.9));
+            transition: width 240ms ease;
+        }
+
+        .bucket-progress[data-tier="milestone"]::after {
+            box-shadow: 0 0 18px rgba(250, 204, 21, 0.35);
+        }
+
+        .bucket-progress[data-tier="complete"]::after {
+            background: linear-gradient(135deg, rgba(74, 222, 128, 0.95), rgba(250, 204, 21, 0.95));
+            box-shadow: 0 0 22px rgba(74, 222, 128, 0.45);
+        }
+
+        .bucket-caption {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            color: rgba(148, 163, 184, 0.82);
+        }
+
+        .bucket-caption strong {
+            color: rgba(248, 250, 252, 0.82);
+            font-weight: 600;
+        }
+
+        .player-list li.empty {
+            font-style: italic;
+            justify-content: center;
+            color: var(--muted);
+        }
+
+        .player-list .player-id {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .player-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .player-stats {
+            font-size: 0.85rem;
+            color: rgba(148, 163, 184, 0.82);
+        }
+
+        .player-list .player-status {
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .feedback-top {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+            gap: 0.6rem;
+        }
+
+        .summary-chip {
+            border-radius: 0.85rem;
+            border: 1px solid var(--border);
+            padding: 0.75rem 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .summary-chip[data-rating="nice"] {
+            border-color: rgba(74, 222, 128, 0.5);
+        }
+
+        .summary-chip[data-rating="off"] {
+            border-color: rgba(251, 191, 36, 0.45);
+        }
+
+        .summary-chip[data-rating="miss"] {
+            border-color: rgba(248, 113, 113, 0.45);
+        }
+
+        .summary-chip .chip-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+        }
+
+        .summary-chip .chip-value {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: rgba(248, 250, 252, 0.9);
+        }
+
+        .session-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .session-code {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        #qr-container {
+            min-width: 220px;
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed var(--border);
+            border-radius: 1rem;
+            padding: 1rem;
+            text-align: center;
+            color: var(--muted);
+            background: rgba(15, 23, 42, 0.45);
+        }
+
+        #qr-container[data-state="error"] {
+            color: #fca5a5;
+            border-color: rgba(248, 113, 113, 0.55);
+        }
+
+        button {
+            appearance: none;
+            border: none;
+            border-radius: 999px;
+            padding: 0.85rem 1.65rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0f172a;
+            background: linear-gradient(135deg, #f97316, #22c55e);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button:not(:disabled):hover {
+            transform: translateY(-2px);
+        }
+
+        footer small {
+            color: var(--muted);
+        }
+
+        @media (max-width: 1400px) {
+            .game-stage {
+                padding: 2rem 1.5rem 2.5rem;
+            }
+            .playfield {
+                width: min(1200px, 92vw);
+                height: min(720px, 68vw);
+            }
+        }
+
+        @media (max-width: 960px) {
+            .game-stage {
+                padding: 1.5rem 1rem 2rem;
+            }
+            .playfield {
+                width: 100%;
+                height: min(680px, 80vw);
+            }
+            .dev-panel {
+                left: 50%;
+                bottom: calc(1.6rem + 3.4rem);
+                transform: translateX(-50%);
+                width: min(360px, 92vw);
+            }
+        }
+
+        @media (max-width: 720px) {
+            .hud-chips {
+                flex-direction: column;
+                top: 1.4rem;
+                right: 1.4rem;
+            }
+            .session-overlay {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .session-overlay #qr-container {
+                min-width: 0;
+            }
+            .dev-toggle {
+                left: 1.4rem;
+                bottom: 1.4rem;
+            }
+            .stage-progress {
+                top: auto;
+                bottom: 1.5rem;
+                right: 50%;
+                transform: translateX(50%);
+            }
+            .dev-panel {
+                bottom: calc(1.4rem + 3.4rem);
+                width: 92vw;
+            }
+        }
+    
+        .debug-panel {
+            display: none;
+            gap: 1.2rem;
+        }
+
+        .debug-panel[data-active="true"] {
+            display: grid;
+        }
+
+        .debug-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .debug-panel label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            font-size: 0.9rem;
+            color: rgba(248, 250, 252, 0.78);
+        }
+
+        .debug-panel input[type="range"] {
+            width: 100%;
+        }
+
+        .debug-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .debug-buttons button {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.65rem 0.9rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.55);
+            color: rgba(248, 250, 252, 0.85);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .debug-buttons button:hover {
+            background: rgba(59, 130, 246, 0.25);
+        }
+
+        .debug-help {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .player-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .player-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.6);
+            background-size: cover;
+            background-position: center;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-avatar::after {
+            content: attr(data-fallback);
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: rgba(248, 250, 252, 0.6);
+            letter-spacing: 0.04em;
+        }
+
+        .player-avatar[data-has-image="true"]::after {
+            content: "";
+        }
+
+        .player-top-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .player-score {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--accent-strong);
+            letter-spacing: 0.01em;
+        }
+
+        .player-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .player-judgement {
+            font-weight: 600;
+        }
+
+        .player-judgement--nice {
+            color: var(--nice);
+        }
+
+        .player-judgement--off {
+            color: var(--off);
+        }
+
+        .player-judgement--miss {
+            color: var(--miss);
+        }
+
+        .player-judgement--none {
+            color: var(--muted);
+        }
+
+        .player-breakdown {
+            display: flex;
+            gap: 0.75rem;
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+
+        .player-breakdown span strong {
+            color: rgba(248, 250, 252, 0.85);
+            font-weight: 600;
+        }
+
+        .stage-result {
+            margin-top: 0.35rem;
+            font-size: 0.9rem;
+            color: rgba(248, 250, 252, 0.82);
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.28s ease, transform 0.28s ease;
+            min-height: 1.1rem;
+        }
+
+        .stage-result[data-active="true"] {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .stage-result[data-tone="info"] {
+            color: var(--muted);
+        }
+
+        .stage-result[data-tone="success"] {
+            color: var(--nice);
+        }
+
+        .stage-result[data-tone="warning"] {
+            color: var(--off);
+        }
+
+        .stage-result[data-tone="error"] {
+            color: var(--miss);
+        }
+
+        @keyframes player-flash-nice {
+            from {
+                box-shadow: 0 0 0 rgba(74, 222, 128, 0.0);
+                border-color: rgba(74, 222, 128, 0.25);
+            }
+            50% {
+                box-shadow: 0 0 18px rgba(74, 222, 128, 0.55);
+                border-color: rgba(74, 222, 128, 0.9);
+            }
+            to {
+                box-shadow: 0 0 0 rgba(74, 222, 128, 0.0);
+                border-color: rgba(148, 163, 184, 0.2);
+            }
+        }
+
+        @keyframes player-flash-off {
+            from {
+                box-shadow: 0 0 0 rgba(251, 191, 36, 0.0);
+                border-color: rgba(251, 191, 36, 0.25);
+            }
+            50% {
+                box-shadow: 0 0 16px rgba(251, 191, 36, 0.45);
+                border-color: rgba(251, 191, 36, 0.85);
+            }
+            to {
+                box-shadow: 0 0 0 rgba(251, 191, 36, 0.0);
+                border-color: rgba(148, 163, 184, 0.2);
+            }
+        }
+
+        @keyframes player-flash-miss {
+            from {
+                box-shadow: 0 0 0 rgba(248, 113, 113, 0.0);
+                border-color: rgba(248, 113, 113, 0.25);
+            }
+            50% {
+                box-shadow: 0 0 14px rgba(248, 113, 113, 0.45);
+                border-color: rgba(248, 113, 113, 0.8);
+            }
+            to {
+                box-shadow: 0 0 0 rgba(248, 113, 113, 0.0);
+                border-color: rgba(148, 163, 184, 0.2);
+            }
+        }
+
+        .player-list li[data-flash="nice"] {
+            animation: player-flash-nice 360ms ease-out;
+            border-color: rgba(74, 222, 128, 0.85);
+        }
+
+        .player-list li[data-flash="off"] {
+            animation: player-flash-off 360ms ease-out;
+            border-color: rgba(251, 191, 36, 0.8);
+        }
+
+        .player-list li[data-flash="miss"] {
+            animation: player-flash-miss 360ms ease-out;
+            border-color: rgba(248, 113, 113, 0.8);
+        }
+
+        #playfield-placeholder.stage-pulse {
+            animation: stage-pulse 420ms ease-out;
+        }
+
+        @keyframes stage-pulse {
+            from {
+                box-shadow: 0 0 0 rgba(250, 204, 21, 0.0);
+                transform: scale(1);
+            }
+            45% {
+                box-shadow: 0 0 22px rgba(250, 204, 21, 0.35);
+                transform: scale(1.01);
+            }
+            to {
+                box-shadow: 0 0 0 rgba(250, 204, 21, 0.0);
+                transform: scale(1);
+            }
+        }
+
+        .score-total {
+            display: block;
+            margin-top: 0.35rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Kimchi Fest</h1>
+        <p class="subtitle">리듬에 맞춰 김장을 완성해 보세요!</p>
+    </header>
+    <main class="game-stage">
+        <div class="playfield" id="playfield-placeholder">
+            <div class="stage-overlay">
+                <p class="stage-label">현재 단계 · <span id="stage">Waiting</span></p>
+                <h3 id="stage-title">스테이지 대기 중</h3>
+                <p id="stage-instruction">라운드를 시작하면 단계 안내가 표시됩니다.</p>
+                <p id="stage-result" class="stage-result" aria-live="polite"></p>
+                <div class="stage-badges">
+                    <span id="player-badge" class="stage-badge">싱글 모드</span>
+                    <span id="stage-cycle" class="stage-badge">0 / 2 단계</span>
+                </div>
+            </div>
+            <div class="stage-progress" role="list">
+                <div class="stage-step active" data-stage="gather" role="listitem">
+                    <span class="step-index">1</span>
+                    <span class="step-label">재료 모으기</span>
+                </div>
+                <div class="stage-step" data-stage="spread" role="listitem">
+                    <span class="step-index">2</span>
+                    <span class="step-label">양념 바르기</span>
+                </div>
+            </div>
+            <div class="scene-backdrop" aria-hidden="true"></div>
+            <div class="scene-layer" data-layer="ground" id="scene-ground" aria-hidden="true">
+                <div class="scene-crates" aria-hidden="true"></div>
+                <div class="scene-table" aria-hidden="true"></div>
+            </div>
+            <div class="scene-layer" data-layer="cabbage" id="scene-cabbage" aria-hidden="true">
+                <div class="cabbage-base" aria-hidden="true"></div>
+                <div class="cabbage-seasoning" aria-hidden="true"></div>
+            </div>
+            <div class="scene-layer" data-layer="characters" id="scene-characters" aria-hidden="true">
+                <div class="character-shadow" aria-hidden="true"></div>
+                <div class="character-shell" id="character-shell" aria-hidden="true">
+                    <div class="character-body" id="character-body" aria-hidden="true" data-placeholder="true"></div>
+                    <div class="character-hands" id="character-hands" aria-hidden="true" data-placeholder="true"></div>
+                    <div class="character-tool" id="character-tool" aria-hidden="true" data-placeholder="true"></div>
+                </div>
+            </div>
+            <div class="scene-layer" data-layer="effects" id="scene-effects" aria-hidden="true"></div>
+            <div class="animation-track" id="animation-layer" aria-hidden="true"></div>
+            <div class="hud-chips" aria-label="게임 정보">
+                <article class="hud-chip" id="hud-timer">
+                    <span>남은 시간</span>
+                    <strong id="timer">00:45</strong>
+                </article>
+                <article class="hud-chip" id="hud-score">
+                    <span>총 점수</span>
+                    <strong id="score">--</strong>
+                </article>
+                <article class="hud-chip" id="hud-players">
+                    <span>연결 기기 수</span>
+                    <strong id="player-count">0</strong>
+                </article>
+                <article class="hud-chip" id="hud-bucket" data-fill-state="base">
+                    <span>버킷 진행도</span>
+                    <strong><span id="hud-bucket-value">0</span>%</strong>
+                </article>
+            </div>
+            <div class="session-overlay" aria-label="세션 제어">
+                <div class="session-info" aria-live="polite">
+                    <div class="session-code">Session Code: <span id="session-code">----</span></div>
+                    <div id="qr-container">세션을 생성하면 이 영역에 QR 코드가 표시됩니다.</div>
+                </div>
+                <button id="start-button" disabled>SDK 초기화 중...</button>
+            </div>
+        </div>
+        <button class="dev-toggle" id="dev-toggle" type="button">DEV PANEL</button>
+    </main>
+    <aside class="dev-panel" id="dev-panel" data-open="false" aria-label="개발자 HUD" aria-hidden="true">
+        <header>
+            <h3>Developer HUD</h3>
+            <button type="button" data-action="close" aria-label="닫기">&times;</button>
+        </header>
+        <section class="dev-section metronome-panel" id="metronome-placeholder">
+            <h4>메트로놈</h4>
+            <div id="metronome-indicator">
+                메트로놈
+                <span>110 BPM</span>
+            </div>
+        </section>
+        <section class="dev-section" id="players-panel">
+            <h4>연결된 기기</h4>
+            <ul id="player-list" class="player-list" aria-live="polite">
+                <li class="empty">연결된 센서가 없습니다.</li>
+            </ul>
+        </section>
+        <section class="dev-section" id="feedback-placeholder">
+            <h4>판정 요약</h4>
+            <div class="summary-grid">
+                <div class="summary-chip" data-rating="nice">
+                    <span class="chip-label">정확</span>
+                    <span class="chip-value" id="summary-nice">0</span>
+                </div>
+                <div class="summary-chip" data-rating="off">
+                    <span class="chip-label">살짝</span>
+                    <span class="chip-value" id="summary-off">0</span>
+                </div>
+                <div class="summary-chip" data-rating="miss">
+                    <span class="chip-label">빗나감</span>
+                    <span class="chip-value" id="summary-miss">0</span>
+                </div>
+            </div>
+            <p id="log-status">라운드를 시작하면 판정 로그가 표시됩니다.</p>
+        </section>
+        <section class="dev-section">
+            <h4>판정 로그</h4>
+            <ol id="shake-log" class="log-list" aria-live="polite"></ol>
+        </section>
+        <section class="dev-section debug-wrapper">
+            <div class="debug-panel" id="debug-panel" aria-label="테스트 도구">
+                <h2>감도/판정 조정</h2>
+                <p class="debug-help">URL에 <code>?debug=1</code>을 붙이면 활성화됩니다. 버튼을 눌러 판정과 가속도 변화를 바로 확인할 수 있습니다.</p>
+                <div class="debug-grid">
+                    <label>
+                        가속도 임계값 (m/s²)
+                        <input type="range" min="2.0" max="5.0" step="0.1" data-setting="threshold" />
+                        <span data-display="threshold">-</span>
+                    </label>
+                    <label>
+                        정확 판정 (Nice) 범위(ms)
+                        <input type="range" min="40" max="100" step="5" data-setting="nice" />
+                        <span data-display="nice">-</span>
+                    </label>
+                    <label>
+                        살짝 판정 (Off) 범위(ms)
+                        <input type="range" min="100" max="200" step="5" data-setting="off" />
+                        <span data-display="off">-</span>
+                    </label>
+                </div>
+                <div class="debug-buttons">
+                    <button type="button" data-rating="nice">정확 판정 (키 N)</button>
+                    <button type="button" data-rating="off">살짝 판정 (키 O)</button>
+                    <button type="button" data-rating="miss">빗나감 판정 (키 M)</button>
+                </div>
+            </div>
+        </section>
+    </aside>
+    <footer>
+        <small>Kimchi Fest Prototype \u00b7 Sensor Game Hub v6.0</small>
+    </footer>
+    <script src="/socket.io/socket.io.js" defer></script>
+    <script src="/js/SessionSDK.js" defer></script>
+    <script>
+        (function () {
+            const DEFAULT_ASSET_MANIFEST = {
+                version: '0.0.0',
+                updatedAt: null,
+                skins: [
+                    {
+                        id: 'default',
+                        name: 'Default Crew',
+                        thumbnail: null,
+                        frames: {
+                            idle: null,
+                            nice: null,
+                            off: null,
+                            miss: null
+                        }
+                    }
+                ],
+                bucket: {
+                    milestones: [
+                        { milestone: 1, label: '버킷 25% 달성', effect: null, sound: null },
+                        { milestone: 2, label: '버킷 50% 달성', effect: null, sound: null },
+                        { milestone: 3, label: '버킷 75% 달성', effect: null, sound: null },
+                        { milestone: 4, label: '버킷 완료!', effect: null, sound: null }
+                    ],
+                    background: null,
+                    textures: {}
+                },
+                effects: {}
+            };
+
+            const EFFECT_CLASS_MAP = {
+                'spark-minor': 'effect-spark-minor',
+                'spark-mid': 'effect-spark-mid',
+                'spark-major': 'effect-spark-major',
+                'spark-grand': 'effect-spark-grand'
+            };
+
+            const CONFIG = {
+                bpm: 110,
+                roundDurationMs: 45_000,
+                metronomeVolume: 0.15,
+                metronomeFrequency: 880,
+                logLimit: 12,
+                stageOrder: ['gather', 'spread'],
+                stageLabels: {
+                    gather: '재료 모으기',
+                    spread: '양념 바르기'
+                },
+                stageInstructions: {
+                    gather: '플레이어가 리듬에 맞춰 재료를 흔들어 모읍니다.',
+                    spread: '플레이어가 양념을 고르게 바르도록 힘차게 흔듭니다.'
+                },
+                judgement: {
+                    niceWindowMs: 60,
+                    offWindowMs: 140,
+                    nicePoints: 5,
+                    offPoints: 2,
+                    missPoints: -1
+                },
+                sensor: {
+                    baselineWindowMs: 300,
+                    throttleMs: 33,
+                    threshold: 3.2,
+                    refractoryMs: 120
+                },
+                bucket: {
+                    niceGain: 0.08,
+                    offGain: 0.045,
+                    missPenalty: -0.05,
+                    stageMultipliers: {
+                        gather: 1,
+                        spread: 1.2
+                    },
+                    thresholds: [0.25, 0.5, 0.75, 1]
+                },
+                assets: {
+                    manifestUrl: '/games/kimchi-fest/manifest.json'
+                }
+            };
+
+            const SESSION_CONFIG = {
+                gameId: 'kimchi-fest',
+                gameType: 'dual'
+            };
+
+            const beatIntervalMs = 60000 / CONFIG.bpm;
+
+            const startButton = document.getElementById('start-button');
+            const playerCountEl = document.getElementById('player-count');
+            const stageEl = document.getElementById('stage');
+            const timerEl = document.getElementById('timer');
+            const scoreEl = document.getElementById('score');
+            const sessionCodeEl = document.getElementById('session-code');
+            const qrContainer = document.getElementById('qr-container');
+            const metronomePlaceholder = document.getElementById('metronome-placeholder');
+            const metronomeIndicator = document.getElementById('metronome-indicator');
+            const playfieldPlaceholder = document.getElementById('playfield-placeholder');
+            const animationLayerEl = document.getElementById('animation-layer');
+            const animationTrackEl = animationLayerEl || null;
+            const sceneGroundEl = document.getElementById('scene-ground');
+            const sceneCharactersEl = document.getElementById('scene-characters');
+            const sceneEffectsEl = document.getElementById('scene-effects');
+            const characterBodyEl = document.getElementById('character-body');
+            const characterHandsEl = document.getElementById('character-hands');
+            const characterToolEl = document.getElementById('character-tool');
+            const characterShadowEl = document.querySelector('.character-shadow');
+            const cabbageBaseEl = document.querySelector('.cabbage-base');
+            const cabbageSeasoningEl = document.querySelector('.cabbage-seasoning');
+            const sceneCabbageEl = document.getElementById('scene-cabbage');
+            const logList = document.getElementById('shake-log');
+            const logStatus = document.getElementById('log-status');
+            const stageTitleEl = document.getElementById('stage-title');
+            const stageInstructionEl = document.getElementById('stage-instruction');
+            const stageResultEl = document.getElementById('stage-result');
+            const stageCycleEl = document.getElementById('stage-cycle');
+            const stageSteps = Array.from(document.querySelectorAll('.stage-step'));
+            const playerListEl = document.getElementById('player-list');
+            const playerBadgeEl = document.getElementById('player-badge');
+            const summaryNiceEl = document.getElementById('summary-nice');
+            const summaryOffEl = document.getElementById('summary-off');
+            const summaryMissEl = document.getElementById('summary-miss');
+            const hudBucketEl = document.getElementById('hud-bucket');
+            const hudBucketValueEl = document.getElementById('hud-bucket-value');
+            const devToggleBtn = document.getElementById('dev-toggle');
+            const devPanelEl = document.getElementById('dev-panel');
+            const devPanelCloseBtn = devPanelEl ? devPanelEl.querySelector('[data-action="close"]') : null;
+
+            const state = {
+                sdk: null,
+                session: null,
+                players: new Set(),
+                roundActive: false,
+                roundStartTime: 0,
+                timerFrame: null,
+                metronomeInterval: null,
+                audioContext: null,
+                metronomeGain: null,
+                sensorStates: new Map(),
+                playersDetailed: new Map(),
+                playerLabels: new Map(),
+                totalScore: 0,
+                judgements: { nice: 0, off: 0, miss: 0 },
+                beatIndex: 0,
+                currentStage: null,
+                currentBeatStart: 0,
+                currentBeatResolved: true,
+                beatIntervalMs,
+                stageIndex: 0,
+                leader: null,
+                leaderTie: false,
+                sfxBus: null,
+                stagePulseTimeout: null,
+                animationQueue: [],
+                animationLayerEl,
+                animationTrackEl,
+                animationFrameId: null,
+                activeAnimations: new Set(),
+                animationTimers: new Set(),
+                assetManifest: null,
+                assetStatus: 'idle'
+            };
+            const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
+            const debugPanel = document.getElementById('debug-panel');
+            const thresholdInput = debugPanel ? debugPanel.querySelector('[data-setting="threshold"]') : null;
+            const niceInput = debugPanel ? debugPanel.querySelector('[data-setting="nice"]') : null;
+            const offInput = debugPanel ? debugPanel.querySelector('[data-setting="off"]') : null;
+            const tuningDisplays = debugPanel ? {
+                threshold: debugPanel.querySelector('[data-display="threshold"]'),
+                nice: debugPanel.querySelector('[data-display="nice"]'),
+                off: debugPanel.querySelector('[data-display="off"]')
+            } : null;
+
+            function formatTime(ms) {
+                const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            const STATUS_TEXT = {
+                sdkLoadFail: 'SessionSDK를 불러오지 못했어요. 새로고침 후 다시 시도해주세요.',
+                roundNotStarted: '라운드를 먼저 시작해주세요.',
+                sensorMissing: '먼저 센서를 연결해주세요.',
+                qrReady: '세션을 생성하면 QR 코드가 표시됩니다.',
+                sessionCreateFail: '세션 생성에 실패했습니다. 다시 시도해주세요.',
+                sessionCreating: '세션을 생성하는 중입니다...',
+                sessionCreateError: '세션 생성에 실패했어요. 콘솔 로그를 확인해주세요.',
+                waitingSDK: 'SDK 연결을 기다리는 중입니다...'
+            };
+
+            const RATING_LABELS = {
+                nice: '정확',
+                off: '살짝',
+                miss: '실패'
+            };
+
+            function showStatus(message, type = 'info') {
+                qrContainer.textContent = message;
+                if (type === 'error') {
+                    qrContainer.dataset.state = 'error';
+                } else {
+                    qrContainer.removeAttribute('data-state');
+                }
+            }
+
+            function renderQRCode(url) {
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+                const img = document.createElement('img');
+                img.alt = '센서 연결용 QR 코드';
+                img.src = qrApiUrl;
+                img.width = 220;
+                img.height = 220;
+                img.loading = 'lazy';
+                qrContainer.replaceChildren(img);
+                qrContainer.removeAttribute('data-state');
+            }
+
+            function ensureSDK() {
+                if (typeof window.SessionSDK !== 'function') {
+                    startButton.textContent = 'SDK load failed';
+                    showStatus(STATUS_TEXT.sdkLoadFail, 'error');
+                    return false;
+                }
+                return true;
+            }
+
+            function updatePlayerCount() {
+                playerCountEl.textContent = state.players.size.toString();
+                renderPlayerList();
+                updatePlayerBadge();
+                updateLeaderDisplay();
+                updateLeaderDisplay();
+                updateLeaderDisplay();
+            }
+
+            function normalizeFillAmount(value) {
+                if (typeof value !== 'number' || Number.isNaN(value)) {
+                    return 0;
+                }
+                if (value < 0) {
+                    return 0;
+                }
+                if (value > 1) {
+                    return 1;
+                }
+                return value;
+            }
+
+            function deriveBucketTier(fill) {
+                if (fill >= 0.99) {
+                    return 'complete';
+                }
+                if (fill >= 0.75) {
+                    return 'milestone';
+                }
+                if (fill >= 0.5) {
+                    return 'milestone';
+                }
+                if (fill >= 0.25) {
+                    return 'milestone';
+                }
+                return null;
+            }
+
+            function getBucketGain(rating) {
+                const config = CONFIG.bucket;
+                if (!config) {
+                    return 0;
+                }
+                switch (rating) {
+                    case 'nice':
+                        return config.niceGain ?? 0;
+                    case 'off':
+                        return config.offGain ?? 0;
+                    case 'miss':
+                        return config.missPenalty ?? 0;
+                    default:
+                        return 0;
+                }
+            }
+
+            function applyBucketProgress(sensorId, detail, rating, stageKey) {
+                const config = CONFIG.bucket;
+                if (!detail || !config) {
+                    return;
+                }
+
+                const baseGain = getBucketGain(rating);
+                if (!baseGain) {
+                    return;
+                }
+
+                const multiplier = stageKey && config.stageMultipliers
+                    ? (config.stageMultipliers[stageKey] ?? 1)
+                    : 1;
+                const previousFill = detail.fillAmount ?? 0;
+                const adjusted = baseGain * multiplier;
+                const nextFill = normalizeFillAmount(previousFill + adjusted);
+
+                detail.fillAmount = nextFill;
+                detail.bucketLastUpdated = performance.now();
+
+                const thresholds = Array.isArray(config.thresholds) ? config.thresholds : [];
+                let nextMilestone = 0;
+                for (let index = 0; index < thresholds.length; index += 1) {
+                    if (nextFill >= thresholds[index]) {
+                        nextMilestone = index + 1;
+                    }
+                }
+
+                const currentMilestone = detail.bucketMilestone ?? 0;
+                if (nextMilestone !== currentMilestone) {
+                    detail.bucketMilestone = nextMilestone;
+                    if (nextMilestone > currentMilestone) {
+                        state.animationQueue.push({
+                            type: 'bucket-milestone',
+                            sensorId,
+                            milestone: nextMilestone,
+                            fillAmount: nextFill,
+                            stageKey,
+                            at: detail.bucketLastUpdated
+                        });
+                        ensureAnimationLoop();
+                    }
+                }
+            }
+
+            function renderPlayerList() {
+                if (!playerListEl) {
+                    return;
+                }
+                playerListEl.innerHTML = '';
+                if (state.players.size === 0) {
+                    const empty = document.createElement('li');
+                    empty.className = 'empty';
+                    empty.textContent = '연결된 센서가 없습니다.';
+                    playerListEl.append(empty);
+                    return;
+                }
+
+                const now = performance.now();
+                const entries = Array.from(state.players).map((sensorId) => {
+                    const detail = ensurePlayerDetail(sensorId);
+                    const label = state.playerLabels.get(sensorId) || sensorId;
+                    return { sensorId, detail, label };
+                });
+
+                entries.sort((a, b) => b.detail.score - a.detail.score);
+
+                for (const { sensorId, detail, label } of entries) {
+                    const item = document.createElement('li');
+                    item.dataset.sensorId = sensorId;
+                    ensureDetailSkin(detail);
+
+                    const header = document.createElement('div');
+                    header.className = 'player-top';
+
+                    if (detail.avatarFrame && detail.avatarFrameUntil && detail.avatarFrameUntil < now) {
+                        detail.avatarFrame = null;
+                        detail.avatarFrameUntil = 0;
+                    }
+
+                    const currentFrame = detail.avatarFrame ? detail.avatarFrame : 'idle';
+                    const frameUrl = getSkinFrameUrl(detail.skinId, currentFrame);
+                    const avatar = document.createElement('div');
+                    avatar.className = 'player-avatar';
+                    const fallbackChar = (label || sensorId || '?').toString().trim().charAt(0).toUpperCase() || '?';
+                    avatar.dataset.fallback = fallbackChar;
+                    if (frameUrl) {
+                        avatar.style.backgroundImage = `url(${frameUrl})`;
+                        avatar.dataset.hasImage = 'true';
+                    } else {
+                        avatar.style.removeProperty('background-image');
+                        avatar.dataset.hasImage = 'false';
+                    }
+
+                    const idSpan = document.createElement('span');
+                    idSpan.className = 'player-id';
+                    idSpan.textContent = label;
+
+                    const scoreSpan = document.createElement('span');
+                    scoreSpan.className = 'player-score';
+                    scoreSpan.textContent = `${detail.score}\uc810`;
+
+                    const topText = document.createElement('div');
+                    topText.className = 'player-top-text';
+                    topText.append(idSpan, scoreSpan);
+
+                    header.append(avatar, topText);
+
+                    const metaRow = document.createElement('div');
+                    metaRow.className = 'player-meta';
+
+                    const status = document.createElement('span');
+                    status.className = 'player-status';
+                    status.textContent = state.roundActive ? '\ud50c\ub808\uc774 \uc911' : '\ub300\uae30 \uc911';
+
+                    const judgement = document.createElement('span');
+                    const lastRating = detail.lastRating;
+                    const tone = lastRating ? `player-judgement--${lastRating}` : 'player-judgement--none';
+                    judgement.className = `player-judgement ${tone}`;
+                    if (lastRating) {
+                        const labelText = RATING_LABELS[lastRating] || lastRating.toUpperCase();
+                        let deltaText = '';
+                        if (typeof detail.lastDeltaMs === 'number') {
+                            deltaText = ` (${Math.round(detail.lastDeltaMs)} ms)`;
+                        }
+                        judgement.textContent = `\ub9c8\uc9c0\ub9c9 \ud310\uc815: ${labelText}${deltaText}`;
+                    } else {
+                        judgement.textContent = '\ub9c8\uc9c0\ub9c9 \ud310\uc815: -';
+                    }
+
+                    metaRow.append(status, judgement);
+
+                    const breakdown = document.createElement('div');
+                    breakdown.className = 'player-breakdown';
+
+                    const niceStat = document.createElement('span');
+                    niceStat.innerHTML = `<strong>${RATING_LABELS.nice}</strong> ${detail.nice}`;
+
+                    const offStat = document.createElement('span');
+                    offStat.innerHTML = `<strong>${RATING_LABELS.off}</strong> ${detail.off}`;
+
+                    const missStat = document.createElement('span');
+                    missStat.innerHTML = `<strong>${RATING_LABELS.miss}</strong> ${detail.miss}`;
+
+                    breakdown.append(niceStat, offStat, missStat);
+
+                    const fillAmount = normalizeFillAmount(detail.fillAmount ?? 0);
+                    const bucketCaption = document.createElement('div');
+                    bucketCaption.className = 'bucket-caption';
+
+                    const bucketLabel = document.createElement('span');
+                    bucketLabel.textContent = '버킷 진행';
+
+                    const bucketValue = document.createElement('strong');
+                    bucketValue.textContent = `${Math.round(fillAmount * 100)}%`;
+
+                    bucketCaption.append(bucketLabel, bucketValue);
+
+                    const bucketProgress = document.createElement('div');
+                    bucketProgress.className = 'bucket-progress';
+                    bucketProgress.style.setProperty('--bucket-fill', `${(fillAmount * 100).toFixed(1)}%`);
+                    bucketProgress.setAttribute('role', 'img');
+                    bucketProgress.setAttribute('aria-label', `버킷 진행 ${Math.round(fillAmount * 100)}%`);
+                    const tier = deriveBucketTier(fillAmount);
+                    if (tier) {
+                        bucketProgress.dataset.tier = tier;
+                    }
+
+                    if (detail.flashUntil && detail.flashUntil > now && detail.flashRating) {
+                        item.dataset.flash = detail.flashRating;
+                    }
+
+                    item.append(header, metaRow, breakdown, bucketCaption, bucketProgress);
+                    playerListEl.append(item);
+                }
+            }
+
+            function setStageResult(message = '', tone = 'info') {
+                if (!stageResultEl) {
+                    return;
+                }
+                if (!message) {
+                    stageResultEl.textContent = '';
+                    stageResultEl.dataset.tone = 'info';
+                    stageResultEl.dataset.active = 'false';
+                    if (state.stagePulseTimeout) {
+                        clearTimeout(state.stagePulseTimeout);
+                        state.stagePulseTimeout = null;
+                    }
+                    if (playfieldPlaceholder) {
+                        playfieldPlaceholder.classList.remove('stage-pulse');
+                    }
+                    return;
+                }
+
+                stageResultEl.textContent = message;
+                stageResultEl.dataset.tone = tone;
+                stageResultEl.dataset.active = 'true';
+
+                if (playfieldPlaceholder) {
+                    playfieldPlaceholder.classList.remove('stage-pulse');
+                    void playfieldPlaceholder.offsetWidth;
+                    playfieldPlaceholder.classList.add('stage-pulse');
+                    if (state.stagePulseTimeout) {
+                        clearTimeout(state.stagePulseTimeout);
+                    }
+                    state.stagePulseTimeout = window.setTimeout(() => {
+                        playfieldPlaceholder.classList.remove('stage-pulse');
+                    }, 420);
+                }
+            }
+
+            function setAnimationLayerMode(mode = 'inactive') {
+                if (!animationLayerEl) {
+                    return;
+                }
+                animationLayerEl.dataset.state = mode;
+            }
+
+            function resetAnimationLayer() {
+                setAnimationLayerMode('inactive');
+                if (animationTrackEl) {
+                    animationTrackEl.innerHTML = '';
+                }
+                state.animationQueue.length = 0;
+                stopAnimationLoop();
+            }
+
+            async function loadAssetManifest() {
+                if (state.assetStatus === 'loading') {
+                    return state.assetManifest;
+                }
+                state.assetStatus = 'loading';
+                let manifest = null;
+                const url = CONFIG.assets?.manifestUrl;
+                if (url) {
+                    try {
+                        const response = await fetch(url, { cache: 'no-store' });
+                        if (response.ok) {
+                            manifest = await response.json();
+                            state.assetStatus = 'ready';
+                        } else {
+                            console.warn('[Assets] manifest fetch failed', response.status, response.statusText);
+                        }
+                    } catch (error) {
+                        console.warn('[Assets] manifest fetch error', error);
+                    }
+                }
+
+                if (!manifest) {
+                    manifest = typeof structuredClone === 'function'
+                        ? structuredClone(DEFAULT_ASSET_MANIFEST)
+                        : JSON.parse(JSON.stringify(DEFAULT_ASSET_MANIFEST));
+                    state.assetStatus = 'fallback';
+                }
+
+                state.assetManifest = manifest;
+                applyManifestBucketVisuals(manifest);
+                renderPlayerList();
+                updateSeasoningVisual();
+                return manifest;
+            }
+
+            function getBucketMilestoneInfo(milestone) {
+                const manifest = state.assetManifest;
+                const list = manifest?.bucket?.milestones;
+                if (!Array.isArray(list)) {
+                    return null;
+                }
+                return list.find((entry) => Number(entry?.milestone) === Number(milestone)) ?? null;
+            }
+
+            function getActiveManifest() {
+                return state.assetManifest ?? DEFAULT_ASSET_MANIFEST;
+            }
+
+            function getDefaultSkinId() {
+                const manifest = getActiveManifest();
+                const first = Array.isArray(manifest.skins) ? manifest.skins[0] : null;
+                return first?.id || 'default';
+            }
+
+            function findSkinById(skinId) {
+                const manifest = getActiveManifest();
+                if (!Array.isArray(manifest.skins)) {
+                    return null;
+                }
+                return manifest.skins.find((skin) => skin?.id === skinId) ?? manifest.skins[0] ?? null;
+            }
+
+            function getSkinFrameUrl(skinId, frameKey) {
+                const skin = findSkinById(skinId);
+                if (!skin) {
+                    return null;
+                }
+                return skin.frames?.[frameKey] || null;
+            }
+
+            function ensureDetailSkin(detail) {
+                if (!detail.skinId) {
+                    detail.skinId = getDefaultSkinId();
+                }
+            }
+
+            function applySkinFrames(frameKey = 'idle') {
+                const skinId = getDefaultSkinId();
+                const frames = findSkinById(skinId)?.frames || {};
+                const frameUrl = frames[frameKey] || frames['idle'] || null;
+                if (characterBodyEl) {
+                    if (frameUrl) {
+                        characterBodyEl.style.backgroundImage = `url(${frameUrl})`;
+                        characterBodyEl.dataset.skin = skinId;
+                        characterBodyEl.dataset.placeholder = 'false';
+                    } else {
+                        characterBodyEl.style.removeProperty('background-image');
+                        characterBodyEl.removeAttribute('data-skin');
+                        characterBodyEl.dataset.placeholder = 'true';
+                    }
+                }
+                if (characterHandsEl) {
+                    if (frameUrl) {
+                        characterHandsEl.style.backgroundImage = `url(${frameUrl})`;
+                        characterHandsEl.dataset.placeholder = 'false';
+                    } else {
+                        characterHandsEl.style.removeProperty('background-image');
+                        characterHandsEl.dataset.placeholder = 'true';
+                    }
+                }
+                if (characterToolEl) {
+                    if (frameUrl) {
+                        characterToolEl.style.backgroundImage = `url(${frameUrl})`;
+                        characterToolEl.dataset.placeholder = 'false';
+                    } else {
+                        characterToolEl.style.removeProperty('background-image');
+                        characterToolEl.dataset.placeholder = 'true';
+                    }
+                }
+                if (characterShadowEl) {
+                    characterShadowEl.style.opacity = frameUrl ? '0.45' : '0.2';
+                }
+            }
+
+            function updateSeasoningVisual() {
+                if (!cabbageSeasoningEl) {
+                    return;
+                }
+                let highestFill = 0;
+                state.playersDetailed.forEach((detail) => {
+                    if (detail && typeof detail.fillAmount === 'number') {
+                        highestFill = Math.max(highestFill, detail.fillAmount);
+                    }
+                });
+                highestFill = Math.max(0, Math.min(1, highestFill));
+                let stateKey = 'base';
+                if (highestFill >= 0.95) {
+                    stateKey = 'complete';
+                } else if (highestFill >= 0.7) {
+                    stateKey = 'high';
+                } else if (highestFill >= 0.45) {
+                    stateKey = 'mid';
+                } else if (highestFill >= 0.2) {
+                    stateKey = 'low';
+                }
+                cabbageSeasoningEl.dataset.state = stateKey;
+                if (sceneCabbageEl) {
+                    sceneCabbageEl.dataset.fill = highestFill.toFixed(2);
+                }
+                const percent = Math.round(highestFill * 100);
+                if (hudBucketValueEl) {
+                    hudBucketValueEl.textContent = percent.toString();
+                }
+                if (hudBucketEl) {
+                    hudBucketEl.dataset.fillState = stateKey;
+                }
+            }
+
+            function setAvatarFrame(detail, frameKey, durationMs = 900) {
+                if (!detail) {
+                    return;
+                }
+                ensureDetailSkin(detail);
+                detail.avatarFrame = frameKey;
+                detail.avatarFrameUntil = performance.now() + durationMs;
+                applySkinFrames(frameKey);
+            }
+
+            function applyManifestBucketVisuals(manifest) {
+                const background = manifest?.bucket?.background || null;
+                if (sceneGroundEl) {
+                    if (background) {
+                        sceneGroundEl.style.backgroundImage = `url(${background})`;
+                        sceneGroundEl.dataset.background = 'manifest';
+                    } else {
+                        sceneGroundEl.style.removeProperty('background-image');
+                        sceneGroundEl.dataset.background = 'default';
+                    }
+                }
+                const texture = manifest?.bucket?.textures?.seasoning || null;
+                if (cabbageSeasoningEl) {
+                    cabbageSeasoningEl.style.backgroundImage = texture ? `url(${texture})` : '';
+                }
+                applySkinFrames('idle');
+            }
+
+            function applyEffectStyling(node, effectId) {
+                if (!node || !effectId) {
+                    return;
+                }
+                const className = EFFECT_CLASS_MAP[effectId];
+                if (className) {
+                    node.classList.add(className);
+                }
+            }
+
+            function cueEffect(effectId, context) {
+                if (!effectId) {
+                    return;
+                }
+                console.debug('[Effect]', effectId, context ?? {});
+            }
+
+            function toggleDevPanel(forceState) {
+                if (!devPanelEl) {
+                    return;
+                }
+                const isOpen = devPanelEl.dataset.open === 'true';
+                const next = typeof forceState === 'boolean' ? forceState : !isOpen;
+                devPanelEl.dataset.open = next ? 'true' : 'false';
+                devPanelEl.setAttribute('aria-hidden', next ? 'false' : 'true');
+                if (devToggleBtn) {
+                    devToggleBtn.textContent = next ? 'DEV PANEL ▲' : 'DEV PANEL';
+                    devToggleBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+                }
+            }
+
+            function ensureAnimationLoop() {
+                if (state.animationFrameId !== null) {
+                    return;
+                }
+                state.animationFrameId = window.requestAnimationFrame(runAnimationLoop);
+            }
+
+            function stopAnimationLoop() {
+                if (state.animationFrameId !== null) {
+                    window.cancelAnimationFrame(state.animationFrameId);
+                    state.animationFrameId = null;
+                }
+                state.animationTimers.forEach((timerId) => window.clearTimeout(timerId));
+                state.animationTimers.clear();
+                state.activeAnimations.forEach((node) => {
+                    if (node && typeof node.remove === 'function') {
+                        node.remove();
+                    }
+                });
+                state.activeAnimations.clear();
+            }
+
+            function runAnimationLoop() {
+                processAnimationQueue();
+                if (state.animationQueue.length || state.activeAnimations.size) {
+                    state.animationFrameId = window.requestAnimationFrame(runAnimationLoop);
+                } else {
+                    state.animationFrameId = null;
+                }
+            }
+
+            function processAnimationQueue() {
+                if (!state.animationQueue.length) {
+                    return;
+                }
+                const events = state.animationQueue.splice(0);
+                events.forEach((event) => playAnimationEvent(event));
+            }
+
+            function playAnimationEvent(event) {
+                if (!event) {
+                    return;
+                }
+                switch (event.type) {
+                    case 'bucket-milestone':
+                        playBucketMilestoneAnimation(event);
+                        break;
+                    default:
+                        console.debug('[Animation] Unhandled event', event);
+                        break;
+                }
+            }
+
+            function playBucketMilestoneAnimation(event) {
+                if (!animationTrackEl) {
+                    return;
+                }
+
+                setAnimationLayerMode('active');
+
+                const milestone = Number(event.milestone ?? 0);
+                const percent = Math.max(0, Math.round((event.fillAmount ?? 0) * 100));
+                const totalMilestones = Array.isArray(CONFIG.bucket?.thresholds)
+                    ? CONFIG.bucket.thresholds.length
+                    : 0;
+                const stageLabel = CONFIG.stageLabels?.[event.stageKey] || '버킷 진행';
+                const milestoneInfo = getBucketMilestoneInfo(milestone);
+
+                const node = document.createElement('div');
+                node.className = 'animation-event bucket-milestone';
+                if (milestone) {
+                    node.dataset.milestone = String(milestone);
+                }
+                if (event.stageKey) {
+                    node.dataset.stage = event.stageKey;
+                }
+
+                const message = milestoneInfo?.label
+                    || (milestone >= totalMilestones ? '버킷 완료!' : `${stageLabel}`);
+
+                node.innerHTML = `
+                    <strong>${percent}%</strong>
+                    <span>${message}</span>
+                `;
+
+                animationTrackEl.append(node);
+                state.activeAnimations.add(node);
+
+                if (milestoneInfo?.effect) {
+                    applyEffectStyling(node, milestoneInfo.effect);
+                    cueEffect(milestoneInfo.effect, {
+                        milestone,
+                        percent,
+                        sensorId: event.sensorId ?? null,
+                        stageKey: event.stageKey ?? null
+                    });
+                }
+
+                const duration = milestone >= totalMilestones ? 1600 : 1200;
+                const timerId = window.setTimeout(() => {
+                    state.activeAnimations.delete(node);
+                    state.animationTimers.delete(timerId);
+                    node.remove();
+                    if (!state.activeAnimations.size && !state.animationQueue.length && state.currentStage !== 'spread') {
+                        setAnimationLayerMode('inactive');
+                    }
+                }, duration);
+                state.animationTimers.add(timerId);
+            }
+
+                        function updateStagePanel(stageKey) {
+                const total = CONFIG.stageOrder.length;
+                const key = stageKey ?? state.currentStage ?? null;
+
+                if (!stageTitleEl || !stageInstructionEl || !stageCycleEl) {
+                    stageEl.textContent = key ? (CONFIG.stageLabels[key] || key) : (state.session ? '라운드 대기 중' : '세션 대기 중');
+                    if (!key) {
+                        setStageResult('센서를 연결하면 게임 준비가 완료됩니다.', 'info');
+                        setAnimationLayerMode('inactive');
+                    } else {
+                        setStageResult('', 'info');
+                        setAnimationLayerMode(key === 'spread' ? 'active' : 'inactive');
+                    }
+                    return;
+                }
+
+                if (!key) {
+                    const waitingLabel = state.session ? '라운드 대기 중' : '세션 대기 중';
+                    stageEl.textContent = waitingLabel;
+                    stageTitleEl.textContent = waitingLabel;
+                    stageInstructionEl.textContent = state.session
+                        ? '시작을 누르면 라운드가 시작됩니다.'
+                        : '세션을 생성하고 QR 코드를 공유해주세요.';
+
+                    if (state.players.size === 0) {
+                        setStageResult('센서를 연결하면 게임 준비가 완료됩니다.', 'info');
+                    } else if (!state.roundActive) {
+                        setStageResult('START 버튼을 누르면 라운드가 시작됩니다.', 'info');
+                    } else {
+                        setStageResult('', 'info');
+                    }
+
+                    stageCycleEl.textContent = `0 / ${total} 단계`;
+                    stageSteps.forEach((step) => step.classList.remove('active'));
+                    setAnimationLayerMode('inactive');
+                    return;
+                }
+
+                const label = CONFIG.stageLabels[key] || key;
+                const instruction = CONFIG.stageInstructions?.[key] || '';
+                const index = typeof state.stageIndex === 'number' ? state.stageIndex : CONFIG.stageOrder.indexOf(key);
+
+                stageEl.textContent = label;
+                stageTitleEl.textContent = label;
+                stageInstructionEl.textContent = instruction;
+                stageCycleEl.textContent = `${index + 1} / ${total} 단계`;
+                stageSteps.forEach((step) => step.classList.toggle('active', step.dataset.stage === key));
+                setStageResult('', 'info');
+                setAnimationLayerMode(key === 'spread' ? 'active' : 'inactive');
+            }
+
+            function updatePlayerBadge() {
+                if (!playerBadgeEl) {
+                    return;
+                }
+                const count = state.players.size;
+                if (count <= 1) {
+                    playerBadgeEl.textContent = '싱글 모드';
+                } else if (count === 2) {
+                    playerBadgeEl.textContent = '듀얼 모드';
+                } else {
+                    playerBadgeEl.textContent = `파티 모드 (${count}명)`;
+                }
+            }
+
+            function updateTotalsFromPlayers() {
+                state.totalScore = 0;
+                state.judgements = { nice: 0, off: 0, miss: 0 };
+                let leader = null;
+                let tie = false;
+
+                state.playersDetailed.forEach((detail, sensorId) => {
+                    state.totalScore += detail.score;
+                    state.judgements.nice += detail.nice;
+                    state.judgements.off += detail.off;
+                    state.judgements.miss += detail.miss;
+
+                    if (!state.players.has(sensorId)) {
+                        return;
+                    }
+
+                    if (!leader || detail.score > leader.detail.score) {
+                        leader = { sensorId, detail };
+                        tie = false;
+                    } else if (leader && detail.score === leader.detail.score && sensorId !== leader.sensorId) {
+                        tie = true;
+                    }
+                });
+
+                state.leader = leader;
+                state.leaderTie = tie;
+                updateLeaderDisplay();
+            }
+
+            function updateLeaderDisplay() {
+                if (!scoreEl) {
+                    return;
+                }
+                const total = state.totalScore;
+                if (!state.leader || state.players.size === 0) {
+                    scoreEl.innerHTML = '\ub300\uae30 \uc911<span class="score-total">\ucd1d\ud569 ' + total + '\uc810</span>';
+                    return;
+                }
+                const label = state.playerLabels.get(state.leader.sensorId) || state.leader.sensorId;
+                const leaderScore = state.leader.detail.score;
+
+                if (state.leaderTie) {
+                    scoreEl.innerHTML = '\uacf5\ub3d9 \uc120\ub450 \u00b7 ' + leaderScore + '\uc810<span class="score-total">\ucd1d\ud569 ' + total + '\uc810</span>';
+                } else {
+                    scoreEl.innerHTML = label + ' \u00b7 ' + leaderScore + '\uc810<span class="score-total">\ucd1d\ud569 ' + total + '\uc810</span>';
+                }
+            }
+
+            function updateJudgementSummary(customText) {
+                if (!logStatus) {
+                    return;
+                }
+                if (summaryNiceEl) {
+                    summaryNiceEl.textContent = state.judgements.nice.toString();
+                }
+                if (summaryOffEl) {
+                    summaryOffEl.textContent = state.judgements.off.toString();
+                }
+                if (summaryMissEl) {
+                    summaryMissEl.textContent = state.judgements.miss.toString();
+                }
+
+                if (typeof customText === 'string') {
+                    logStatus.textContent = customText;
+                } else {
+                    logStatus.textContent = `정확 ${state.judgements.nice} · 살짝 ${state.judgements.off} · 빗나감 ${state.judgements.miss}`;
+                }
+            }
+
+function resetJudgementState(summaryMessage) {
+                state.totalScore = 0;
+                state.judgements = { nice: 0, off: 0, miss: 0 };
+                state.leader = null;
+                state.leaderTie = false;
+                updateTotalsFromPlayers();
+                updateJudgementSummary(summaryMessage);
+            }
+
+            function resetShakeTracking(summaryMessage = '플레이를 시작하면 판정 로그가 표시됩니다.') {
+                resetJudgementState(summaryMessage);
+                if (logList) {
+                    logList.innerHTML = '';
+                }
+                state.sensorStates.forEach((sensor) => {
+                    sensor.lastShakeAt = -Infinity;
+                    sensor.lastProcessedAt = 0;
+                });
+                state.playersDetailed.forEach((detail) => {
+                    detail.score = 0;
+                    detail.nice = 0;
+                    detail.off = 0;
+                    detail.miss = 0;
+                    detail.lastNote = '';
+                    detail.lastUpdated = 0;
+                    detail.lastRating = null;
+                    detail.lastDeltaMs = null;
+                    detail.flashUntil = 0;
+                    detail.flashRating = null;
+                    detail.fillAmount = 0;
+                    detail.bucketMilestone = 0;
+                    detail.bucketLastUpdated = 0;
+                    detail.avatarFrame = null;
+                    detail.avatarFrameUntil = 0;
+                });
+                state.leader = null;
+                state.leaderTie = false;
+                updateTotalsFromPlayers();
+                updateJudgementSummary(summaryMessage);
+                renderPlayerList();
+                updatePlayerBadge();
+                setStageResult('', 'info');
+                resetAnimationLayer();
+                updateSeasoningVisual();
+            }
+
+                        function ensurePlayerDetail(sensorId) {
+                let detail = state.playersDetailed.get(sensorId);
+                if (!detail) {
+                    detail = {
+                        score: 0,
+                        nice: 0,
+                        off: 0,
+                        miss: 0,
+                        lastNote: '',
+                        lastUpdated: 0,
+                        lastRating: null,
+                        lastDeltaMs: null,
+                        flashUntil: 0,
+                        flashRating: null,
+                        fillAmount: 0,
+                        bucketMilestone: 0,
+                        bucketLastUpdated: 0,
+                        skinId: null,
+                        avatarFrame: null,
+                        avatarFrameUntil: 0
+                    };
+                    state.playersDetailed.set(sensorId, detail);
+                    if (!state.playerLabels.has(sensorId)) {
+                        const nextIndex = state.playerLabels.size + 1;
+                        state.playerLabels.set(sensorId, `플레이어 ${nextIndex}`);
+                    }
+                }
+                return detail;
+            }
+
+function syncDebugDisplays() {
+                if (!DEBUG || !tuningDisplays) {
+                    return;
+                }
+                tuningDisplays['threshold'].textContent = `${CONFIG.sensor.threshold.toFixed(1)} m/s²`;
+                tuningDisplays['nice'].textContent = `${CONFIG.judgement.niceWindowMs} ms`;
+                tuningDisplays['off'].textContent = `${CONFIG.judgement.offWindowMs} ms`;
+            }
+
+            function applyDebugTuning() {
+                if (!DEBUG) {
+                    return;
+                }
+                if (thresholdInput) {
+                    CONFIG.sensor.threshold = parseFloat(thresholdInput.value);
+                }
+                if (niceInput) {
+                    CONFIG.judgement.niceWindowMs = parseInt(niceInput.value, 10);
+                }
+                if (offInput) {
+                    CONFIG.judgement.offWindowMs = parseInt(offInput.value, 10);
+                }
+                syncDebugDisplays();
+                updateJudgementSummary();
+            }
+
+            function simulateJudgement(rating) {
+                if (!state.roundActive) {
+                    showStatus(STATUS_TEXT.roundNotStarted, 'info');
+                    return;
+                }
+                const stageKey = state.currentStage || CONFIG.stageOrder[0];
+                const now = performance.now();
+                let deltaMs = CONFIG.judgement.niceWindowMs * 0.4;
+                if (rating === 'off') {
+                    deltaMs = CONFIG.judgement.offWindowMs - 10;
+                } else if (rating === 'miss') {
+                    deltaMs = CONFIG.judgement.offWindowMs + 40;
+                }
+                registerJudgement({
+                    sensorId: 'debug',
+                    rating,
+                    deltaMs,
+                    magnitude: CONFIG.sensor.threshold + (rating === 'miss' ? 0 : 1.2),
+                    stageKey,
+                    note: '디버그 입력',
+                    timeFromStart: (now - state.roundStartTime) / 1000
+                });
+            }
+
+            function setupDebugPanel() {
+                if (!DEBUG || !debugPanel) {
+                    return;
+                }
+                debugPanel.setAttribute('data-active', 'true');
+
+                if (thresholdInput) {
+                    thresholdInput.value = CONFIG.sensor.threshold.toFixed(1);
+                    thresholdInput.addEventListener('input', applyDebugTuning);
+                }
+                if (niceInput) {
+                    niceInput.value = CONFIG.judgement.niceWindowMs;
+                    niceInput.addEventListener('input', applyDebugTuning);
+                }
+                if (offInput) {
+                    offInput.value = CONFIG.judgement.offWindowMs;
+                    offInput.addEventListener('input', applyDebugTuning);
+                }
+
+                syncDebugDisplays();
+
+                debugPanel.querySelectorAll('[data-rating]').forEach((btn) => {
+                    btn.addEventListener('click', () => simulateJudgement(btn.dataset.rating));
+                });
+
+                document.addEventListener('keydown', (event) => {
+                    if (!DEBUG) {
+                        return;
+                    }
+                    const map = { KeyN: 'nice', KeyO: 'off', KeyM: 'miss' };
+                    const rating = map[event.code];
+                    if (rating) {
+                        event.preventDefault();
+                        simulateJudgement(rating);
+                    }
+                });
+
+                applyDebugTuning();
+            }
+
+            function ensureAudioContext() {
+                if (state.audioContext) {
+                    return state.audioContext;
+                }
+                const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                if (typeof AudioContextCtor !== 'function') {
+                    console.warn('Web Audio API를 지원하지 않는 브라우저입니다.');
+                    return null;
+                }
+                try {
+                    const context = new AudioContextCtor();
+                    state.audioContext = context;
+                    state.metronomeGain = context.createGain();
+                    state.metronomeGain.gain.value = 0;
+                    state.metronomeGain.connect(context.destination);
+
+                    state.sfxBus = context.createGain();
+                    state.sfxBus.gain.value = 0.65;
+                    state.sfxBus.connect(context.destination);
+
+                    return context;
+                } catch (error) {
+                    console.error('AudioContext 초기화에 실패했습니다.', error);
+                    state.audioContext = null;
+                    state.metronomeGain = null;
+                    state.sfxBus = null;
+                    return null;
+                }
+            }
+
+            function playTone(frequency, duration = 0.25, options = {}) {
+                const context = ensureAudioContext();
+                if (!context) {
+                    return;
+                }
+                if (context.state === 'suspended') {
+                    context.resume().catch((error) => {
+                        console.debug('AudioContext resume 실패', error);
+                    });
+                }
+
+                const {
+                    volume = 0.45,
+                    type = 'sine',
+                    startOffset = 0,
+                    attack = 0.01,
+                    release = 0.18,
+                    detune = 0
+                } = options;
+
+                const bus = state.sfxBus || context.destination;
+                const gainNode = context.createGain();
+                const oscillator = context.createOscillator();
+
+                const startTime = context.currentTime + Math.max(0, startOffset);
+                const stopTime = startTime + duration + release;
+
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(frequency, startTime);
+                if (detune) {
+                    oscillator.detune.setValueAtTime(detune, startTime);
+                }
+
+                gainNode.gain.setValueAtTime(0.0001, startTime);
+                gainNode.gain.linearRampToValueAtTime(volume, startTime + attack);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+                gainNode.gain.setValueAtTime(0.0001, stopTime);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(bus);
+
+                oscillator.start(startTime);
+                oscillator.stop(stopTime + 0.02);
+                oscillator.addEventListener('ended', () => {
+                    try {
+                        oscillator.disconnect();
+                        gainNode.disconnect();
+                    } catch (error) {
+                        console.debug('Oscillator disconnect 실패', error);
+                    }
+                });
+            }
+
+            function playJudgementSFX(rating) {
+                if (rating === 'nice') {
+                    playTone(1560, 0.2, { type: 'triangle', volume: 0.55 });
+                    playTone(1860, 0.16, { type: 'sine', volume: 0.38, startOffset: 0.14 });
+                } else if (rating === 'off') {
+                    playTone(880, 0.22, { type: 'sine', volume: 0.4 });
+                } else if (rating === 'miss') {
+                    playTone(392, 0.3, { type: 'sawtooth', volume: 0.32 });
+                }
+            }
+
+            function playRoundCue(type) {
+                switch (type) {
+                    case 'start':
+                        playTone(660, 0.18, { type: 'triangle', volume: 0.5 });
+                        playTone(990, 0.22, { type: 'triangle', volume: 0.36, startOffset: 0.16 });
+                        break;
+                    case 'end':
+                        playTone(392, 0.28, { type: 'sine', volume: 0.42 });
+                        playTone(262, 0.32, { type: 'sine', volume: 0.3, startOffset: 0.2 });
+                        break;
+                    case 'result-success':
+                        playTone(1047, 0.2, { type: 'triangle', volume: 0.48 });
+                        playTone(1319, 0.18, { type: 'triangle', volume: 0.36, startOffset: 0.14 });
+                        break;
+                    case 'result-warning':
+                        playTone(659, 0.26, { type: 'sawtooth', volume: 0.38 });
+                        break;
+                    case 'result-info':
+                        playTone(523, 0.24, { type: 'sine', volume: 0.32 });
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+function playClick() {
+                if (CONFIG.metronomeVolume <= 0) {
+                    return;
+                }
+                const context = ensureAudioContext();
+                if (!context) {
+                    return;
+                }
+                if (context.state === 'suspended') {
+                    context.resume().catch((error) => {
+                        console.debug('AudioContext resume 실패', error);
+                    });
+                }
+                const gainNode = state.metronomeGain ?? context.createGain();
+                if (!state.metronomeGain) {
+                    gainNode.gain.value = 0;
+                    gainNode.connect(context.destination);
+                    state.metronomeGain = gainNode;
+                }
+                const oscillator = context.createOscillator();
+                oscillator.type = 'square';
+                oscillator.frequency.value = CONFIG.metronomeFrequency;
+                oscillator.connect(gainNode);
+
+                const now = context.currentTime;
+                gainNode.gain.cancelScheduledValues(now);
+                gainNode.gain.setValueAtTime(0.0001, now);
+                gainNode.gain.linearRampToValueAtTime(CONFIG.metronomeVolume, now + 0.005);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+                oscillator.start(now);
+                oscillator.stop(now + 0.2);
+                oscillator.addEventListener('ended', () => {
+                    try {
+                        oscillator.disconnect();
+                    } catch (error) {
+                        console.debug('Oscillator disconnect 실패', error);
+                    }
+                });
+            }
+
+            function flashMetronome(beatIndex) {
+                if (!metronomePlaceholder || !metronomeIndicator) {
+                    return;
+                }
+                metronomePlaceholder.classList.remove('beat-active');
+                // reflow을 강제로 발생시킵니다.
+                void metronomePlaceholder.offsetWidth;
+                metronomePlaceholder.classList.add('beat-active');
+
+                const beatNumber = (beatIndex % CONFIG.stageOrder.length) + 1;
+                const infoSpan = metronomeIndicator.querySelector('span');
+                if (infoSpan) {
+                    infoSpan.textContent = `${CONFIG.bpm} BPM · ${beatNumber}번째 박`;
+                }
+            }
+
+function ensureSensorState(sensorId) {
+                if (!sensorId) {
+                    return null;
+                }
+                let sensor = state.sensorStates.get(sensorId);
+                if (!sensor) {
+                    sensor = {
+                        baseline: null,
+                        lastUpdated: 0,
+                        lastProcessedAt: 0,
+                        lastShakeAt: -Infinity
+                    };
+                    state.sensorStates.set(sensorId, sensor);
+                }
+                return sensor;
+            }
+
+            function appendShakeLog({ sensorId, rating, deltaMs, magnitude, timeFromStart, stageLabel, note }) {
+                const item = document.createElement('li');
+                item.dataset.rating = rating;
+
+                const header = document.createElement('div');
+                header.className = 'log-line';
+                const label = document.createElement('strong');
+                label.textContent = `[${RATING_LABELS[rating] ?? rating.toUpperCase()}] ${sensorId ?? '—'}`;
+                const timestamp = document.createElement('span');
+                timestamp.textContent = `${timeFromStart.toFixed(2)} s`;
+                header.append(label, timestamp);
+
+                const meta = document.createElement('div');
+                meta.className = 'log-meta';
+                const parts = [];
+                if (stageLabel) {
+                    parts.push(stageLabel);
+                }
+                if (typeof deltaMs === 'number') {
+                    parts.push(`Δ ${deltaMs.toFixed(1)} ms`);
+                }
+                if (typeof magnitude === 'number') {
+                    parts.push(`|a| ${magnitude.toFixed(2)} m/s²`);
+                }
+                if (note) {
+                    parts.push(note);
+                }
+                meta.textContent = parts.join(' • ');
+
+                item.append(header, meta);
+                logList.prepend(item);
+
+                while (logList.children.length > CONFIG.logLimit) {
+                    logList.removeChild(logList.lastElementChild);
+                }
+            }
+
+            function registerJudgement({ sensorId, rating, deltaMs, magnitude, stageKey, note, timeFromStart }) {
+                const detail = ensurePlayerDetail(sensorId || 'unknown');
+                const deltaValue = typeof deltaMs === 'number' ? deltaMs : null;
+
+                if (rating === 'nice') {
+                    detail.score += CONFIG.judgement.nicePoints;
+                } else if (rating === 'off') {
+                    detail.score += CONFIG.judgement.offPoints;
+                } else if (rating === 'miss') {
+                    detail.score += CONFIG.judgement.missPoints;
+                }
+                detail[rating] += 1;
+                detail.lastNote = note || '';
+                detail.lastUpdated = performance.now();
+                detail.lastRating = rating;
+                detail.lastDeltaMs = deltaValue;
+                detail.flashUntil = performance.now() + 420;
+                detail.flashRating = rating;
+                const avatarFrameKey = rating === 'nice' ? 'nice' : rating === 'off' ? 'off' : rating === 'miss' ? 'miss' : 'idle';
+                setAvatarFrame(detail, avatarFrameKey, rating === 'miss' ? 1200 : 900);
+
+                const resolvedStage = stageKey
+                    || state.currentStage
+                    || (typeof state.stageIndex === 'number' && CONFIG.stageOrder?.[state.stageIndex])
+                    || CONFIG.stageOrder?.[0]
+                    || null;
+                applyBucketProgress(sensorId || 'unknown', detail, rating, resolvedStage);
+                updateSeasoningVisual();
+
+                updateTotalsFromPlayers();
+                playJudgementSFX(rating);
+
+                const stageLabel = CONFIG.stageLabels[stageKey] || stageKey;
+                const elapsed = typeof timeFromStart === 'number'
+                    ? timeFromStart
+                    : (performance.now() - state.roundStartTime) / 1000;
+
+                appendShakeLog({
+                    sensorId: sensorId || '?',
+                    rating,
+                    deltaMs: deltaValue,
+                    magnitude,
+                    timeFromStart: elapsed,
+                    stageLabel,
+                    note
+                });
+
+                renderPlayerList();
+                updatePlayerBadge();
+                updateJudgementSummary();
+                state.currentBeatResolved = true;
+                if (!detail.avatarFrame || detail.avatarFrame === 'idle') {
+                    ensureDetailSkin(detail);
+                }
+            }
+
+                        function finalizeBeat() {
+                if (!state.currentStage || !state.roundActive) {
+                    return;
+                }
+                if (state.currentBeatResolved) {
+                    return;
+                }
+                const timeFromStart = ((state.currentBeatStart + state.beatIntervalMs) - state.roundStartTime) / 1000;
+                registerJudgement({
+                    rating: 'miss',
+                    stageKey: state.currentStage,
+                    note: '입력 없음',
+                    timeFromStart
+                });
+            }
+
+            function advanceBeat(isInitial) {
+                if (!state.roundActive) {
+                    return;
+                }
+                if (!isInitial) {
+                    finalizeBeat();
+                }
+
+                const stageIndex = state.beatIndex % CONFIG.stageOrder.length;
+                const stageKey = CONFIG.stageOrder[stageIndex];
+                state.currentStage = stageKey;
+                state.stageIndex = stageIndex;
+                state.currentBeatStart = performance.now();
+                state.currentBeatResolved = false;
+                updateStagePanel(stageKey);
+
+                playClick();
+                flashMetronome(state.beatIndex);
+                state.beatIndex += 1;
+            }
+
+            
+            function announceRoundResult(reason = '라운드 종료') {
+                if (stageTitleEl) {
+                    stageTitleEl.textContent = reason;
+                }
+                if (stageInstructionEl) {
+                    stageInstructionEl.textContent = '다음 라운드는 START 버튼으로 시작하세요.';
+                }
+                const activePlayers = Array.from(state.playersDetailed.entries())
+                    .filter(([sensorId]) => state.players.has(sensorId));
+                if (activePlayers.length === 0) {
+                    setStageResult('연결된 플레이어가 없습니다.', 'info');
+                    playRoundCue('result-info');
+                    return;
+                }
+                if (activePlayers.length === 1) {
+                    const [sensorId, detail] = activePlayers[0];
+                    const label = state.playerLabels.get(sensorId) || sensorId;
+                    setStageResult(`${label} · ${detail.score}점`, 'info');
+                    playRoundCue('result-info');
+                    return;
+                }
+
+                activePlayers.sort((a, b) => b[1].score - a[1].score);
+                const [first, second] = activePlayers;
+                const firstLabel = state.playerLabels.get(first[0]) || first[0];
+                const secondLabel = state.playerLabels.get(second[0]) || second[0];
+
+                if (first[1].score === second[1].score) {
+                    setStageResult(`무승부! ${first[1].score}점 공동 선두`, 'warning');
+                    playRoundCue('result-warning');
+                } else {
+                    setStageResult(`${firstLabel} 승리! (${first[1].score}점 vs ${second[1].score}점)`, 'success');
+                    playRoundCue('result-success');
+                }
+            }
+
+            function startMetronome() {
+                advanceBeat(true);
+                state.metronomeInterval = setInterval(() => {
+                    advanceBeat(false);
+                }, state.beatIntervalMs);
+            }
+
+            function stopMetronome() {
+                if (state.metronomeInterval) {
+                    clearInterval(state.metronomeInterval);
+                    state.metronomeInterval = null;
+                }
+            }
+
+            function stopTimerLoop() {
+                if (state.timerFrame) {
+                    cancelAnimationFrame(state.timerFrame);
+                    state.timerFrame = null;
+                }
+            }
+
+            function updateTimerLoop() {
+                const now = performance.now();
+                const elapsed = now - state.roundStartTime;
+                const remaining = CONFIG.roundDurationMs - elapsed;
+                timerEl.textContent = formatTime(remaining);
+
+                if (remaining <= 0) {
+                    endRound('라운드 종료');
+                    return;
+                }
+
+                state.timerFrame = requestAnimationFrame(updateTimerLoop);
+                renderPlayerList();
+                updatePlayerBadge();
+            }
+
+            function handleSensorData(event) {
+                const payload = event?.detail || event;
+                const sensorId = payload?.sensorId || payload?.sensor_id;
+                const data = payload?.data || payload;
+                const accel = data?.accelerationIncludingGravity || data?.acceleration;
+                if (!sensorId || !accel) {
+                    return;
+                }
+
+                const ax = Number(accel.x) || 0;
+                const ay = Number(accel.y) || 0;
+                const az = Number(accel.z) || 0;
+                const magnitude = Math.hypot(ax, ay, az);
+                const now = performance.now();
+
+                const sensorState = ensureSensorState(sensorId);
+                if (!sensorState) {
+                    return;
+                }
+
+                if (sensorState.baseline === null) {
+                    sensorState.baseline = magnitude;
+                    sensorState.lastUpdated = now;
+                    return;
+                }
+
+                const elapsed = now - (sensorState.lastUpdated || now);
+                const alpha = elapsed > 0 ? Math.min(1, elapsed / CONFIG.sensor.baselineWindowMs) : 1;
+                sensorState.baseline = sensorState.baseline + alpha * (magnitude - sensorState.baseline);
+                sensorState.lastUpdated = now;
+
+                if (!state.roundActive || !state.currentStage) {
+                    return;
+                }
+
+                if (now - sensorState.lastProcessedAt < CONFIG.sensor.throttleMs) {
+                    return;
+                }
+                sensorState.lastProcessedAt = now;
+
+                const delta = magnitude - sensorState.baseline;
+                if (delta <= CONFIG.sensor.threshold) {
+                    return;
+                }
+
+                if (now - sensorState.lastShakeAt < CONFIG.sensor.refractoryMs) {
+                    return;
+                }
+                sensorState.lastShakeAt = now;
+
+                if (state.currentBeatResolved) {
+                    return;
+                }
+
+                const targetTime = state.currentBeatStart + (state.beatIntervalMs / 2);
+                const deltaMs = Math.abs(now - targetTime);
+
+                let rating = 'miss';
+                let note;
+                if (deltaMs <= CONFIG.judgement.niceWindowMs) {
+                    rating = 'nice';
+                } else if (deltaMs <= CONFIG.judgement.offWindowMs) {
+                    rating = 'off';
+                } else {
+                    note = '타이밍 이탈';
+                }
+
+                registerJudgement({
+                    sensorId,
+                    rating,
+                    deltaMs,
+                    magnitude,
+                    stageKey: state.currentStage,
+                    note
+                });
+            }
+
+            function startRound() {
+                if (state.roundActive) {
+                    return;
+                }
+                if (state.players.size === 0) {
+                    showStatus(STATUS_TEXT.sensorMissing, 'info');
+                    return;
+                }
+
+                resetShakeTracking('라운드 준비 중');
+                state.roundActive = true;
+                state.roundStartTime = performance.now();
+                state.beatIndex = 0;
+                state.currentStage = null;
+                state.currentBeatResolved = true;
+                startButton.disabled = true;
+                startButton.textContent = '라운드 진행 중...';
+                timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+
+                setStageResult('START 버튼을 누르면 라운드가 시작됩니다.', 'info');
+                playRoundCue('start');
+
+                startMetronome();
+                state.timerFrame = requestAnimationFrame(updateTimerLoop);
+            }
+
+            function endRound(reason = '라운드 종료') {
+                if (!state.roundActive) {
+                    return;
+                }
+                finalizeBeat();
+                state.roundActive = false;
+                stopTimerLoop();
+                stopMetronome();
+                timerEl.textContent = '00:00';
+                stageEl.textContent = reason;
+                startButton.disabled = false;
+                startButton.textContent = '라운드 다시 시작';
+                updateJudgementSummary();
+                updateTotalsFromPlayers();
+                renderPlayerList();
+                updatePlayerBadge();
+                updateStagePanel();
+                playRoundCue('end');
+                announceRoundResult(reason);
+            }
+
+            function resetRoundState() {
+                state.roundActive = false;
+                stopTimerLoop();
+                stopMetronome();
+                timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+                state.currentStage = null;
+                state.stageIndex = 0;
+                if (state.stagePulseTimeout) {
+                    clearTimeout(state.stagePulseTimeout);
+                    state.stagePulseTimeout = null;
+                }
+                if (playfieldPlaceholder) {
+                    playfieldPlaceholder.classList.remove('stage-pulse');
+                }
+                updateStagePanel();
+                startButton.disabled = false;
+                startButton.textContent = '라운드 시작';
+                resetShakeTracking('라운드 대기 중');
+                renderPlayerList();
+                updatePlayerBadge();
+            }
+
+            function registerSDKEvents() {
+                const sdk = state.sdk;
+
+                sdk.on('connected', (event) => {
+                    const detail = event?.detail || event;
+                    console.debug('[SessionSDK] connected', detail);
+                    startButton.disabled = false;
+                    startButton.textContent = state.session ? '라운드 시작' : '세션 생성';
+                    updateStagePanel();
+                    showStatus(STATUS_TEXT.qrReady, 'info');
+                });
+
+                sdk.on('session-created', (event) => {
+                    const detail = event?.detail || event;
+                    console.debug('[SessionSDK] session-created', detail);
+                    state.session = detail;
+                    sessionCodeEl.textContent = detail.sessionCode || '----';
+                    state.players.clear();
+                    state.sensorStates.clear();
+                    state.playersDetailed.clear();
+                    state.playerLabels.clear();
+                    state.roundActive = false;
+                    stopTimerLoop();
+                    stopMetronome();
+                    updateTotalsFromPlayers();
+                    updateStagePanel();
+                    renderPlayerList();
+                    updatePlayerBadge();
+                    updateJudgementSummary('라운드를 시작하면 판정 로그가 표시됩니다.');
+                    startButton.disabled = false;
+                    startButton.textContent = '라운드 시작';
+
+                    const url = `${window.location.origin}/sensor.html?session=${detail.sessionCode}`;
+                    renderQRCode(url);
+                    timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+                });
+
+                sdk.on('session-error', (event) => {
+                    const detail = event?.detail || event;
+                    console.warn('[SessionSDK] session-error', detail);
+                    resetRoundState();
+                    startButton.textContent = '세션 생성';
+                    showStatus(STATUS_TEXT.sessionCreateFail, 'error');
+                });
+
+                sdk.on('sensor-connected', (event) => {
+                    const detail = event?.detail || event;
+                    console.debug('[SessionSDK] sensor-connected', detail);
+                    if (detail?.sensorId) {
+                        state.players.add(detail.sensorId);
+                        ensureSensorState(detail.sensorId);
+                        ensurePlayerDetail(detail.sensorId);
+                        updatePlayerCount();
+                    }
+                    if (!state.roundActive) {
+                        updateStagePanel();
+                    }
+                    updateTotalsFromPlayers();
+                    updateJudgementSummary();
+                });
+
+                if (typeof sdk.on === 'function') {
+                    sdk.on('sensor-disconnected', (event) => {
+                        const detail = event?.detail || event;
+                        console.debug('[SessionSDK] sensor-disconnected', detail);
+                        if (detail?.sensorId) {
+                            state.players.delete(detail.sensorId);
+                            state.playersDetailed.delete(detail.sensorId);
+                            state.sensorStates.delete(detail.sensorId);
+                            updatePlayerCount();
+                        }
+                        if (state.players.size === 0) {
+                            endRound('센서 연결 해제');
+                        }
+                    });
+
+                    sdk.on('sensor-data', handleSensorData);
+                }
+            }
+
+            function attachHandlers() {
+                startButton.addEventListener('click', async () => {
+                    if (!state.sdk) {
+                        return;
+                    }
+
+                    if (!state.session) {
+                        startButton.disabled = true;
+                        startButton.textContent = '세션을 생성하는 중입니다...';
+                        showStatus(STATUS_TEXT.sessionCreating, 'info');
+                        try {
+                            await state.sdk.createSession();
+                        } catch (error) {
+                            console.error('세션 생성에 실패했어요', error);
+                            startButton.disabled = false;
+                            startButton.textContent = '세션 생성';
+                            showStatus(STATUS_TEXT.sessionCreateError, 'error');
+                        }
+                        return;
+                    }
+
+                    if (!state.roundActive) {
+                        startRound();
+                    }
+                });
+            }
+
+            function init() {
+                if (!ensureSDK()) {
+                    return;
+                }
+
+                state.sdk = new window.SessionSDK({
+                    debug: true,
+                    gameId: SESSION_CONFIG.gameId,
+                    gameType: SESSION_CONFIG.gameType
+                });
+                showStatus(STATUS_TEXT.waitingSDK, 'info');
+                timerEl.textContent = formatTime(CONFIG.roundDurationMs);
+                startButton.textContent = '세션 생성';
+                renderPlayerList();
+                updatePlayerBadge();
+                updateLeaderDisplay();
+                state.currentStage = null;
+                state.stageIndex = 0;
+                updateStagePanel();
+                updateJudgementSummary('라운드를 시작하면 판정 로그가 표시됩니다.');
+                setupDebugPanel();
+
+                if (devToggleBtn) {
+                    devToggleBtn.addEventListener('click', () => toggleDevPanel());
+                    devToggleBtn.setAttribute('aria-expanded', 'false');
+                }
+                if (devPanelCloseBtn) {
+                    devPanelCloseBtn.addEventListener('click', () => toggleDevPanel(false));
+                }
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape') {
+                        toggleDevPanel(false);
+                    }
+                });
+                toggleDevPanel(false);
+
+                loadAssetManifest().catch((error) => {
+                    console.warn('[Assets] manifest load failed', error);
+                });
+
+                registerSDKEvents();
+                attachHandlers();
+            }
+
+            window.addEventListener('DOMContentLoaded', init);
+        })();
+    </script>
+</body>
+</html>
