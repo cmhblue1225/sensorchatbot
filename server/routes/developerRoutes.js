@@ -1416,6 +1416,20 @@ class DeveloperRoutes {
             });
         });
 
+        // 🆕 Quick Link 카드 클릭 시 탭 전환
+        document.querySelectorAll('.quick-link').forEach(link => {
+            link.addEventListener('click', () => {
+                const targetTab = link.dataset.tab;
+                if (targetTab) {
+                    // 해당 탭 버튼 찾아서 클릭 (기존 탭 전환 로직 재사용)
+                    const tabButton = document.querySelector(`.tab[data-tab="${targetTab}"]`);
+                    if (tabButton) {
+                        tabButton.click();
+                    }
+                }
+            });
+        });
+
         // 문서 로드
         document.querySelectorAll('.doc-link').forEach(link => {
             link.addEventListener('click', async (e) => {
