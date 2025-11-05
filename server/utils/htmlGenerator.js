@@ -2565,6 +2565,115 @@ class HtmlGenerator {
                     box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
                 }
 
+                /* 검색/정렬 바 */
+                .search-filter-bar {
+                    display: flex;
+                    gap: 1rem;
+                    margin: 2rem 0;
+                    padding: 1.5rem;
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(20px);
+                    border-radius: 1rem;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+
+                #game-search {
+                    flex: 1;
+                    padding: 0.75rem 1rem;
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 0.5rem;
+                    color: white;
+                    font-size: 1rem;
+                    outline: none;
+                    transition: all 0.3s;
+                }
+
+                #game-search::placeholder {
+                    color: rgba(255, 255, 255, 0.5);
+                }
+
+                #game-search:focus {
+                    background: rgba(255, 255, 255, 0.15);
+                    border-color: rgba(96, 165, 250, 0.5);
+                }
+
+                #game-sort {
+                    padding: 0.75rem 1rem;
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 0.5rem;
+                    color: white;
+                    cursor: pointer;
+                    outline: none;
+                    transition: all 0.3s;
+                    font-size: 1rem;
+                }
+
+                #game-sort:hover {
+                    background: rgba(255, 255, 255, 0.15);
+                    border-color: rgba(96, 165, 250, 0.5);
+                }
+
+                #game-sort option {
+                    background: #1E293B;
+                    color: white;
+                }
+
+                /* 결과 카운트 */
+                .result-count {
+                    text-align: center;
+                    color: rgba(255, 255, 255, 0.7);
+                    font-size: 1rem;
+                    margin: 1rem 0;
+                }
+
+                /* 필터 버튼 바 (기존 stats-bar 개선) */
+                .filter-bar {
+                    display: flex;
+                    justify-content: center;
+                    gap: 1rem;
+                    margin: 2rem 0;
+                    flex-wrap: wrap;
+                }
+
+                .filter-btn {
+                    padding: 0.75rem 1.5rem;
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 2px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 0.75rem;
+                    color: white;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    outline: none;
+                }
+
+                .filter-btn:hover {
+                    background: rgba(255, 255, 255, 0.15);
+                    border-color: rgba(96, 165, 250, 0.5);
+                    transform: translateY(-2px);
+                }
+
+                .filter-btn.active {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border-color: #667eea;
+                    transform: scale(1.05);
+                    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+                }
+
+                .filter-btn .count {
+                    display: inline-block;
+                    margin-left: 0.5rem;
+                    font-weight: 800;
+                    color: #60A5FA;
+                }
+
+                .filter-btn.active .count {
+                    color: white;
+                }
+
                 .stats-bar {
                     display: flex;
                     justify-content: center;
@@ -2620,6 +2729,19 @@ class HtmlGenerator {
                         flex-direction: column;
                         gap: 1.5rem;
                     }
+
+                    .search-filter-bar {
+                        flex-direction: column;
+                    }
+
+                    .filter-bar {
+                        gap: 0.5rem;
+                    }
+
+                    .filter-btn {
+                        flex: 1;
+                        min-width: calc(50% - 0.25rem);
+                    }
                 }
             </style>
         `;
@@ -2635,28 +2757,51 @@ class HtmlGenerator {
                     <p>모바일 센서로 즐기는 다양한 게임을 만나보세요</p>
                 </div>
 
-                <div class="stats-bar">
-                    <div class="stat-item">
-                        <div class="stat-value">${games.length}</div>
-                        <div class="stat-label">전체 게임</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${games.filter(g => g.category === 'solo').length}</div>
-                        <div class="stat-label">솔로 게임</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${games.filter(g => g.category === 'dual').length}</div>
-                        <div class="stat-label">듀얼 게임</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${games.filter(g => g.category === 'multi').length}</div>
-                        <div class="stat-label">멀티 게임</div>
-                    </div>
+                <!-- 검색/정렬 바 -->
+                <div class="search-filter-bar">
+                    <input
+                        type="text"
+                        id="game-search"
+                        placeholder="🔍 게임 제목 또는 ID로 검색..."
+                        autocomplete="off"
+                    />
+                    <select id="game-sort">
+                        <option value="latest">최신순</option>
+                        <option value="oldest">오래된순</option>
+                        <option value="popular">인기순</option>
+                    </select>
                 </div>
 
-                <div class="games-grid">
+                <!-- 필터 버튼 바 -->
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-filter="all">
+                        전체<span class="count">${games.length}</span>
+                    </button>
+                    <button class="filter-btn" data-filter="solo">
+                        Solo<span class="count">${games.filter(g => g.category === 'solo').length}</span>
+                    </button>
+                    <button class="filter-btn" data-filter="dual">
+                        Dual<span class="count">${games.filter(g => g.category === 'dual').length}</span>
+                    </button>
+                    <button class="filter-btn" data-filter="multi">
+                        Multi<span class="count">${games.filter(g => g.category === 'multi').length}</span>
+                    </button>
+                </div>
+
+                <!-- 결과 카운트 -->
+                <div class="result-count" id="result-count">
+                    ${games.length}개 게임
+                </div>
+
+                <div class="games-grid" id="games-grid">
                     ${games.map(game => `
-                        <a href="/games/${game.id}/" class="game-card">
+                        <a href="/games/${game.id}/"
+                           class="game-card"
+                           data-title="${(game.title || game.name || game.id).toLowerCase()}"
+                           data-id="${game.id.toLowerCase()}"
+                           data-type="${game.category || 'solo'}"
+                           data-created-at="${game.created_at || new Date().toISOString()}"
+                           data-play-count="${game.play_count || 0}">
                             <span class="game-icon">${game.icon || '🎮'}</span>
                             <h2 class="game-title">${game.title || game.name || game.id}</h2>
                             <div class="game-id">${game.id}</div>
@@ -2676,6 +2821,108 @@ class HtmlGenerator {
         const scripts = `
             console.log('🎮 게임 목록 페이지 로드 완료');
             console.log('📊 총 게임 수:', ${games.length});
+
+            // 검색/필터/정렬 기능
+            (function() {
+                const searchInput = document.getElementById('game-search');
+                const sortSelect = document.getElementById('game-sort');
+                const filterBtns = document.querySelectorAll('.filter-btn');
+                const gameCards = document.querySelectorAll('.game-card');
+                const resultCount = document.getElementById('result-count');
+
+                let currentFilter = 'all';
+                let currentSearchQuery = '';
+
+                // 결과 카운트 업데이트
+                function updateResultCount() {
+                    const visibleCards = Array.from(gameCards).filter(card =>
+                        card.style.display !== 'none'
+                    );
+                    resultCount.textContent = visibleCards.length + '개 게임';
+                }
+
+                // 게임 필터링 함수
+                function filterGames() {
+                    const query = currentSearchQuery.toLowerCase();
+
+                    gameCards.forEach(card => {
+                        const title = card.dataset.title;
+                        const id = card.dataset.id;
+                        const type = card.dataset.type;
+
+                        // 검색어 매칭 (제목 또는 ID)
+                        const matchesSearch = query === '' ||
+                            title.includes(query) ||
+                            id.includes(query);
+
+                        // 타입 필터 매칭
+                        const matchesFilter = currentFilter === 'all' ||
+                            type === currentFilter;
+
+                        // 표시/숨김
+                        if (matchesSearch && matchesFilter) {
+                            card.style.display = 'block';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+
+                    updateResultCount();
+                }
+
+                // 게임 정렬 함수
+                function sortGames(sortBy) {
+                    const grid = document.getElementById('games-grid');
+                    const cardsArray = Array.from(gameCards);
+
+                    cardsArray.sort((a, b) => {
+                        if (sortBy === 'latest') {
+                            return new Date(b.dataset.createdAt) -
+                                   new Date(a.dataset.createdAt);
+                        } else if (sortBy === 'oldest') {
+                            return new Date(a.dataset.createdAt) -
+                                   new Date(b.dataset.createdAt);
+                        } else if (sortBy === 'popular') {
+                            return parseInt(b.dataset.playCount) -
+                                   parseInt(a.dataset.playCount);
+                        }
+                        return 0;
+                    });
+
+                    // 정렬된 순서대로 DOM에 다시 추가
+                    cardsArray.forEach(card => grid.appendChild(card));
+
+                    console.log('✅ 정렬 완료:', sortBy);
+                }
+
+                // 검색 입력 이벤트 (실시간)
+                searchInput.addEventListener('input', function(e) {
+                    currentSearchQuery = e.target.value;
+                    filterGames();
+                });
+
+                // 필터 버튼 클릭 이벤트
+                filterBtns.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        // 활성 버튼 전환
+                        filterBtns.forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+
+                        // 현재 필터 업데이트
+                        currentFilter = this.dataset.filter;
+                        filterGames();
+
+                        console.log('🔍 필터 변경:', currentFilter);
+                    });
+                });
+
+                // 정렬 선택 이벤트
+                sortSelect.addEventListener('change', function() {
+                    sortGames(this.value);
+                });
+
+                console.log('✅ 검색/필터/정렬 기능 초기화 완료');
+            })();
         `;
 
         return this.getBaseTemplate(title, content + styles, scripts);

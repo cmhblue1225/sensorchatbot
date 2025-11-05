@@ -98,22 +98,26 @@ class LandingRoutes {
                 console.log('ℹ️  비로그인 사용자');
             }
 
-            // 각 게임의 is_public과 creator_id를 DB에서 가져오기
+            // 각 게임의 is_public, creator_id, created_at, play_count를 DB에서 가져오기
             const gamesWithVisibility = await Promise.all(allGames.map(async (game) => {
                 let is_public = true;  // 기본값: 공개
                 let creator_id = null;
+                let created_at = new Date().toISOString();  // 기본값: 현재 시간
+                let play_count = 0;  // 기본값: 0
 
                 if (this.supabaseClient) {
                     try {
                         const { data, error } = await this.supabaseClient
                             .from('generated_games')
-                            .select('is_public, creator_id')
+                            .select('is_public, creator_id, created_at, play_count')
                             .eq('game_id', game.id)
                             .single();
 
                         if (!error && data) {
                             is_public = data.is_public !== false;
                             creator_id = data.creator_id;
+                            created_at = data.created_at || created_at;
+                            play_count = data.play_count || 0;
                         }
                     } catch (error) {
                         // DB에 없는 게임은 공개로 처리
@@ -125,6 +129,8 @@ class LandingRoutes {
                     ...game,
                     is_public,
                     creator_id,
+                    created_at,
+                    play_count,
                     is_owner: currentUserId && creator_id === currentUserId
                 };
             }));
