@@ -1422,7 +1422,7 @@ class DeveloperRoutes {
                 const targetTab = link.dataset.tab;
                 if (targetTab) {
                     // 해당 탭 버튼 찾아서 클릭 (기존 탭 전환 로직 재사용)
-                    const tabButton = document.querySelector(`.tab[data-tab="${targetTab}"]`);
+                    const tabButton = document.querySelector('.tab[data-tab="' + targetTab + '"]');
                     if (tabButton) {
                         tabButton.click();
                     }
