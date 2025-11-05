@@ -1571,6 +1571,7 @@
             const sceneGroundEl = document.getElementById('scene-ground');
             const sceneCharactersEl = document.getElementById('scene-characters');
             const sceneEffectsEl = document.getElementById('scene-effects');
+            const characterShellEl = document.getElementById('character-shell');
             const characterBodyEl = document.getElementById('character-body');
             const characterHandsEl = document.getElementById('character-hands');
             const characterToolEl = document.getElementById('character-tool');
@@ -1628,7 +1629,8 @@
                 activeAnimations: new Set(),
                 animationTimers: new Set(),
                 assetManifest: null,
-                assetStatus: 'idle'
+                assetStatus: 'idle',
+                characterPoseTimeout: null
             };
             const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
             const debugPanel = document.getElementById('debug-panel');
@@ -2088,10 +2090,27 @@
                         characterToolEl.dataset.placeholder = 'true';
                     }
                 }
-                if (characterShadowEl) {
-                    characterShadowEl.style.opacity = frameUrl ? '0.45' : '0.2';
-                }
-            }
+        if (characterShadowEl) {
+            characterShadowEl.style.opacity = frameUrl ? '0.45' : '0.2';
+        }
+    }
+
+    function setCharacterPose(pose = 'idle', durationMs = 900) {
+        if (!characterShellEl) {
+            return;
+        }
+        if (state.characterPoseTimeout) {
+            clearTimeout(state.characterPoseTimeout);
+            state.characterPoseTimeout = null;
+        }
+        characterShellEl.dataset.pose = pose;
+        if (pose !== 'idle' && durationMs > 0) {
+            state.characterPoseTimeout = window.setTimeout(() => {
+                characterShellEl.dataset.pose = 'idle';
+                state.characterPoseTimeout = null;
+            }, durationMs);
+        }
+    }
 
             function updateSeasoningVisual() {
                 if (!cabbageSeasoningEl) {
@@ -2135,6 +2154,8 @@
                 detail.avatarFrame = frameKey;
                 detail.avatarFrameUntil = performance.now() + durationMs;
                 applySkinFrames(frameKey);
+                const pose = frameKey === 'idle' ? 'idle' : frameKey;
+                setCharacterPose(pose, durationMs);
             }
 
             function applyManifestBucketVisuals(manifest) {
@@ -2153,6 +2174,7 @@
                     cabbageSeasoningEl.style.backgroundImage = texture ? `url(${texture})` : '';
                 }
                 applySkinFrames('idle');
+                setCharacterPose('idle', 0);
             }
 
             function applyEffectStyling(node, effectId) {
@@ -2473,6 +2495,8 @@ function resetJudgementState(summaryMessage) {
                 updatePlayerBadge();
                 setStageResult('', 'info');
                 resetAnimationLayer();
+                applySkinFrames('idle');
+                setCharacterPose('idle', 0);
                 updateSeasoningVisual();
             }
 
