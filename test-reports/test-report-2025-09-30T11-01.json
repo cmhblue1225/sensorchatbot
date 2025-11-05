@@ -1,0 +1,57 @@
+{
+  "timestamp": "2025-09-30T11:01:35.745Z",
+  "uptime": 0,
+  "servers": {
+    "production": {
+      "status": "running",
+      "port": 3004,
+      "uptime": 7750180,
+      "errorCount": 0,
+      "avgResponseTime": 3,
+      "description": "프로덕션 모드 테스트"
+    },
+    "development": {
+      "status": "running",
+      "port": 3005,
+      "uptime": 7748169,
+      "errorCount": 0,
+      "avgResponseTime": 2,
+      "description": "개발 모드 테스트"
+    },
+    "performance": {
+      "status": "running",
+      "port": 3006,
+      "uptime": 7746162,
+      "errorCount": 0,
+      "avgResponseTime": 2,
+      "description": "성능 최적화 테스트"
+    },
+    "stress": {
+      "status": "running",
+      "port": 3007,
+      "uptime": 7744154,
+      "errorCount": 0,
+      "avgResponseTime": 2,
+      "description": "스트레스 테스트"
+    },
+    "game-generation": {
+      "status": "running",
+      "port": 3008,
+      "uptime": 7742149,
+      "errorCount": 4,
+      "avgResponseTime": 2,
+      "description": "AI 게임 생성 집중 테스트"
+    }
+  },
+  "summary": {
+    "totalServers": 5,
+    "runningServers": 5,
+    "totalErrors": 4,
+    "avgResponseTime": 2
+  },
+  "gameGeneration": {
+    "successRate": 0,
+    "totalAttempts": 257,
+    "successfulGenerations": 0
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "id": "twist---match",
+  "title": "Twist & Match",
+  "description": "1. 게임 설정\n- 게임 모드: Solo (1인 플레이)\n- 센서 데이터: 방향 센서(orientation)의 회전 데이터 활용\n- 게임 목표: 주어진 퍼즐을 회전을 통해 정답 상태로 맞추기\n\n2. 게임 흐름\n- 게임 시작 시 랜덤한 퍼즐 상태가 생성됨\n- 플레이어는 기기를 회전시켜 퍼즐 조각을 회전시킬 수 있음\n- 퍼즐이 정답 상태가 되면 다음 레벨로 진행\n- 일정 시간 내에 퍼즐을 맞추지 못하면 게임 오버\n\n3. 핵심 구현 사항\n- SessionSDK의 'orientation' 이벤트를 활용하여 기기 회전 데이터 수집\n- 'event.detail || event' 패턴으로 이벤트 데이터 처리\n- 퍼즐 조각의 회전 상태를 추적하고 정답 여부 확인\n- 퍼즐 레벨 및 난이도 설정 기능 구현\n- 타이머 기능 구현 및 게임 오버 처리",
+  "gameType": "solo",
+  "difficulty": "medium",
+  "version": "1.0.0",
+  "author": "AI Game Generator",
+  "createdAt": "2025-10-16T06:19:07.630Z",
+  "sensors": [
+    "orientation"
+  ],
+  "controls": "sensor",
+  "category": "Puzzle",
+  "minPlayers": 1,
+  "maxPlayers": 1,
+  "features": [
+    "mobile-sensors",
+    "real-time-gameplay",
+    "responsive-design"
+  ],
+  "requirements": {
+    "mobile": true,
+    "gyroscope": true,
+    "accelerometer": true,
+    "orientation": true
+  },
+  "integration": {
+    "sessionSDK": true,
+    "autoSession": true,
+    "qrCode": true
+  }
+}

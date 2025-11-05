@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Twist & Match - Sensor Puzzle Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            touch-action: none;
+        }
+
+        #gameCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* 세션 패널 - 좌측 상단 (게임 화면 안 가림) */
+        .session-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            max-width: 220px;
+            backdrop-filter: blur(10px);
+        }
+
+        .session-panel h3 {
+            font-size: 14px;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .session-code-display {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        #qr-code {
+            text-align: center;
+            margin-top: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        #qr-code img {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 8px;
+        }
+
+        /* 게임 정보 - 우측 상단 */
+        .game-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            min-width: 180px;
+            backdrop-filter: blur(10px);
+        }
+
+        .game-info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .game-info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .game-info-label {
+            color: #667eea;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        .game-info-value {
+            color: #333;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        /* 센서 상태 - 좌측 하단 */
+        #sensor-status {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 14px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            color: #666;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        #sensor-status.connected {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+        }
+
+        #sensor-status.disconnected {
+            background: rgba(255, 255, 255, 0.95);
+            color: #999;
+        }
+
+        /* 토스트 메시지 */
+        #toast-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 999;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            display: none;
+            opacity: 0;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        /* 오버레이 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        .overlay-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .overlay-title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .overlay-message {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .overlay-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .overlay-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .overlay-button:active {
+            transform: translateY(0);
+        }
+
+        /* 힌트 버튼 - 우측 하단 */
+        #hint-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(245, 87, 108, 0.4);
+            transition: transform 0.2s ease;
+        }
+
+        #hint-button:hover {
+            transform: translateY(-2px);
+        }
+
+        #hint-button:active {
+            transform: translateY(0);
+        }
+
+        #hint-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .session-panel {
+                max-width: 180px;
+                padding: 12px;
+            }
+
+            .session-code-display {
+                font-size: 20px;
+                padding: 10px;
+            }
+
+            #qr-code img {
+                max-width: 120px;
+                max-height: 120px;
+            }
+
+            .game-info {
+                min-width: 150px;
+                padding: 12px 15px;
+            }
+
+            .game-info-item {
+                font-size: 14px;
+            }
+
+            .game-info-value {
+                font-size: 16px;
+            }
+
+            .overlay-title {
+                font-size: 24px;
+            }
+
+            .overlay-message {
+                font-size: 16px;
+            }
+
+            #hint-button {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+        }
+
+        /* 로딩 애니메이션 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 펄스 애니메이션 */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- 게임 캔버스 -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 세션 패널 -->
+    <div class="session-panel">
+        <h3>📱 세션 코드</h3>
+        <div class="session-code-display">
+            <span id="session-code">----</span>
+        </div>
+        <div id="qr-code"></div>
+    </div>
+
+    <!-- 게임 정보 패널 -->
+    <div class="game-info">
+        <div class="game-info-item">
+            <span class="game-info-label">레벨:</span>
+            <span class="game-info-value" id="level-display">1</span>
+        </div>
+        <div class="game-info-item">
+            <span class="game-info-label">점수:</span>
+            <span class="game-info-value" id="score-display">0</span>
+        </div>
+        <div class="game-info-item">
+            <span class="game-info-label">시간:</span>
+            <span class="game-info-value" id="timer-display">60</span>
+        </div>
+        <div class="game-info-item">
+            <span class="game-info-label">힌트:</span>
+            <span class="game-info-value" id="hints-display">3</span>
+        </div>
+    </div>
+
+    <!-- 센서 상태 -->
+    <div id="sensor-status" class="disconnected">
+        센서 연결 대기 중...
+    </div>
+
+    <!-- 힌트 버튼 -->
+    <button id="hint-button">💡 힌트 사용</button>
+
+    <!-- 토스트 메시지 -->
+    <div id="toast-message"></div>
+
+    <!-- 오버레이 -->
+    <div id="overlay" class="overlay hidden">
+        <div class="overlay-content">
+            <div class="overlay-title">Twist & Match</div>
+            <div class="overlay-message">
+                기기를 회전시켜 퍼즐 조각을 맞추세요!<br>
+                <br>
+                <strong>조작 방법:</strong><br>
+                📱 기기를 좌우로 기울이면 퍼즐이 회전합니다<br>
+                🎯 모든 조각을 올바른 방향으로 맞추세요<br>
+                ⏱️ 제한 시간 내에 퍼즐을 완성하세요
+            </div>
+            <button class="overlay-button" onclick="hideOverlay()">시작하기</button>
+        </div>
+    </div>
+
+    <!-- 필수 스크립트 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+    <script>
+        // ==================== 게임 상수 정의 ====================
+        const CANVAS_WIDTH = window.innerWidth;
+        const CANVAS_HEIGHT = window.innerHeight;
+        
+        const PUZZLE_TYPES = {
+            SQUARE: 'square',
+            TRIANGLE: 'triangle',
+            CIRCLE: 'circle',
+            DIAMOND: 'diamond',
+            HEXAGON: 'hexagon'
+        };
+
+        const COLORS = {
+            PRIMARY: '#667eea',
+            SECONDARY: '#764ba2',
+            SUCCESS: '#38ef7d',
+            WARNING: '#f5576c',
+            CORRECT: '#4CAF50',
+            INCORRECT: '#FF5252',
+            NEUTRAL: '#FFF',
+            SHADOW: 'rgba(0, 0, 0, 0.2)'
+        };
+
+        const DIFFICULTY_SETTINGS = {
+            easy: { gridSize: 2, timeLimit: 90, rotationSpeed: 3 },
+            medium: { gridSize: 3, timeLimit: 60, rotationSpeed: 4 },
+            hard: { gridSize: 4, timeLimit: 45, rotationSpeed: 5 }
+        };
+
+        const ROTATION_ANGLES = [0, 90, 180, 270];
+        const SENSOR_THRESHOLD = 8; // 센서 감지 임계값 (15 → 8로 민감도 향상)
+        const ROTATION_COOLDOWN = 150; // 회전 쿨다운 (ms) (300 → 150으로 반응속도 향상)
+        const HINT_DURATION = 3000; // 힌트 표시 시간 (ms)
+
+        // ==================== 게임 변수 ====================
+        let canvas, ctx;
+        let sdk;
+        let gameStarted = false;
+        let gameOver = false;
+        let gamePaused = false;
+        let sensorConnected = false;
+
+        let level = 1;
+        let score = 0;
+        let timeRemaining = 60;
+        let hintsRemaining = 3;
+        let difficulty = 'medium';
+
+        let puzzleGrid = [];
+        let gridSize = 3;
+        let cellSize = 0;
+        let gridOffsetX = 0;
+        let gridOffsetY = 0;
+
+        let lastRotationTime = 0;
+        let currentTiltX = 0;
+        let selectedCell = null;
+        let hintActive = false;
+        let hintTimeout = null;
+
+        let timerInterval = null;
+        let animationFrameId = null;
+
+        // ==================== 퍼즐 조각 클래스 ====================
+        class PuzzlePiece {
+            constructor(row, col, type, correctRotation) {
+                this.row = row;
+                this.col = col;
+                this.type = type;
+                this.currentRotation = ROTATION_ANGLES[Math.floor(Math.random() * 4)];
+                this.correctRotation = correctRotation;
+                this.targetRotation = this.currentRotation;
+                this.isCorrect = false;
+                this.isHighlighted = false;
+                this.animationProgress = 0;
+            }
+
+            rotate(direction) {
+                const currentIndex = ROTATION_ANGLES.indexOf(this.currentRotation);
+                let newIndex = direction > 0 ? currentIndex + 1 : currentIndex - 1;
+                
+                if (newIndex >= ROTATION_ANGLES.length) newIndex = 0;
+                if (newIndex < 0) newIndex = ROTATION_ANGLES.length - 1;
+                
+                this.targetRotation = ROTATION_ANGLES[newIndex];
+            }
+
+            update() {
+                // 부드러운 회전 애니메이션
+                if (this.currentRotation !== this.targetRotation) {
+                    const diff = this.targetRotation - this.currentRotation;
+                    const step = diff > 0 ? 15 : -15;
+                    
+                    if (Math.abs(diff) < Math.abs(step)) {
+                        this.currentRotation = this.targetRotation;
+                    } else {
+                        this.currentRotation += step;
+                    }
+                    
+                    // 360도 순환
+                    if (this.currentRotation >= 360) this.currentRotation -= 360;
+                    if (this.currentRotation < 0) this.currentRotation += 360;
+                }
+
+                // 정답 확인
+                this.isCorrect = (this.currentRotation === this.correctRotation);
+
+                // 애니메이션 진행
+                if (this.animationProgress < 1) {
+                    this.animationProgress += 0.05;
+                }
+            }
+
+            draw(ctx, x, y, size) {
+                ctx.save();
+                ctx.translate(x + size / 2, y + size / 2);
+                ctx.rotate((this.currentRotation * Math.PI) / 180);
+
+                // 그림자
+                ctx.shadowColor = COLORS.SHADOW;
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetX = 3;
+                ctx.shadowOffsetY = 3;
+
+                // 배경
+                const bgColor = this.isCorrect ? COLORS.CORRECT : 
+                               this.isHighlighted ? COLORS.WARNING : 
+                               COLORS.NEUTRAL;
+                
+                ctx.fillStyle = bgColor;
+                ctx.strokeStyle = COLORS.PRIMARY;
+                ctx.lineWidth = 3;
+
+                const pieceSize = size * 0.8;
+
+                // 도형 그리기
+                switch (this.type) {
+                    case PUZZLE_TYPES.SQUARE:
+                        this.drawSquare(ctx, pieceSize);
+                        break;
+                    case PUZZLE_TYPES.TRIANGLE:
+                        this.drawTriangle(ctx, pieceSize);
+                        break;
+                    case PUZZLE_TYPES.CIRCLE:
+                        this.drawCircle(ctx, pieceSize);
+                        break;
+                    case PUZZLE_TYPES.DIAMOND:
+                        this.drawDiamond(ctx, pieceSize);
+                        break;
+                    case PUZZLE_TYPES.HEXAGON:
+                        this.drawHexagon(ctx, pieceSize);
+                        break;
+                }
+
+                ctx.restore();
+
+                // 정답 표시
+                if (this.isCorrect) {
+                    ctx.save();
+                    ctx.fillStyle = COLORS.SUCCESS;
+                    ctx.font = 'bold 30px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('✓', x + size / 2, y + size / 2);
+                    ctx.restore();
+                }
+
+                // 힌트 표시
+                if (this.isHighlighted && hintActive) {
+                    ctx.save();
+                    ctx.strokeStyle = COLORS.WARNING;
+                    ctx.lineWidth = 5;
+                    ctx.setLineDash([10, 5]);
+                    ctx.strokeRect(x, y, size, size);
+                    ctx.restore();
+                }
+            }
+
+            drawSquare(ctx, size) {
+                const half = size / 2;
+                ctx.fillRect(-half, -half, size, size);
+                ctx.strokeRect(-half, -half, size, size);
+                
+                // 방향 표시 (화살표)
+                ctx.fillStyle = COLORS.PRIMARY;
+                ctx.beginPath();
+                ctx.moveTo(0, -half + 10);
+                ctx.lineTo(-10, -half + 25);
+                ctx.lineTo(10, -half + 25);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            drawTriangle(ctx, size) {
+                const height = size * 0.866;
+                ctx.beginPath();
+                ctx.moveTo(0, -height / 2);
+                ctx.lineTo(-size / 2, height / 2);
+                ctx.lineTo(size / 2, height / 2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 방향 표시 (점)
+                ctx.fillStyle = COLORS.PRIMARY;
+                ctx.beginPath();
+                ctx.arc(0, -height / 2 + 15, 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            drawCircle(ctx, size) {
+                const radius = size / 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // 방향 표시 (선)
+                ctx.strokeStyle = COLORS.PRIMARY;
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(0, -radius + 10);
+                ctx.stroke();
+            }
+
+            drawDiamond(ctx, size) {
+                const half = size / 2;
+                ctx.beginPath();
+                ctx.moveTo(0, -half);
+                ctx.lineTo(half, 0);
+                ctx.lineTo(0, half);
+                ctx.lineTo(-half, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 방향 표시 (작은 다이아몬드)
+                ctx.fillStyle = COLORS.PRIMARY;
+                ctx.beginPath();
+                ctx.moveTo(0, -half + 10);
+                ctx.lineTo(8, -half + 18);
+                ctx.lineTo(0, -half + 26);
+                ctx.lineTo(-8, -half + 18);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            drawHexagon(ctx, size) {
+                const radius = size / 2;
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i - Math.PI / 2;
+                    const x = radius * Math.cos(angle);
+                    const y = radius * Math.sin(angle);
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 방향 표시 (육각형)
+                ctx.fillStyle = COLORS.PRIMARY;
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i - Math.PI / 2;
+                    const x = 10 * Math.cos(angle);
+                    const y = 10 * Math.sin(angle) - radius + 20;
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        // ==================== SDK 초기화 ====================
+        function initSDK() {
+            console.log('🎮 SDK 초기화 시작...');
+            
+            sdk = new SessionSDK({
+                gameId: 'twist-match',
+                gameType: 'solo'
+            });
+
+            // 서버 연결 완료
+            sdk.on('connected', () => {
+                console.log('✅ 서버 연결 완료');
+                createSession();
+            });
+
+            // 세션 생성 완료
+            sdk.on('session-created', (event) => {
+                const session = event.detail || event;
+                console.log('✅ 세션 생성됨:', session);
+
+                // 세션 코드 표시
+                const sessionCodeEl = document.getElementById('session-code');
+                if (sessionCodeEl && session.sessionCode) {
+                    sessionCodeEl.textContent = session.sessionCode;
+                    console.log('세션 코드 표시:', session.sessionCode);
+                }
+
+                // QR 코드 생성
+                setTimeout(() => {
+                    const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                    console.log('QR URL 생성:', qrUrl);
+                    generateQRCode(qrUrl);
+                }, 100);
+            });
+
+            // 센서 연결
+            sdk.on('sensor-connected', (event) => {
+                const data = event.detail || event;
+                console.log('✅ 센서 연결됨:', data.sensorId);
+
+                sensorConnected = true;
+
+                // UI 업데이트
+                const statusEl = document.getElementById('sensor-status');
+                statusEl.textContent = '센서 연결됨 ✓';
+                statusEl.className = 'connected';
+
+                showToastMessage('📱 센서가 연결되었습니다!');
+
+                // 🚀 필수: 센서 연결 1초 후 자동 게임 시작
+                setTimeout(() => {
+                    if (!gameStarted && !gameOver) {
+                        startGame();
+                        console.log('🎮 게임 자동 시작됨!');
+                    }
+                }, 1000);
+            });
+
+            // 센서 데이터 수신
+            sdk.on('sensor-data', (event) => {
+                const data = event.detail || event;
+                
+                // 게임 오버가 아니면 항상 센서 데이터 처리
+                if (!gameOver) {
+                    processSensorData(data);
+                }
+            });
+
+            // 센서 연결 해제
+            sdk.on('sensor-disconnected', (event) => {
+                const data = event.detail || event;
+                console.log('⚠️ 센서 연결 해제:', data.sensorId);
+
+                sensorConnected = false;
+
+                // UI 업데이트
+                const statusEl = document.getElementById('sensor-status');
+                statusEl.textContent = '센서 연결 대기 중...';
+                statusEl.className = 'disconnected';
+
+                showToastMessage('⚠️ 센서 연결이 해제되었습니다');
+            });
+
+            // 에러 처리
+            sdk.on('error', (event) => {
+                const error = event.detail || event;
+                console.error('❌ SDK 에러:', error);
+                showToastMessage('❌ 오류가 발생했습니다: ' + error.message);
+            });
+        }
+
+        // ==================== 세션 생성 ====================
+        function createSession() {
+            console.log('세션 생성 시도...');
+            sdk.createSession().then(session => {
+                console.log('✅ 세션 생성 성공:', session);
+            }).catch(error => {
+                console.error('❌ 세션 생성 실패:', error);
+                showToastMessage('❌ 세션 생성 실패: ' + error.message);
+            });
+        }
+
+        // ==================== QR 코드 생성 ====================
+        function generateQRCode(url) {
+            const qrContainer = document.getElementById('qr-code');
+            if (!qrContainer) return;
+
+            qrContainer.innerHTML = '';
+
+            if (typeof QRCode !== 'undefined') {
+                try {
+                    new QRCode(qrContainer, {
+                        text: url,
+                        width: 150,
+                        height: 150,
+                        colorDark: '#000000',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                    console.log('✅ QR 코드 생성 완료 (QRCode.js)');
+                } catch (error) {
+                    console.error('QRCode.js 생성 실패:', error);
+                    generateQRCodeFallback(qrContainer, url);
+                }
+            } else {
+                console.log('QRCode.js 없음, 폴백 사용');
+                generateQRCodeFallback(qrContainer, url);
+            }
+        }
+
+        function generateQRCodeFallback(container, url) {
+            const img = document.createElement('img');
+            img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
+            img.alt = 'QR Code';
+            img.style.width = '150px';
+            img.style.height = '150px';
+            img.style.borderRadius = '8px';
+            container.appendChild(img);
+            console.log('✅ QR 코드 생성 완료 (폴백)');
+        }
+
+        // ==================== 센서 데이터 처리 ====================
+        function processSensorData(sensorData) {
+            if (!gameStarted || gameOver || gamePaused) return;
+
+            const { orientation, acceleration } = sensorData.data;
+
+            if (orientation) {
+                // gamma: 좌우 기울기 (-90 ~ 90)
+                const gamma = orientation.gamma || 0;
+                currentTiltX = gamma;
+
+                // 회전 감지 (쿨다운 체크)
+                const now = Date.now();
+                if (now - lastRotationTime > ROTATION_COOLDOWN) {
+                    if (Math.abs(gamma) > SENSOR_THRESHOLD) {
+                        const direction = gamma > 0 ? 1 : -1;
+                        rotateSelectedPiece(direction);
+                        lastRotationTime = now;
+                    }
+                }
+            }
+
+            // 흔들기 감지 (힌트 활성화)
+            if (acceleration) {
+                const shake = Math.sqrt(
+                    acceleration.x ** 2 +
+                    acceleration.y ** 2 +
+                    acceleration.z ** 2
+                );
+
+                if (shake > 25 && hintsRemaining > 0 && !hintActive) {
+                    useHint();
+                }
+            }
+        }
+
+        // ==================== 게임 초기화 ====================
+        function initGame() {
+            console.log('🎮 게임 초기화...');
+
+            // 캔버스 설정
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+
+            // 게임 변수 초기화
+            level = 1;
+            score = 0;
+            timeRemaining = DIFFICULTY_SETTINGS[difficulty].timeLimit;
+            hintsRemaining = 3;
+            gameStarted = false;
+            gameOver = false;
+            gamePaused = false;
+
+            // UI 업데이트
+            updateUI();
+
+            // 퍼즐 생성
+            generatePuzzle();
+
+            // 오버레이 표시
+            showOverlay();
+
+            // 힌트 버튼 이벤트
+            document.getElementById('hint-button').addEventListener('click', useHint);
+
+            console.log('✅ 게임 초기화 완료');
+        }
+
+        // ==================== 퍼즐 생성 ====================
+        function generatePuzzle() {
+            puzzleGrid = [];
+            gridSize = DIFFICULTY_SETTINGS[difficulty].gridSize;
+            
+            // 그리드 크기 계산 (화면의 70% 사용)
+            const maxSize = Math.min(CANVAS_WIDTH, CANVAS_HEIGHT) * 0.7;
+            cellSize = maxSize / gridSize;
+            
+            // 그리드 중앙 정렬
+            gridOffsetX = (CANVAS_WIDTH - (cellSize * gridSize)) / 2;
+            gridOffsetY = (CANVAS_HEIGHT - (cellSize * gridSize)) / 2;
+
+            // 퍼즐 조각 생성
+            const types = Object.values(PUZZLE_TYPES);
+            
+            for (let row = 0; row < gridSize; row++) {
+                puzzleGrid[row] = [];
+                for (let col = 0; col < gridSize; col++) {
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    const correctRotation = ROTATION_ANGLES[Math.floor(Math.random() * 4)];
+                    const piece = new PuzzlePiece(row, col, type, correctRotation);
+                    puzzleGrid[row][col] = piece;
+                }
+            }
+
+            // 첫 번째 조각 선택
+            selectedCell = { row: 0, col: 0 };
+            puzzleGrid[0][0].isHighlighted = true;
+
+            console.log(`✅ ${gridSize}x${gridSize} 퍼즐 생성 완료`);
+        }
+
+        // ==================== 게임 시작 ====================
+        function startGame() {
+            if (gameStarted) return;
+
+            console.log('🚀 게임 시작!');
+            gameStarted = true;
+            gameOver = false;
+            gamePaused = false;
+
+            hideOverlay();
+
+            // 타이머 시작
+            startTimer();
+
+            // 게임 루프 시작
+            gameLoop();
+
+            showToastMessage('🎮 게임 시작!');
+        }
+
+        // ==================== 타이머 시작 ====================
+        function startTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+
+            timerInterval = setInterval(() => {
+                if (!gameStarted || gameOver || gamePaused) return;
+
+                timeRemaining--;
+                updateUI();
+
+                // 시간 경고
+                if (timeRemaining === 10) {
+                    showToastMessage('⏰ 10초 남았습니다!');
+                }
+
+                // 시간 종료
+                if (timeRemaining <= 0) {
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        // ==================== 선택된 조각 회전 ====================
+        function rotateSelectedPiece(direction) {
+            if (!selectedCell) return;
+
+            const piece = puzzleGrid[selectedCell.row][selectedCell.col];
+            piece.rotate(direction);
+
+            // 사운드 효과 (시각적 피드백)
+            showToastMessage(direction > 0 ? '↻' : '↺', 200);
+
+            // 퍼즐 완성 확인
+            checkPuzzleComplete();
+        }
+
+        // ==================== 퍼즐 완성 확인 ====================
+        function checkPuzzleComplete() {
+            let allCorrect = true;
+
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    if (!puzzleGrid[row][col].isCorrect) {
+                        allCorrect = false;
+                        break;
+                    }
+                }
+                if (!allCorrect) break;
+            }
+
+            if (allCorrect) {
+                levelComplete();
+            }
+        }
+
+        // ==================== 레벨 완료 ====================
+        function levelComplete() {
+            console.log(`🎉 레벨 ${level} 완료!`);
+
+            // 점수 계산
+            const timeBonus = timeRemaining * 10;
+            const levelBonus = level * 100;
+            score += timeBonus + levelBonus;
+
+            // 레벨 업
+            level++;
+
+            // 난이도 조정
+            if (level > 3 && difficulty === 'medium') {
+                difficulty = 'hard';
+            }
+
+            // UI 업데이트
+            updateUI();
+
+            // 토스트 메시지 표시 (오버레이 사용 안함!)
+            showToastMessage(`🎉 레벨 ${level - 1} 클리어!\n+${timeBonus + levelBonus}점`, 2000);
+
+            // 다음 레벨 생성
+            setTimeout(() => {
+                timeRemaining = DIFFICULTY_SETTINGS[difficulty].timeLimit;
+                hintsRemaining = Math.min(hintsRemaining + 1, 5);
+                generatePuzzle();
+                updateUI();
+                showToastMessage(`레벨 ${level} 시작!`, 1500);
+            }, 2000);
+        }
+
+        // ==================== 힌트 사용 ====================
+        function useHint() {
+            if (hintsRemaining <= 0 || hintActive || !gameStarted || gameOver) {
+                return;
+            }
+
+            hintsRemaining--;
+            hintActive = true;
+            updateUI();
+
+            console.log('💡 힌트 사용');
+
+            // 틀린 조각 찾기
+            let incorrectPieces = [];
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const piece = puzzleGrid[row][col];
+                    if (!piece.isCorrect) {
+                        incorrectPieces.push(piece);
+                    }
+                }
+            }
+
+            if (incorrectPieces.length > 0) {
+                // 랜덤으로 하나 선택
+                const hintPiece = incorrectPieces[Math.floor(Math.random() * incorrectPieces.length)];
+                hintPiece.isHighlighted = true;
+
+                // 선택된 셀 변경
+                selectedCell = { row: hintPiece.row, col: hintPiece.col };
+
+                showToastMessage('💡 이 조각을 맞춰보세요!', 1500);
+
+                // 힌트 타임아웃
+                if (hintTimeout) clearTimeout(hintTimeout);
+                hintTimeout = setTimeout(() => {
+                    hintActive = false;
+                    // 모든 하이라이트 제거
+                    for (let row = 0; row < gridSize; row++) {
+                        for (let col = 0; col < gridSize; col++) {
+                            puzzleGrid[row][col].isHighlighted = false;
+                        }
+                    }
+                    // 선택된 셀만 하이라이트
+                    if (selectedCell) {
+                        puzzleGrid[selectedCell.row][selectedCell.col].isHighlighted = true;
+                    }
+                }, HINT_DURATION);
+            }
+        }
+
+        // ==================== 게임 종료 ====================
+        function endGame(isWin) {
+            console.log(isWin ? '🎉 게임 승리!' : '💀 게임 오버!');
+
+            gameStarted = false;
+            gameOver = true;
+
+            // 타이머 중지
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+
+            // 게임 루프 중지
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+
+            // 결과 표시
+            setTimeout(() => {
+                const overlay = document.getElementById('overlay');
+                const title = overlay.querySelector('.overlay-title');
+                const message = overlay.querySelector('.overlay-message');
+                const button = overlay.querySelector('.overlay-button');
+
+                if (isWin) {
+                    title.textContent = '🎉 축하합니다!';
+                    message.innerHTML = `
+                        모든 레벨을 완료했습니다!<br>
+                        <br>
+                        <strong>최종 점수: ${score}점</strong><br>
+                        <strong>도달 레벨: ${level}</strong>
+                    `;
+                } else {
+                    title.textContent = '⏰ 시간 종료!';
+                    message.innerHTML = `
+                        시간이 다 되었습니다.<br>
+                        <br>
+                        <strong>점수: ${score}점</strong><br>
+                        <strong>레벨: ${level}</strong>
+                    `;
+                }
+
+                button.textContent = '다시 시작';
+                button.onclick = resetGame;
+
+                overlay.classList.remove('hidden');
+            }, 500);
+        }
+
+        // ==================== 게임 리셋 ====================
+        function resetGame() {
+            console.log('🔄 게임 리셋');
+
+            // 게임 변수 초기화
+            level = 1;
+            score = 0;
+            difficulty = 'medium';
+            timeRemaining = DIFFICULTY_SETTINGS[difficulty].timeLimit;
+            hintsRemaining = 3;
+            gameStarted = false;
+            gameOver = false;
+            gamePaused = false;
+            hintActive = false;
+
+            // 타이머 정리
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+
+            // 힌트 타임아웃 정리
+            if (hintTimeout) {
+                clearTimeout(hintTimeout);
+                hintTimeout = null;
+            }
+
+            // UI 업데이트
+            updateUI();
+
+            // 퍼즐 재생성
+            generatePuzzle();
+
+            // 오버레이 숨기기
+            hideOverlay();
+
+            // 센서 연결되어 있으면 자동 시작
+            if (sensorConnected) {
+                setTimeout(() => {
+                    startGame();
+                }, 1000);
+            } else {
+                showOverlay();
+            }
+        }
+
+        // ==================== UI 업데이트 ====================
+        function updateUI() {
+            document.getElementById('level-display').textContent = level;
+            document.getElementById('score-display').textContent = score;
+            document.getElementById('timer-display').textContent = timeRemaining;
+            document.getElementById('hints-display').textContent = hintsRemaining;
+
+            // 힌트 버튼 상태
+            const hintButton = document.getElementById('hint-button');
+            hintButton.disabled = hintsRemaining <= 0 || !gameStarted || gameOver;
+            hintButton.textContent = `💡 힌트 (${hintsRemaining})`;
+        }
+
+        // ==================== 토스트 메시지 표시 ====================
+        function showToastMessage(message, duration = 1000) {
+            const toast = document.getElementById('toast-message');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            toast.style.opacity = '1';
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 300);
+            }, duration);
+        }
+
+        // ==================== 오버레이 표시/숨기기 ====================
+        function showOverlay() {
+            const overlay = document.getElementById('overlay');
+            const title = overlay.querySelector('.overlay-title');
+            const message = overlay.querySelector('.overlay-message');
+            const button = overlay.querySelector('.overlay-button');
+
+            title.textContent = 'Twist & Match';
+            message.innerHTML = `
+                기기를 회전시켜 퍼즐 조각을 맞추세요!<br>
+                <br>
+                <strong>조작 방법:</strong><br>
+                📱 기기를 좌우로 기울이면 퍼즐이 회전합니다<br>
+                🎯 모든 조각을 올바른 방향으로 맞추세요<br>
+                ⏱️ 제한 시간 내에 퍼즐을 완성하세요<br>
+                💡 흔들어서 힌트를 사용할 수 있습니다
+            `;
+            button.textContent = '시작하기';
+            button.onclick = () => {
+                hideOverlay();
+                if (sensorConnected && !gameStarted) {
+                    startGame();
+                }
+            };
+
+            overlay.classList.remove('hidden');
+        }
+
+        function hideOverlay() {
+            document.getElementById('overlay').classList.add('hidden');
+        }
+
+        // ==================== 게임 루프 ====================
+        function gameLoop() {
+            if (gameOver) return;
+
+            // 업데이트
+            updateGame();
+
+            // 렌더링
+            renderGame();
+
+            // 다음 프레임
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // ==================== 게임 업데이트 ====================
+        function updateGame() {
+            if (!gameStarted || gameOver || gamePaused) return;
+
+            // 퍼즐 조각 업데이트
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    puzzleGrid[row][col].update();
+                }
+            }
+
+            // 선택된 셀 자동 이동 (센서 기울기에 따라)
+            if (selectedCell && Math.abs(currentTiltX) < SENSOR_THRESHOLD) {
+                // 기울기가 작을 때는 다음 조각으로 자동 이동
+                const totalCells = gridSize * gridSize;
+                const currentIndex = selectedCell.row * gridSize + selectedCell.col;
+                const nextIndex = (currentIndex + 1) % totalCells;
+                const nextRow = Math.floor(nextIndex / gridSize);
+                const nextCol = nextIndex % gridSize;
+
+                // 이전 선택 해제
+                puzzleGrid[selectedCell.row][selectedCell.col].isHighlighted = false;
+
+                // 새로운 선택
+                selectedCell = { row: nextRow, col: nextCol };
+                puzzleGrid[nextRow][nextCol].isHighlighted = true;
+            }
+        }
+
+        // ==================== 게임 렌더링 ====================
+        function renderGame() {
+            // 배경 그리기
+            const gradient = ctx.createLinearGradient(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // 그리드 배경
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(
+                gridOffsetX - 10,
+                gridOffsetY - 10,
+                cellSize * gridSize + 20,
+                cellSize * gridSize + 20
+            );
+
+            // 그리드 선
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i <= gridSize; i++) {
+                // 세로선
+                ctx.beginPath();
+                ctx.moveTo(gridOffsetX + i * cellSize, gridOffsetY);
+                ctx.lineTo(gridOffsetX + i * cellSize, gridOffsetY + cellSize * gridSize);
+                ctx.stroke();
+
+                // 가로선
+                ctx.beginPath();
+                ctx.moveTo(gridOffsetX, gridOffsetY + i * cellSize);
+                ctx.lineTo(gridOffsetX + cellSize * gridSize, gridOffsetY + i * cellSize);
+                ctx.stroke();
+            }
+
+            // 퍼즐 조각 그리기
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const piece = puzzleGrid[row][col];
+                    const x = gridOffsetX + col * cellSize;
+                    const y = gridOffsetY + row * cellSize;
+                    piece.draw(ctx, x, y, cellSize);
+                }
+            }
+
+            // 센서 기울기 표시 (디버그)
+            if (gameStarted && !gameOver) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    `기울기: ${currentTiltX.toFixed(1)}°`,
+                    CANVAS_WIDTH / 2,
+                    CANVAS_HEIGHT - 30
+                );
+                ctx.restore();
+
+                // 기울기 바
+                const barWidth = 200;
+                const barHeight = 20;
+                const barX = (CANVAS_WIDTH - barWidth) / 2;
+                const barY = CANVAS_HEIGHT - 60;
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                const tiltPercent = Math.max(-1, Math.min(1, currentTiltX / 90));
+                const indicatorX = barX + barWidth / 2 + (tiltPercent * barWidth / 2);
+
+                ctx.fillStyle = Math.abs(currentTiltX) > SENSOR_THRESHOLD ? 
+                               COLORS.WARNING : COLORS.SUCCESS;
+                ctx.fillRect(indicatorX - 3, barY - 5, 6, barHeight + 10);
+            }
+
+            // 게임 시작 전 메시지
+            if (!gameStarted && !gameOver && sensorConnected) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 32px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('기기를 기울여서 시작하세요!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+                ctx.restore();
+            }
+        }
+
+        // ==================== 윈도우 리사이즈 처리 ====================
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // 그리드 크기 재계산
+            const maxSize = Math.min(canvas.width, canvas.height) * 0.7;
+            cellSize = maxSize / gridSize;
+            gridOffsetX = (canvas.width - (cellSize * gridSize)) / 2;
+            gridOffsetY = (canvas.height - (cellSize * gridSize)) / 2;
+        });
+
+        // ==================== 페이지 로드 시 초기화 ====================
+        window.addEventListener('load', () => {
+            console.log('🎮 Twist & Match 게임 로딩...');
+            
+            // SDK 초기화
+            initSDK();
+            
+            // 게임 초기화
+            initGame();
+            
+            console.log('✅ 게임 로딩 완료!');
+        });
+
+        // ==================== 페이지 언로드 시 정리 ====================
+        window.addEventListener('beforeunload', () => {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            if (hintTimeout) {
+                clearTimeout(hintTimeout);
+            }
+        });
+
+        // ==================== 디버그 함수 (개발용) ====================
+        window.debugGame = {
+            skipLevel: () => {
+                levelComplete();
+            },
+            addTime: (seconds) => {
+                timeRemaining += seconds;
+                updateUI();
+            },
+            addHints: (count) => {
+                hintsRemaining += count;
+                updateUI();
+            },
+            solveAll: () => {
+                for (let row = 0; row < gridSize; row++) {
+                    for (let col = 0; col < gridSize; col++) {
+                        const piece = puzzleGrid[row][col];
+                        piece.currentRotation = piece.correctRotation;
+                        piece.targetRotation = piece.correctRotation;
+                    }
+                }
+                checkPuzzleComplete();
+            },
+            showInfo: () => {
+                console.log({
+                    level,
+                    score,
+                    timeRemaining,
+                    hintsRemaining,
+                    gridSize,
+                    difficulty,
+                    gameStarted,
+                    gameOver,
+                    sensorConnected
+                });
+            }
+        };
+
+        console.log('💡 디버그 명령어: window.debugGame.showInfo()');
+    </script>
+</body>
+</html>
