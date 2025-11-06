@@ -1,0 +1,76 @@
+Act as a Blender environment & character artist building assets for the “Kimchi Fest Forward March” rhythm-action prototype. The gameplay: a kimchi chef advances along an endless hanok courtyard, seasoning cabbages on beat while the camera keeps a 3rd-person trailing view.
+
+Goals:
+- Deliver modular background segments and character animations that support continuous forward motion tied to a 120 BPM beat grid.
+- Make assets stylised, inviting, and readable for a browser-based experience (bright palettes, soft painterly lighting, exaggerated silhouettes).
+- Specify colour palettes for key elements so the art direction stays consistent (hex/RGB values or concise palette swatches).
+
+Environment requirements:
+1. Design five seamless segment modules (length ≈7 m each) for the forward lane:
+   - `segment-gate`: starting gate + entrance props.
+   - `segment-wash`: rinsing tubs, water splashes.
+   - `segment-season-a`: seasoning table with baskets, salt barrels.
+   - `segment-season-b`: spice drums, hanging chili racks, steam vents.
+   - `segment-cellar`: stacked onggi jars, storage racks, exit arch.
+2. Each segment must share:
+   - Identical lane width, ground elevation, and snapping origin so segments can tile without visible seams.
+   - Two “action pads” (left/right) where cabbage piles spawn; label them with empties `pad-L` and `pad-R`.
+   - Beat markers along the centre path every 0.5 m (.5 beat at 120 BPM). Name empties sequentially `beat-000`, `beat-001`, … and ensure transforms align with world axes.
+3. Create a spline path (`chef_path`) that curves gently to add variety but keeps the chef within the camera frustum. Provide a driver-friendly animation path length for 64 beats (~32 m).
+4. Parallax layering: distant mountains, hanok rooftops, lamp strings, skyline gradient. Render these as separate passes for layering: `backdrop-sky`, `backdrop-architecture`, `backdrop-lights`, `backdrop-foliage`.
+5. Environmental storytelling props: kimchi seasoning bowls, baskets of radish, low stools, cutlery racks, steam wisps, hanging fabrics. Organize into collections for optional toggling.
+
+- Provide colour direction with hex codes for clothing, props, and seasoning (e.g., hanbok-inspired warm reds `#d34f42`, mustard yellows `#f4b93c`, jade greens `#4aa87c`, deep navy shadows `#17273a`).
+
+Character requirements:
+- Stylised chef (1.65 m) with modular pieces `body`, `hands`, `tool` (seasoning ladle or brush).
+- Rig for forward march with IK legs, FK arms, and simple facial controls (eyebrow up/down, blink).
+- Author five animation clips, each aligned to beats (12 fps working rate, but final frame counts must represent 0.5 s per beat at 24 fps export):
+  1. `march-loop` (2-beat cycle).
+  2. `scoop-ready` (1 beat prep).
+  3. `season-hit` (accent on beat with seasoning splash).
+  4. `double-hit` (two rapid strokes over 1 beat).
+  5. `celebrate` (4-beat flourish).
+- For sprites: render body/hands/tool layers separately with consistent pivot (hips at image centre). Provide metadata JSON listing frame dimensions, pivot coordinates, frame duration, and pose markers.
+- Export FBX files with root motion along `chef_path` on a separate action (one cycle covering 16 beats) so developers can use either sprite or 3D data.
+
+Lighting & rendering:
+- Evening ambience with warm lanterns (Area/Point lights 3200 K, intensity tuned for soft shadows) and cool moonlight fill (7000 K). Include volumetric fog near ground (0.018 density).
+- Bake subtle lightmaps or use light groups for faster renders. Provide both beauty pass and emission pass for seasoning impacts.
+- Render resolution: 2720×1530 (gives wiggle room for 2560×1440 crop). Use straight alpha PNGs, no premultiplication. Keep camera orthographic with scale tuned so segments fill the width while leaving HUD margins.
+
+Collections & naming (lowercase kebab case):
+- `backdrop-sky`, `backdrop-architecture`, `backdrop-lights`, `backdrop-foliage`
+- `ground-lane`, `ground-detail`, `path-guides`
+- `segment-gate`, `segment-wash`, `segment-season-a`, `segment-season-b`, `segment-cellar`
+- `props-shared`, `props-action`, `fx-steam`, `fx-seasoning`
+- `character-rig`, `character-export`, `character-poses`
+
+Deliverables:
+1. Blender file `kimchi-fest-forward-march.blend` with organised collections, beat markers, spline path, camera rig, lighting groups, and animation actions.
+2. Environment PNG layers per segment, saved under `/public/games/kimchi-fest/assets/visuals/segments/`:
+   - `segment-gate.png`, `segment-wash.png`, `segment-season-a.png`, `segment-season-b.png`, `segment-cellar.png`
+   - Additional overlay passes: `segment-steam.png`, `segment-sparks.png` if useful.
+3. Backdrop layers under `/public/games/kimchi-fest/assets/visuals/`:
+   - `backdrop-sky.png`, `backdrop-architecture.png`, `backdrop-lights.png`, `backdrop-foliage.png`
+4. Character sprite sheets (separate body/hands/tool) to `/public/games/kimchi-fest/assets/skins/default/` with filenames:
+   - `body-march-loop.png`, `hands-march-loop.png`, `tool-march-loop.png`, etc. repeat for each animation.
+   - Metadata JSON `default-animations.json` describing frame counts, duration, pivot.
+5. FBX exports for each animation to `/public/games/kimchi-fest/assets/skins/default/fbx/`, with root motion baked and scale preserved (1 Blender unit = 1 m).
+6. Documentation bundle (`forward-march-notes.md`) covering:
+   - Camera transforms (location, rotation, ortho scale), clipping ranges.
+   - Lighting setup (lamp names, types, colours, intensity).
+   - Path / beat layout specs (distance between beats, alignment tips).
+   - Suggested parallax scroll ratios and recommended segment loop order for in-game assembly.
+   - Texture list with resolutions and any procedural node recipes.
+
+- Include a short colour palette table in the documentation (name, hex, usage) to align environment and character art.
+
+Constraints:
+- All file names lowercase kebab-case. Pack textures within the .blend.
+- Straight alpha PNGs only.
+- Keep total triangle count per segment under 35k; use modifiers (array, mirror) to keep geometry light.
+- Ensure segment renders align pixel-perfect horizontally when placed side by side.
+- Character sprite pivots must align across animations for our existing `body/hands/tool` compositing pipeline.
+
+Task: Output precise, step-by-step Blender instructions (modelling workflow, array alignment, spline path setup, rigging notes, animation timing, render/export settings) followed by a structured asset manifest summarising every export (path, resolution, frame count, usage notes).

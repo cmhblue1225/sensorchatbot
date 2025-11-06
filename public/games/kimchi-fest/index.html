@@ -362,6 +362,79 @@
             color: rgba(248, 250, 252, 0.85);
         }
 
+        .asset-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.35rem 1rem;
+            margin: 0;
+            padding: 0;
+        }
+
+        .asset-meta div {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .asset-meta dt {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(148, 163, 184, 0.8);
+        }
+
+        .asset-meta dd {
+            margin: 0;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #f8fafc;
+            word-break: break-word;
+        }
+
+        .asset-meta dd[data-status="manifest"] {
+            color: #a78bfa;
+        }
+
+        .asset-meta dd[data-status="debug"] {
+            color: #38bdf8;
+        }
+
+        .asset-meta dd[data-status="fallback"] {
+            color: #facc15;
+        }
+
+        .asset-meta dd[data-status="error"] {
+            color: #f87171;
+        }
+
+        .dev-button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .dev-button-row button {
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.65);
+            color: #e2e8f0;
+            font-size: 0.75rem;
+            line-height: 1.2;
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.55rem;
+            cursor: pointer;
+            transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+        }
+
+        .dev-button-row button:hover {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(148, 163, 184, 0.6);
+        }
+
+        .dev-button-row button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
         .log-list {
             list-style: none;
             padding: 0;
@@ -557,6 +630,11 @@
             position: absolute;
             inset: 0;
             pointer-events: none;
+            overflow: hidden;
+            background-repeat: no-repeat;
+            background-position: center bottom;
+            background-size: cover;
+            background-color: transparent;
         }
 
         .scene-layer[data-layer="ground"] {
@@ -1406,6 +1484,39 @@
                 <span>110 BPM</span>
             </div>
         </section>
+        <section class="dev-section" id="asset-panel">
+            <h4>Asset Status</h4>
+            <dl class="asset-meta">
+                <div>
+                    <dt>Skin</dt>
+                    <dd id="asset-skin">default</dd>
+                </div>
+                <div>
+                    <dt>Pose</dt>
+                    <dd id="asset-pose">idle</dd>
+                </div>
+                <div>
+                    <dt>Background</dt>
+                    <dd id="asset-background" data-status="idle">default</dd>
+                </div>
+                <div>
+                    <dt>Seasoning</dt>
+                    <dd id="asset-seasoning">none</dd>
+                </div>
+                <div>
+                    <dt>Manifest</dt>
+                    <dd id="asset-manifest-status" data-status="idle">idle</dd>
+                </div>
+                <div>
+                    <dt>Last Reload</dt>
+                    <dd id="asset-last-reload">-</dd>
+                </div>
+            </dl>
+            <div class="dev-button-row">
+                <button type="button" id="reload-manifest">Reload Manifest</button>
+                <button type="button" id="cycle-debug-bg">Cycle Debug Background</button>
+            </div>
+        </section>
         <section class="dev-section" id="players-panel">
             <h4>연결된 기기</h4>
             <ul id="player-list" class="player-list" aria-live="polite">
@@ -1596,6 +1707,14 @@
             const devToggleBtn = document.getElementById('dev-toggle');
             const devPanelEl = document.getElementById('dev-panel');
             const devPanelCloseBtn = devPanelEl ? devPanelEl.querySelector('[data-action="close"]') : null;
+            const assetSkinEl = document.getElementById('asset-skin');
+            const assetPoseEl = document.getElementById('asset-pose');
+            const assetBackgroundEl = document.getElementById('asset-background');
+            const assetSeasoningEl = document.getElementById('asset-seasoning');
+            const assetManifestStatusEl = document.getElementById('asset-manifest-status');
+            const assetLastReloadEl = document.getElementById('asset-last-reload');
+            const reloadManifestBtn = document.getElementById('reload-manifest');
+            const cycleDebugBgBtn = document.getElementById('cycle-debug-bg');
 
             const state = {
                 sdk: null,
@@ -1630,7 +1749,13 @@
                 animationTimers: new Set(),
                 assetManifest: null,
                 assetStatus: 'idle',
-                characterPoseTimeout: null
+                characterPoseTimeout: null,
+                currentSkinId: null,
+                currentFrameKey: 'idle',
+                currentPose: 'idle',
+                currentBackground: null,
+                currentSeasoningTexture: null,
+                manifestReloadedAt: null
             };
             const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
             const debugPanel = document.getElementById('debug-panel');
@@ -1648,6 +1773,54 @@
                 const minutes = Math.floor(totalSeconds / 60);
                 const seconds = totalSeconds % 60;
                 return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            const DEBUG_BACKGROUNDS = [
+                'linear-gradient(135deg, rgba(248, 113, 113, 0.4), rgba(59, 130, 246, 0.35))',
+                'linear-gradient(45deg, rgba(16, 185, 129, 0.35) 0%, rgba(30, 64, 175, 0.35) 100%), repeating-linear-gradient(90deg, rgba(15, 23, 42, 0.35) 0, rgba(15, 23, 42, 0.35) 12px, transparent 12px, transparent 24px)',
+                'linear-gradient(180deg, rgba(14, 116, 144, 0.4), rgba(99, 102, 241, 0.35)), repeating-conic-gradient(rgba(15, 23, 42, 0.25) 0 25deg, transparent 25deg 50deg)'
+            ];
+            let debugBackgroundIndex = -1;
+
+            function getAssetBasename(path) {
+                if (!path || typeof path !== 'string') {
+                    return null;
+                }
+                const normalized = path.split('?')[0];
+                const segments = normalized.split('/');
+                return segments.pop() || normalized;
+            }
+
+            function updateAssetStatusPanel() {
+                if (assetSkinEl) {
+                    const skinId = state.currentSkinId || getDefaultSkinId();
+                    assetSkinEl.textContent = skinId;
+                }
+                if (assetPoseEl) {
+                    const poseLabel = state.currentPose || state.currentFrameKey || 'idle';
+                    assetPoseEl.textContent = poseLabel;
+                }
+                if (assetBackgroundEl) {
+                    const backgroundState = sceneGroundEl?.dataset?.background ?? (state.currentBackground ? 'manifest' : 'default');
+                    const descriptor = sceneGroundEl?.dataset?.backgroundSource
+                        || (state.currentBackground ? getAssetBasename(state.currentBackground) : 'default');
+                    assetBackgroundEl.textContent = descriptor || 'default';
+                    assetBackgroundEl.dataset.status = backgroundState;
+                }
+                if (assetSeasoningEl) {
+                    const textureName = state.currentSeasoningTexture ? getAssetBasename(state.currentSeasoningTexture) : 'none';
+                    assetSeasoningEl.textContent = textureName || 'none';
+                }
+                if (assetManifestStatusEl) {
+                    const status = state.assetStatus || 'idle';
+                    assetManifestStatusEl.textContent = status;
+                    assetManifestStatusEl.dataset.status = status;
+                }
+                if (assetLastReloadEl) {
+                    assetLastReloadEl.textContent = state.manifestReloadedAt
+                        ? new Date(state.manifestReloadedAt).toLocaleTimeString()
+                        : '-';
+                }
             }
 
             const STATUS_TEXT = {
@@ -1986,6 +2159,7 @@
                     return state.assetManifest;
                 }
                 state.assetStatus = 'loading';
+                updateAssetStatusPanel();
                 let manifest = null;
                 const url = CONFIG.assets?.manifestUrl;
                 if (url) {
@@ -2013,6 +2187,8 @@
                 applyManifestBucketVisuals(manifest);
                 renderPlayerList();
                 updateSeasoningVisual();
+                state.manifestReloadedAt = Date.now();
+                updateAssetStatusPanel();
                 return manifest;
             }
 
@@ -2059,58 +2235,87 @@
 
             function applySkinFrames(frameKey = 'idle') {
                 const skinId = getDefaultSkinId();
-                const frames = findSkinById(skinId)?.frames || {};
-                const frameUrl = frames[frameKey] || frames['idle'] || null;
-                if (characterBodyEl) {
-                    if (frameUrl) {
-                        characterBodyEl.style.backgroundImage = `url(${frameUrl})`;
-                        characterBodyEl.dataset.skin = skinId;
-                        characterBodyEl.dataset.placeholder = 'false';
-                    } else {
-                        characterBodyEl.style.removeProperty('background-image');
-                        characterBodyEl.removeAttribute('data-skin');
-                        characterBodyEl.dataset.placeholder = 'true';
+                const skin = findSkinById(skinId) || {};
+                const frames = skin.frames || {};
+                const normalizeFrameSpec = (frameSpec) => {
+                    if (!frameSpec) {
+                        return { body: null, hands: null, tool: null };
                     }
-                }
-                if (characterHandsEl) {
-                    if (frameUrl) {
-                        characterHandsEl.style.backgroundImage = `url(${frameUrl})`;
-                        characterHandsEl.dataset.placeholder = 'false';
-                    } else {
-                        characterHandsEl.style.removeProperty('background-image');
-                        characterHandsEl.dataset.placeholder = 'true';
+                    if (typeof frameSpec === 'string') {
+                        return { body: frameSpec, hands: frameSpec, tool: frameSpec };
                     }
-                }
-                if (characterToolEl) {
-                    if (frameUrl) {
-                        characterToolEl.style.backgroundImage = `url(${frameUrl})`;
-                        characterToolEl.dataset.placeholder = 'false';
-                    } else {
-                        characterToolEl.style.removeProperty('background-image');
-                        characterToolEl.dataset.placeholder = 'true';
+                    if (typeof frameSpec === 'object') {
+                        const base = frameSpec.base || frameSpec.default || frameSpec.all || null;
+                        return {
+                            body: frameSpec.body ?? base ?? null,
+                            hands: frameSpec.hands ?? frameSpec.body ?? base ?? null,
+                            tool: frameSpec.tool ?? frameSpec.hands ?? frameSpec.body ?? base ?? null
+                        };
                     }
+                    return { body: null, hands: null, tool: null };
+                };
+                const fallbackSpec = normalizeFrameSpec(frames['idle'] ?? null);
+                const targetSpec = frameKey === 'idle'
+                    ? fallbackSpec
+                    : normalizeFrameSpec(frames[frameKey] ?? null);
+                const merged = {
+                    body: targetSpec.body ?? fallbackSpec.body ?? null,
+                    hands: targetSpec.hands ?? fallbackSpec.hands ?? null,
+                    tool: targetSpec.tool ?? fallbackSpec.tool ?? null
+                };
+                const formatFrameUrl = (value) => {
+                    if (!value || typeof value !== 'string') {
+                        return '';
+                    }
+                    const trimmed = value.trim();
+                    return trimmed.startsWith('url(') ? trimmed : `url(${trimmed})`;
+                };
+                const applyLayer = (element, url) => {
+                    if (!element) {
+                        return;
+                    }
+                    if (url) {
+                        element.style.backgroundImage = formatFrameUrl(url);
+                        element.dataset.placeholder = 'false';
+                        element.dataset.skin = skinId;
+                    } else {
+                        element.style.removeProperty('background-image');
+                        element.dataset.placeholder = 'true';
+                        element.removeAttribute('data-skin');
+                    }
+                };
+                applyLayer(characterBodyEl, merged.body);
+                applyLayer(characterHandsEl, merged.hands);
+                applyLayer(characterToolEl, merged.tool);
+                if (characterShadowEl) {
+                    const bodyActive = Boolean(merged.body);
+                    characterShadowEl.style.opacity = bodyActive ? '0.45' : '0.2';
                 }
-        if (characterShadowEl) {
-            characterShadowEl.style.opacity = frameUrl ? '0.45' : '0.2';
-        }
-    }
+                state.currentSkinId = skinId;
+                state.currentFrameKey = frameKey;
+                updateAssetStatusPanel();
+            }
 
-    function setCharacterPose(pose = 'idle', durationMs = 900) {
-        if (!characterShellEl) {
-            return;
-        }
-        if (state.characterPoseTimeout) {
-            clearTimeout(state.characterPoseTimeout);
-            state.characterPoseTimeout = null;
-        }
-        characterShellEl.dataset.pose = pose;
-        if (pose !== 'idle' && durationMs > 0) {
-            state.characterPoseTimeout = window.setTimeout(() => {
-                characterShellEl.dataset.pose = 'idle';
-                state.characterPoseTimeout = null;
-            }, durationMs);
-        }
-    }
+            function setCharacterPose(pose = 'idle', durationMs = 900) {
+                if (!characterShellEl) {
+                    return;
+                }
+                if (state.characterPoseTimeout) {
+                    clearTimeout(state.characterPoseTimeout);
+                    state.characterPoseTimeout = null;
+                }
+                characterShellEl.dataset.pose = pose;
+                state.currentPose = pose;
+                updateAssetStatusPanel();
+                if (pose !== 'idle' && durationMs > 0) {
+                    state.characterPoseTimeout = window.setTimeout(() => {
+                        characterShellEl.dataset.pose = 'idle';
+                        state.currentPose = 'idle';
+                        state.characterPoseTimeout = null;
+                        updateAssetStatusPanel();
+                    }, durationMs);
+                }
+            }
 
             function updateSeasoningVisual() {
                 if (!cabbageSeasoningEl) {
@@ -2164,17 +2369,67 @@
                     if (background) {
                         sceneGroundEl.style.backgroundImage = `url(${background})`;
                         sceneGroundEl.dataset.background = 'manifest';
+                        sceneGroundEl.dataset.backgroundSource = getAssetBasename(background) || 'manifest';
                     } else {
                         sceneGroundEl.style.removeProperty('background-image');
                         sceneGroundEl.dataset.background = 'default';
+                        sceneGroundEl.dataset.backgroundSource = 'default';
                     }
+                    sceneGroundEl.dataset.debug = 'false';
+                    if (cycleDebugBgBtn) {
+                        cycleDebugBgBtn.textContent = 'Cycle Debug Background';
+                    }
+                    debugBackgroundIndex = -1;
                 }
                 const texture = manifest?.bucket?.textures?.seasoning || null;
+                state.currentBackground = background || null;
+                state.currentSeasoningTexture = texture || null;
                 if (cabbageSeasoningEl) {
-                    cabbageSeasoningEl.style.backgroundImage = texture ? `url(${texture})` : '';
+                    if (texture) {
+                        cabbageSeasoningEl.style.backgroundImage = `url(${texture})`;
+                        cabbageSeasoningEl.dataset.texture = getAssetBasename(texture) || 'seasoning';
+                    } else {
+                        cabbageSeasoningEl.style.removeProperty('background-image');
+                        cabbageSeasoningEl.removeAttribute('data-texture');
+                    }
                 }
                 applySkinFrames('idle');
                 setCharacterPose('idle', 0);
+                updateAssetStatusPanel();
+            }
+
+            function cycleDebugBackground() {
+                if (!sceneGroundEl) {
+                    return;
+                }
+                debugBackgroundIndex += 1;
+                if (debugBackgroundIndex >= DEBUG_BACKGROUNDS.length) {
+                    debugBackgroundIndex = -1;
+                    if (state.currentBackground) {
+                        sceneGroundEl.style.backgroundImage = `url(${state.currentBackground})`;
+                        sceneGroundEl.dataset.background = 'manifest';
+                        sceneGroundEl.dataset.backgroundSource = getAssetBasename(state.currentBackground) || 'manifest';
+                    } else {
+                        sceneGroundEl.style.removeProperty('background-image');
+                        sceneGroundEl.dataset.background = 'default';
+                        sceneGroundEl.dataset.backgroundSource = 'default';
+                    }
+                    sceneGroundEl.dataset.debug = 'false';
+                    if (cycleDebugBgBtn) {
+                        cycleDebugBgBtn.textContent = 'Cycle Debug Background';
+                    }
+                    updateAssetStatusPanel();
+                    return;
+                }
+                const pattern = DEBUG_BACKGROUNDS[debugBackgroundIndex];
+                sceneGroundEl.style.backgroundImage = pattern;
+                sceneGroundEl.dataset.background = 'debug';
+                sceneGroundEl.dataset.backgroundSource = `pattern-${debugBackgroundIndex + 1}`;
+                sceneGroundEl.dataset.debug = 'true';
+                if (cycleDebugBgBtn) {
+                    cycleDebugBgBtn.textContent = 'Next Debug Pattern';
+                }
+                updateAssetStatusPanel();
             }
 
             function applyEffectStyling(node, effectId) {
@@ -3305,6 +3560,30 @@ function ensureSensorState(sensorId) {
                     }
                 });
                 toggleDevPanel(false);
+
+                if (reloadManifestBtn) {
+                    const reloadLabel = reloadManifestBtn.textContent;
+                    reloadManifestBtn.addEventListener('click', async () => {
+                        if (state.assetStatus === 'loading') {
+                            return;
+                        }
+                        reloadManifestBtn.disabled = true;
+                        reloadManifestBtn.textContent = 'Reloading...';
+                        try {
+                            await loadAssetManifest();
+                        } finally {
+                            reloadManifestBtn.disabled = false;
+                            reloadManifestBtn.textContent = reloadLabel;
+                        }
+                    });
+                }
+                if (cycleDebugBgBtn) {
+                    cycleDebugBgBtn.textContent = 'Cycle Debug Background';
+                    cycleDebugBgBtn.addEventListener('click', () => {
+                        cycleDebugBackground();
+                    });
+                }
+                updateAssetStatusPanel();
 
                 loadAssetManifest().catch((error) => {
                     console.warn('[Assets] manifest load failed', error);
