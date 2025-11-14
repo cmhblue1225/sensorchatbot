@@ -2419,6 +2419,80 @@ class DeveloperRoutes {
             </div>
         </div>
 
+        <!-- 🆕 수정 완료 성공 모달 -->
+        <div id="success-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(6px); z-index: 2000; align-items: center; justify-content: center; animation: fadeIn 0.3s ease-out;">
+            <div class="modal-content" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.15)), rgba(30, 41, 59, 0.98); border: 2px solid rgba(16, 185, 129, 0.6); border-radius: 20px; padding: 2.5rem; max-width: 600px; width: 90%; box-shadow: 0 20px 60px rgba(16, 185, 129, 0.3); animation: slideIn 0.4s ease-out;">
+                <div class="modal-header" style="text-align: center; margin-bottom: 2rem;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem; animation: successPulse 0.6s ease-out;">✅</div>
+                    <h3 id="success-modal-title" style="font-size: 1.75rem; font-weight: 700; color: #10B981; margin-bottom: 0.5rem;">수정 완료!</h3>
+                </div>
+
+                <!-- 버전 정보 -->
+                <div id="success-modal-version" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; text-align: center;">
+                    <div style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">버전 업데이트</div>
+                    <div style="font-size: 1.25rem; font-weight: 600; color: #E2E8F0;">
+                        <span id="success-prev-version">v1.0</span>
+                        <span style="color: #10B981; margin: 0 0.5rem;">→</span>
+                        <span id="success-new-version" style="color: #10B981;">v1.1</span>
+                    </div>
+                </div>
+
+                <!-- AI 상세 설명 -->
+                <div id="success-modal-explanation" style="background: rgba(139, 92, 246, 0.08); border-left: 3px solid #8B5CF6; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+                    <div style="color: #A78BFA; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">📝 수정 내용:</div>
+                    <div id="success-explanation-text" style="color: #CBD5E1; line-height: 1.6; font-size: 0.95rem;">
+                        로딩 중...
+                    </div>
+                </div>
+
+                <!-- 변경 사항 리스트 -->
+                <div id="success-modal-changes" style="background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 1.25rem; margin-bottom: 2rem;">
+                    <div style="color: #94A3B8; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">📊 변경 사항:</div>
+                    <div id="success-changes-list" style="color: #E2E8F0;">
+                        <!-- 동적으로 생성 -->
+                    </div>
+                </div>
+
+                <!-- 액션 버튼들 -->
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <button id="success-view-history-btn" onclick="openHistoryFromSuccessModal()" style="flex: 1; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; padding: 0.875rem 1.5rem; border-radius: 12px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);">
+                        📋 수정 이력 보기
+                    </button>
+                    <button onclick="closeSuccessModal()" style="flex: 1; background: rgba(71, 85, 105, 0.5); color: #E2E8F0; border: 1px solid rgba(148, 163, 184, 0.3); padding: 0.875rem 1.5rem; border-radius: 12px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s;">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            @keyframes slideIn {
+                from {
+                    transform: translateY(-30px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+
+            @keyframes successPulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+            }
+
+            #success-view-history-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+            }
+        </style>
+
         <!-- 게임 업로드 모달 -->
         <div id="upload-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
             <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 16px; padding: 2rem; max-width: 500px; width: 90%;">
@@ -2592,6 +2666,64 @@ class DeveloperRoutes {
                 document.getElementById('manager-history-modal').style.display = 'none';
             }
 
+            // 🆕 성공 모달 표시
+            function showSuccessModal(data) {
+                const modal = document.getElementById('success-modal');
+
+                // 제목 설정
+                const titleEl = document.getElementById('success-modal-title');
+                if (data.type === 'bug_fix') {
+                    titleEl.textContent = '버그가 수정되었습니다!';
+                } else {
+                    titleEl.textContent = '기능이 추가되었습니다!';
+                }
+
+                // 버전 정보 설정
+                document.getElementById('success-prev-version').textContent = data.previousVersion || 'v1.0';
+                document.getElementById('success-new-version').textContent = data.version || 'v1.1';
+
+                // AI 설명 설정
+                const explanationEl = document.getElementById('success-explanation-text');
+                explanationEl.textContent = data.explanation || '수정이 완료되었습니다.';
+
+                // 변경 사항 리스트 설정
+                const changesEl = document.getElementById('success-changes-list');
+                if (data.changes && data.changes.length > 0) {
+                    changesEl.innerHTML = data.changes.map(change =>
+                        \`<div style="padding: 0.5rem 0; border-bottom: 1px solid rgba(148, 163, 184, 0.2); display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="color: #10B981;">•</span>
+                            <span>\${change}</span>
+                        </div>\`
+                    ).join('');
+                } else {
+                    changesEl.innerHTML = '<div style="color: #94A3B8;">변경 사항이 감지되지 않았습니다.</div>';
+                }
+
+                // gameId 저장 (이력 보기용)
+                modal.dataset.gameId = data.gameId;
+
+                // 모달 표시
+                modal.style.display = 'flex';
+            }
+
+            // 🆕 성공 모달 닫기
+            function closeSuccessModal() {
+                const modal = document.getElementById('success-modal');
+                modal.style.display = 'none';
+            }
+
+            // 🆕 성공 모달에서 이력 보기
+            function openHistoryFromSuccessModal() {
+                const modal = document.getElementById('success-modal');
+                const gameId = modal.dataset.gameId;
+
+                closeSuccessModal();
+
+                if (gameId) {
+                    viewManagerHistory(gameId);
+                }
+            }
+
             async function submitManagerBugReport() {
                 const bugDescription = document.getElementById('manager-bug-description').value.trim();
 
@@ -2632,7 +2764,11 @@ class DeveloperRoutes {
                     }
 
                     if (data.success) {
-                        alert('✅ 버그가 성공적으로 수정되었습니다!');
+                        showSuccessModal({
+                            type: 'bug_fix',
+                            gameId: currentManagerGameId,
+                            ...data
+                        });
                         closeManagerBugModal();
                         loadManagerGames();
                     } else {
@@ -2686,7 +2822,11 @@ class DeveloperRoutes {
                     }
 
                     if (data.success) {
-                        alert('✅ 기능이 성공적으로 추가되었습니다!');
+                        showSuccessModal({
+                            type: 'feature_add',
+                            gameId: currentManagerGameId,
+                            ...data
+                        });
                         closeManagerFeatureModal();
                         loadManagerGames();
                     } else {

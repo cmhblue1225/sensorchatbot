@@ -234,10 +234,11 @@ class GameMaintenanceManager {
             }
 
             // 3. 버전 증가
+            const previousVersion = session.version;  // 이전 버전 저장
             const newVersion = this.incrementVersion(session.version);
 
             // 4. 버전 백업 (Storage 지원)
-            await this.backupVersion(gameId, session.version, currentCode);
+            await this.backupVersion(gameId, previousVersion, currentCode);
 
             // 5. 수정된 코드 저장 (Storage + Local)
             const saveResults = await this.saveGameCode(gameId, fixResult.fixedCode, newVersion);
@@ -271,11 +272,22 @@ class GameMaintenanceManager {
 
             console.log(`✅ 버그 수정 완료: ${gameId} (v${session.version})`);
 
+            // 🆕 AI 수정 설명 생성
+            const explanation = await this.generateModificationSummary(
+                'bug_fix',
+                bugDescription,
+                currentCode,
+                fixResult.fixedCode
+            );
+
             return {
                 success: true,
                 message: '버그가 수정되었습니다!',
                 version: session.version,
-                changes: fixResult.changes
+                previousVersion: previousVersion,
+                changes: fixResult.changes,
+                explanation: explanation,
+                timestamp: Date.now()
             };
 
         } catch (error) {
@@ -440,10 +452,11 @@ ${currentCode}
             }
 
             // 3. 버전 증가
+            const previousVersion = session.version;  // 이전 버전 저장
             const newVersion = this.incrementVersion(session.version);
 
             // 4. 버전 백업 (Storage 지원)
-            await this.backupVersion(gameId, session.version, currentCode);
+            await this.backupVersion(gameId, previousVersion, currentCode);
 
             // 5. 수정된 코드 저장 (Storage + Local)
             const saveResults = await this.saveGameCode(gameId, addResult.enhancedCode, newVersion);
@@ -477,11 +490,22 @@ ${currentCode}
 
             console.log(`✅ 기능 추가 완료: ${gameId} (v${session.version})`);
 
+            // 🆕 AI 수정 설명 생성
+            const explanation = await this.generateModificationSummary(
+                'feature_add',
+                featureDescription,
+                currentCode,
+                addResult.enhancedCode
+            );
+
             return {
                 success: true,
                 message: '기능이 추가되었습니다!',
                 version: session.version,
-                changes: addResult.changes
+                previousVersion: previousVersion,
+                changes: addResult.changes,
+                explanation: explanation,
+                timestamp: Date.now()
             };
 
         } catch (error) {
@@ -701,6 +725,97 @@ ${currentCode}
         }
 
         return changes.length > 0 ? changes : ['코드 수정됨'];
+    }
+
+    /**
+     * 🆕 수정 사항 상세 설명 생성 (Claude AI 활용)
+     *
+     * @param {string} type - 'bug_fix' 또는 'feature_add'
+     * @param {string} description - 사용자가 입력한 버그/기능 설명
+     * @param {string} oldCode - 수정 전 코드
+     * @param {string} newCode - 수정 후 코드
+     * @returns {Promise<string>} - 자연어 수정 설명 (2-3문장)
+     */
+    async generateModificationSummary(type, description, oldCode, newCode) {
+        console.log(`📝 수정 설명 생성 시작 (${type})...`);
+
+        const typeLabel = type === 'bug_fix' ? '버그 수정' : '기능 추가';
+        const promptIntro = type === 'bug_fix'
+            ? `다음 버그를 수정했습니다: "${description}"`
+            : `다음 기능을 추가했습니다: "${description}"`;
+
+        const prompt = `당신은 코드 수정 내역을 명확하게 설명하는 전문가입니다.
+
+${promptIntro}
+
+**수정 전 코드 길이**: ${oldCode.length}자
+**수정 후 코드 길이**: ${newCode.length}자
+
+**작업**:
+아래 수정 전/후 코드를 비교하여, **어떤 부분을 어떻게 수정했는지** 2-3문장으로 명확하게 설명하세요.
+
+**설명 가이드**:
+- 구체적인 변수명, 함수명, 값을 언급하세요
+- 사용자가 이해하기 쉬운 자연어로 작성하세요
+- 기술적 세부사항과 사용자 경험 개선을 모두 포함하세요
+
+예시 (버그 수정):
+"센서 민감도가 너무 높아서 미세한 움직임에도 과도하게 반응하던 문제를 해결했습니다. TILT_THRESHOLD 값을 15에서 25로 조정하여 더 안정적인 제어가 가능하도록 개선했습니다."
+
+예시 (기능 추가):
+"게임 중 일시정지 기능을 추가했습니다. 'P' 키 또는 일시정지 버튼을 누르면 게임이 멈추며, 다시 누르면 이어서 플레이할 수 있습니다. 일시정지 중에는 반투명 오버레이가 표시됩니다."
+
+**수정 전 코드 (일부)**:
+\`\`\`
+${oldCode.substring(0, 2000)}
+...
+\`\`\`
+
+**수정 후 코드 (일부)**:
+\`\`\`
+${newCode.substring(0, 2000)}
+...
+\`\`\`
+
+**2-3문장 설명:**`;
+
+        try {
+            const startTime = Date.now();
+
+            const message = await this.anthropicClient.messages.create({
+                model: 'claude-sonnet-4-5-20250929',
+                max_tokens: 500,  // 짧은 설명이므로 500 토큰
+                temperature: 0.4,  // 약간의 창의성
+                thinking: {
+                    type: 'enabled',
+                    budget_tokens: 5000  // 5K 토큰 사고 예산
+                },
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }]
+            });
+
+            const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
+            console.log(`✅ 수정 설명 생성 완료 (${elapsedTime}초)`);
+
+            // 텍스트 블록 추출
+            const textBlock = message.content.find(block => block.type === 'text');
+            if (!textBlock) {
+                console.warn('⚠️ 텍스트 블록을 찾을 수 없음, 기본 설명 사용');
+                return `${typeLabel} 완료: ${description}`;
+            }
+
+            const explanation = textBlock.text.trim();
+            console.log(`📝 생성된 설명: ${explanation.substring(0, 100)}...`);
+
+            return explanation;
+
+        } catch (error) {
+            console.error('❌ 수정 설명 생성 실패:', error.message);
+            // 실패 시 기본 설명 반환 (전체 프로세스 중단하지 않음)
+            return `${typeLabel} 완료: ${description}`;
+        }
     }
 
     /**
