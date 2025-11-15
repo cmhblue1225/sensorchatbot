@@ -146,9 +146,9 @@
       "cameraLookAhead": 5
     },
     "spawning": {
-      "spawnInterval": 2,
-      "spawnDistance": 30,
-      "despawnDistance": -10
+      "spawnInterval": 1,
+      "spawnDistance": 6,
+      "despawnDistance": -5
     },
     "scoring": {
       "perfect": 100,

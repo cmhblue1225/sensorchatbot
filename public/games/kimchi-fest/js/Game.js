@@ -57,7 +57,7 @@ export class Game {
         this.lastFrameTime = 0;
 
         // Interaction range
-        this.interactionRange = 3;
+        this.interactionRange = 5;
 
         // Audio (metronome)
         this.audioContext = null;
