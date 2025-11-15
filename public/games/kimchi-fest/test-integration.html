@@ -164,6 +164,14 @@
             <h1>🎮 Asset Controls</h1>
 
             <div class="control-group">
+                <label>Phase 1 - Character & Tools</label>
+                <button id="toggle-chef" class="active">👨‍🍳 Chef</button>
+                <button id="toggle-chef-animation">🔄 Switch Animation</button>
+                <button id="toggle-knife" class="active">🔪 Knife</button>
+                <button id="toggle-ladle" class="active">🥄 Ladle</button>
+            </div>
+
+            <div class="control-group">
                 <label>Phase 2 - Ingredients</label>
                 <button id="toggle-cabbage" class="active">🥬 Cabbage</button>
                 <button id="toggle-cabbage-variant">🌶️ Switch Variant</button>
@@ -223,7 +231,7 @@
             </div>
             <div class="stat-row">
                 <span class="stat-label">Loaded:</span>
-                <span class="stat-value" id="stat-loaded">0/5</span>
+                <span class="stat-value" id="stat-loaded">0/9</span>
             </div>
         </div>
     </div>
@@ -290,6 +298,10 @@
 
         // Asset storage
         const assets = {
+            chef: null,
+            chefSwing: null,
+            knife: null,
+            ladle: null,
             cabbage: null,
             jar: null,
             hanok: null,
@@ -298,6 +310,9 @@
         };
 
         const models = {
+            chefMesh: null,
+            knifeMesh: null,
+            ladleMesh: null,
             cabbageMesh: null,
             jarBody: null,
             jarLid: null,
@@ -308,11 +323,12 @@
 
         let cabbageVariant = 'raw';
         let jarLidOpen = false;
+        let chefAnimation = 'idle'; // 'idle' or 'swing'
 
         // Loader
         const loader = new GLTFLoader();
         let loadedCount = 0;
-        const totalAssets = 5;
+        const totalAssets = 9; // Phase 1: 4 (chef idle, swing, knife, ladle), Phase 2: 2, Phase 3: 3
 
         function updateLoadingStatus(message) {
             document.getElementById('loading-status').textContent = message;
@@ -348,6 +364,52 @@
         // Load all assets
         async function loadAllAssets() {
             try {
+                // Phase 1 - Chef Character (Idle)
+                const chefGltf = await loadAsset('./assets/characters/chef-character-idle.glb', 'Chef (Idle)');
+                assets.chef = chefGltf;
+                models.chefMesh = chefGltf.scene;
+                models.chefMesh.position.set(0, 0, 4);
+                models.chefMesh.scale.set(1.5, 1.5, 1.5);
+                models.chefMesh.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                scene.add(models.chefMesh);
+
+                // Load swing animation (for switching)
+                const chefSwingGltf = await loadAsset('./assets/characters/chef-character-swing.glb', 'Chef (Swing)');
+                assets.chefSwing = chefSwingGltf;
+
+                // Phase 1 - Knife
+                const knifeGltf = await loadAsset('./assets/characters/knife.glb', 'Knife');
+                assets.knife = knifeGltf;
+                models.knifeMesh = knifeGltf.scene;
+                models.knifeMesh.position.set(-1.5, 0.8, 5);
+                models.knifeMesh.rotation.y = Math.PI / 4;
+                models.knifeMesh.scale.set(2, 2, 2);
+                models.knifeMesh.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                    }
+                });
+                scene.add(models.knifeMesh);
+
+                // Phase 1 - Ladle
+                const ladleGltf = await loadAsset('./assets/characters/ladle.glb', 'Ladle');
+                assets.ladle = ladleGltf;
+                models.ladleMesh = ladleGltf.scene;
+                models.ladleMesh.position.set(1.5, 0.8, 5);
+                models.ladleMesh.rotation.y = -Math.PI / 4;
+                models.ladleMesh.scale.set(2, 2, 2);
+                models.ladleMesh.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                    }
+                });
+                scene.add(models.ladleMesh);
+
                 // Phase 2 - Cabbage
                 const cabbageGltf = await loadAsset('./assets/cabbage.glb', 'Cabbage');
                 assets.cabbage = cabbageGltf;
@@ -484,7 +546,55 @@
             document.getElementById('stat-materials').textContent = materials.size;
         }
 
-        // Controls
+        // Controls - Phase 1
+        document.getElementById('toggle-chef').addEventListener('click', (e) => {
+            if (models.chefMesh) {
+                models.chefMesh.visible = !models.chefMesh.visible;
+                e.target.classList.toggle('active');
+            }
+        });
+
+        document.getElementById('toggle-chef-animation').addEventListener('click', () => {
+            if (models.chefMesh && assets.chef && assets.chefSwing) {
+                scene.remove(models.chefMesh);
+
+                chefAnimation = chefAnimation === 'idle' ? 'swing' : 'idle';
+
+                if (chefAnimation === 'idle') {
+                    models.chefMesh = assets.chef.scene.clone();
+                } else {
+                    models.chefMesh = assets.chefSwing.scene.clone();
+                }
+
+                models.chefMesh.position.set(0, 0, 4);
+                models.chefMesh.scale.set(1.5, 1.5, 1.5);
+                models.chefMesh.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                scene.add(models.chefMesh);
+
+                console.log(`Chef animation switched to: ${chefAnimation}`);
+            }
+        });
+
+        document.getElementById('toggle-knife').addEventListener('click', (e) => {
+            if (models.knifeMesh) {
+                models.knifeMesh.visible = !models.knifeMesh.visible;
+                e.target.classList.toggle('active');
+            }
+        });
+
+        document.getElementById('toggle-ladle').addEventListener('click', (e) => {
+            if (models.ladleMesh) {
+                models.ladleMesh.visible = !models.ladleMesh.visible;
+                e.target.classList.toggle('active');
+            }
+        });
+
+        // Controls - Phase 2
         document.getElementById('toggle-cabbage').addEventListener('click', (e) => {
             if (models.cabbageMesh) {
                 models.cabbageMesh.visible = !models.cabbageMesh.visible;

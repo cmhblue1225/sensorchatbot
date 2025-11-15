@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kimchi Fest - 3D Rhythm Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Overlay */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Score Display */
+        #score-display {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            text-align: right;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        #score-value {
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        #score-label {
+            font-size: 16px;
+            color: #aaa;
+            margin-top: -5px;
+        }
+
+        /* Combo Display */
+        #combo-display {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            text-align: left;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        #combo-value {
+            font-size: 72px;
+            font-weight: bold;
+            color: #ff6b6b;
+            line-height: 1;
+        }
+
+        #combo-label {
+            font-size: 20px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        #combo-display.active #combo-value {
+            animation: comboPulse 0.3s ease-out;
+        }
+
+        @keyframes comboPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Judgment Display */
+        #judgment-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 96px;
+            font-weight: bold;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.9);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #judgment-display.show {
+            animation: judgmentPop 0.6s ease-out;
+        }
+
+        @keyframes judgmentPop {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            30% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -70%) scale(1);
+            }
+        }
+
+        #judgment-display.perfect {
+            color: #ffd700;
+            text-shadow: 0 0 30px #ffd700;
+        }
+
+        #judgment-display.good {
+            color: #4ade80;
+            text-shadow: 0 0 20px #4ade80;
+        }
+
+        #judgment-display.miss {
+            color: #f87171;
+            text-shadow: 0 0 20px #f87171;
+        }
+
+        /* Beat Indicator */
+        #beat-indicator {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+        }
+
+        .beat-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: all 0.1s ease;
+        }
+
+        .beat-dot.active {
+            background: #ffd700;
+            box-shadow: 0 0 20px #ffd700;
+            transform: scale(1.5);
+        }
+
+        /* Progress Bar */
+        #progress-bar {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            right: 30px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        #progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80, #ffd700);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        /* Controls Display */
+        #controls-display {
+            position: absolute;
+            bottom: 100px;
+            left: 30px;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            color: white;
+        }
+
+        #loading-screen.hidden {
+            display: none;
+        }
+
+        #loading-text {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        #loading-progress {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        #loading-progress-fill {
+            height: 100%;
+            background: #4ade80;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            pointer-events: all;
+        }
+
+        #start-screen.hidden {
+            display: none;
+        }
+
+        #start-screen h1 {
+            font-size: 72px;
+            color: #ffd700;
+            margin-bottom: 30px;
+            text-shadow: 0 0 30px #ffd700;
+        }
+
+        #start-button {
+            padding: 20px 60px;
+            font-size: 28px;
+            background: linear-gradient(135deg, #ffd700, #ff6b6b);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.5);
+            transition: all 0.3s;
+            pointer-events: all;
+        }
+
+        #start-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.7);
+        }
+
+        #start-button:active {
+            transform: translateY(-2px);
+        }
+
+        /* Results Screen */
+        #results-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            pointer-events: all;
+            color: white;
+        }
+
+        #results-screen.show {
+            display: flex;
+        }
+
+        #results-content {
+            text-align: center;
+        }
+
+        #results-grade {
+            font-size: 120px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 50px #ffd700;
+            margin-bottom: 20px;
+        }
+
+        #results-score {
+            font-size: 48px;
+            margin-bottom: 30px;
+        }
+
+        #results-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-item {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        #restart-button {
+            padding: 15px 50px;
+            font-size: 24px;
+            background: #4ade80;
+            border: none;
+            border-radius: 30px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(74, 222, 128, 0.5);
+            transition: all 0.3s;
+            pointer-events: all;
+        }
+
+        #restart-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(74, 222, 128, 0.7);
+        }
+
+        /* Debug Panel */
+        #debug-panel {
+            position: absolute;
+            top: 120px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-size: 12px;
+            font-family: monospace;
+            max-width: 300px;
+            display: none;
+        }
+
+        #debug-panel.show {
+            display: block;
+        }
+
+        .debug-line {
+            margin: 3px 0;
+        }
+
+        #debug-toggle {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            pointer-events: all;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div id="loading-text">Loading Assets...</div>
+        <div id="loading-progress">
+            <div id="loading-progress-fill"></div>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1>Kimchi Fest</h1>
+        <p style="font-size: 20px; margin-bottom: 30px; color: #aaa;">3D Rhythm Action Game</p>
+
+        <!-- QR Code Container -->
+        <div id="qr-container" style="margin-bottom: 30px; min-height: 200px;">
+            <p style="color: #aaa; font-size: 14px;">Connecting to server...</p>
+        </div>
+
+        <button id="start-button" disabled>CONNECTING...</button>
+
+        <div style="margin-top: 40px; font-size: 14px; color: #666;">
+            <p>📱 Scan QR code with mobile to connect sensor</p>
+            <p>⌨️ Or use keyboard: Space / Z / Click = Swing</p>
+        </div>
+    </div>
+
+    <!-- UI Overlay -->
+    <div id="ui-overlay">
+        <div id="debug-toggle">Debug (D)</div>
+
+        <!-- Score -->
+        <div id="score-display">
+            <div id="score-value">0</div>
+            <div id="score-label">SCORE</div>
+        </div>
+
+        <!-- Combo -->
+        <div id="combo-display">
+            <div id="combo-value">0</div>
+            <div id="combo-label">COMBO</div>
+        </div>
+
+        <!-- Judgment -->
+        <div id="judgment-display"></div>
+
+        <!-- Beat Indicator -->
+        <div id="beat-indicator">
+            <div class="beat-dot"></div>
+            <div class="beat-dot"></div>
+            <div class="beat-dot"></div>
+            <div class="beat-dot"></div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="progress-bar">
+            <div id="progress-fill"></div>
+        </div>
+
+        <!-- Controls -->
+        <div id="controls-display">
+            Keyboard: Space/Z = Swing | X/Enter = Season | C = Shake<br>
+            Mouse: Click = Swing<br>
+            Mobile: Shake device = Swing
+        </div>
+
+        <!-- Debug Panel -->
+        <div id="debug-panel">
+            <div class="debug-line">FPS: <span id="debug-fps">60</span></div>
+            <div class="debug-line">Beat: <span id="debug-beat">0</span></div>
+            <div class="debug-line">Progress: <span id="debug-progress">0%</span></div>
+            <div class="debug-line">Seasoning: <span id="debug-seasoning">0</span></div>
+            <div class="debug-line">Cabbage: <span id="debug-cabbage">0</span></div>
+            <div class="debug-line">Sensors: <span id="debug-sensors">0</span></div>
+        </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div id="results-screen">
+        <div id="results-content">
+            <div id="results-grade">A</div>
+            <div id="results-score">Score: 0</div>
+            <div id="results-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Perfect</div>
+                    <div class="stat-value" id="results-perfect">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Good</div>
+                    <div class="stat-value" id="results-good">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Miss</div>
+                    <div class="stat-value" id="results-miss">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Max Combo</div>
+                    <div class="stat-value" id="results-combo">0</div>
+                </div>
+            </div>
+            <button id="restart-button">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <!-- SessionSDK -->
+    <script src="/js/SessionSDK.js"></script>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import { Game } from './js/Game.js';
+
+        // UI Elements
+        const loadingScreen = document.getElementById('loading-screen');
+        const loadingProgressFill = document.getElementById('loading-progress-fill');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        const gameContainer = document.getElementById('game-container');
+
+        const scoreValue = document.getElementById('score-value');
+        const comboValue = document.getElementById('combo-value');
+        const comboDisplay = document.getElementById('combo-display');
+        const judgmentDisplay = document.getElementById('judgment-display');
+        const progressFill = document.getElementById('progress-fill');
+
+        const beatDots = document.querySelectorAll('.beat-dot');
+
+        const resultsScreen = document.getElementById('results-screen');
+        const resultsGrade = document.getElementById('results-grade');
+        const resultsScore = document.getElementById('results-score');
+        const resultsPerfect = document.getElementById('results-perfect');
+        const resultsGood = document.getElementById('results-good');
+        const resultsMiss = document.getElementById('results-miss');
+        const resultsCombo = document.getElementById('results-combo');
+        const restartButton = document.getElementById('restart-button');
+
+        const debugPanel = document.getElementById('debug-panel');
+        const debugToggle = document.getElementById('debug-toggle');
+        const qrContainer = document.getElementById('qr-container');
+
+        // Game instance
+        let game = null;
+        let sdk = null;
+        let session = null;
+        let debugMode = false;
+
+        // FPS counter
+        let frameCount = 0;
+        let lastFpsTime = performance.now();
+
+        // Initialize game
+        async function init() {
+            try {
+                // Initialize SessionSDK first
+                if (typeof window.SessionSDK !== 'undefined') {
+                    sdk = new window.SessionSDK({
+                        gameId: 'kimchi-fest-3d',
+                        gameType: 'solo',
+                        debug: true
+                    });
+
+                    // Setup SDK events
+                    sdk.on('connected', async () => {
+                        console.log('[SDK] Connected to server');
+
+                        // Create session
+                        try {
+                            session = await sdk.createSession();
+                            console.log('[SDK] Session created:', session.sessionCode);
+
+                            // Generate QR code
+                            const qrUrl = `${window.location.origin}/sensor.html?code=${session.sessionCode}`;
+                            qrContainer.innerHTML = `
+                                <div style="text-align: center;">
+                                    <div id="qr-code-image"></div>
+                                    <p style="margin-top: 10px; color: #4fc3f7; font-size: 16px; font-weight: bold;">
+                                        Session Code: ${session.sessionCode}
+                                    </p>
+                                    <p style="margin-top: 5px; color: #aaa; font-size: 12px;">
+                                        Scan to connect mobile sensor
+                                    </p>
+                                </div>
+                            `;
+
+                            // Generate QR code using QRCodeGenerator
+                            if (typeof window.QRCodeGenerator !== 'undefined') {
+                                const qrElement = await window.QRCodeGenerator.generateElement(qrUrl, 200);
+                                document.getElementById('qr-code-image').appendChild(qrElement);
+                            } else {
+                                document.getElementById('qr-code-image').innerHTML =
+                                    `<p style="color: #ffd700;">QR Code: ${qrUrl}</p>`;
+                            }
+
+                            startButton.disabled = false;
+                            startButton.textContent = 'START GAME';
+
+                        } catch (error) {
+                            console.error('[SDK] Session creation failed:', error);
+                            qrContainer.innerHTML = '<p style="color: #f87171;">Failed to create session</p>';
+                            startButton.disabled = false;
+                            startButton.textContent = 'START GAME (Keyboard Only)';
+                        }
+                    });
+
+                    sdk.on('sensor-connected', (event) => {
+                        const detail = event?.detail || event;
+                        console.log('[SDK] Sensor connected:', detail?.sensorId);
+                        qrContainer.innerHTML = `
+                            <div style="text-align: center; color: #4ade80;">
+                                <p style="font-size: 24px;">✅ Sensor Connected!</p>
+                                <p style="margin-top: 10px; font-size: 14px;">Ready to play with mobile</p>
+                            </div>
+                        `;
+                    });
+
+                } else {
+                    console.warn('[SDK] SessionSDK not available');
+                    qrContainer.innerHTML = '<p style="color: #aaa;">Keyboard/Mouse controls only</p>';
+                    startButton.disabled = false;
+                    startButton.textContent = 'START GAME';
+                }
+
+                game = new Game(gameContainer, { debug: debugMode });
+
+                // Setup callbacks
+                game.on('onLoadProgress', ({ loaded, total, percent }) => {
+                    loadingProgressFill.style.width = `${percent}%`;
+                });
+
+                game.on('onReady', async () => {
+                    loadingScreen.classList.add('hidden');
+                    startScreen.classList.remove('hidden');
+
+                    // Initialize SDK with game input adapter
+                    if (sdk && game.inputAdapter) {
+                        await game.inputAdapter.initializeSDK(sdk);
+                    }
+                });
+
+                game.on('onGameStart', () => {
+                    startScreen.classList.add('hidden');
+                    resultsScreen.classList.remove('show');
+                });
+
+                game.on('onScoreChange', (score) => {
+                    scoreValue.textContent = score.toLocaleString();
+                });
+
+                game.on('onComboChange', (combo) => {
+                    comboValue.textContent = combo;
+                    if (combo > 0) {
+                        comboDisplay.classList.add('active');
+                        setTimeout(() => comboDisplay.classList.remove('active'), 300);
+                    }
+                });
+
+                game.on('onHit', ({ judgment }) => {
+                    showJudgment(judgment);
+                });
+
+                game.on('onMiss', () => {
+                    showJudgment('miss');
+                });
+
+                game.on('onBeat', ({ beat }) => {
+                    updateBeatIndicator(beat);
+                    updateProgress();
+                    updateDebugPanel();
+                });
+
+                game.on('onGameOver', (results) => {
+                    showResults(results);
+                });
+
+                // Initialize
+                await game.initialize();
+
+            } catch (error) {
+                console.error('Game initialization failed:', error);
+                alert('Failed to load game. Please refresh the page.');
+            }
+        }
+
+        // Show judgment feedback
+        function showJudgment(judgment) {
+            judgmentDisplay.textContent = judgment.toUpperCase();
+            judgmentDisplay.className = `show ${judgment}`;
+
+            setTimeout(() => {
+                judgmentDisplay.className = '';
+            }, 600);
+        }
+
+        // Update beat indicator
+        function updateBeatIndicator(beat) {
+            const index = beat % 4;
+            beatDots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === index);
+            });
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            if (!game) return;
+            const stats = game.getStats();
+            const progress = (stats.scene?.railProgress || 0) * 100;
+            progressFill.style.width = `${progress}%`;
+        }
+
+        // Update debug panel
+        function updateDebugPanel() {
+            if (!debugMode || !game) return;
+
+            const stats = game.getStats();
+
+            document.getElementById('debug-beat').textContent = stats.rhythm?.currentBeat || 0;
+            document.getElementById('debug-progress').textContent = ((stats.scene?.railProgress || 0) * 100).toFixed(1) + '%';
+            document.getElementById('debug-seasoning').textContent = stats.spawning?.seasoningCount || 0;
+            document.getElementById('debug-cabbage').textContent = stats.spawning?.cabbageCount || 0;
+            document.getElementById('debug-sensors').textContent = stats.input?.connectedSensors || 0;
+
+            // FPS
+            frameCount++;
+            const now = performance.now();
+            if (now >= lastFpsTime + 1000) {
+                document.getElementById('debug-fps').textContent = frameCount;
+                frameCount = 0;
+                lastFpsTime = now;
+            }
+        }
+
+        // Show results
+        function showResults(results) {
+            resultsGrade.textContent = results.grade;
+            resultsScore.textContent = `Score: ${results.score.toLocaleString()}`;
+            resultsPerfect.textContent = results.hits.perfect;
+            resultsGood.textContent = results.hits.good;
+            resultsMiss.textContent = results.hits.miss;
+            resultsCombo.textContent = results.maxCombo;
+
+            resultsScreen.classList.add('show');
+        }
+
+        // Event handlers
+        startButton.addEventListener('click', () => {
+            if (game) {
+                game.start();
+            }
+        });
+
+        restartButton.addEventListener('click', () => {
+            if (game) {
+                game.start();
+            }
+        });
+
+        debugToggle.addEventListener('click', () => {
+            debugMode = !debugMode;
+            debugPanel.classList.toggle('show', debugMode);
+        });
+
+        // Keyboard shortcut for debug
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyD') {
+                debugMode = !debugMode;
+                debugPanel.classList.toggle('show', debugMode);
+            }
+        });
+
+        // Start initialization
+        init();
+    </script>
+</body>
+</html>

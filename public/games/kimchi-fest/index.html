@@ -1396,6 +1396,21 @@
             color: var(--muted);
             font-weight: 500;
         }
+
+        /* Embedded 3D game container */
+        .three-container {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: auto;
+        }
+
+        .three-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -1405,13 +1420,23 @@
     </header>
     <main class="game-stage">
         <div class="playfield" id="playfield-placeholder">
+            <!-- Embedded Three.js game -->
+            <div class="three-container" aria-label="3D Game Canvas">
+                <iframe
+                    id="three-frame"
+                    class="three-frame"
+                    src="./game-3d.html"
+                    title="Kimchi Fest 3D Game"
+                    allow="accelerometer; gyroscope">
+                </iframe>
+            </div>
             <div class="stage-overlay">
                 <p class="stage-label">현재 단계 · <span id="stage">Waiting</span></p>
-                <h3 id="stage-title">스테이지 대기 중</h3>
-                <p id="stage-instruction">라운드를 시작하면 단계 안내가 표시됩니다.</p>
+                <h3 id="stage-title">대기 중입니다</h3>
+                <p id="stage-instruction">모바일을 연결하면 안내가 표시됩니다.</p>
                 <p id="stage-result" class="stage-result" aria-live="polite"></p>
                 <div class="stage-badges">
-                    <span id="player-badge" class="stage-badge">싱글 모드</span>
+                    <span id="player-badge" class="stage-badge">플레이어 0명</span>
                     <span id="stage-cycle" class="stage-badge">0 / 2 단계</span>
                 </div>
             </div>
@@ -1444,13 +1469,13 @@
             </div>
             <div class="scene-layer" data-layer="effects" id="scene-effects" aria-hidden="true"></div>
             <div class="animation-track" id="animation-layer" aria-hidden="true"></div>
-            <div class="hud-chips" aria-label="게임 정보">
+            <div class="hud-chips" aria-label="점수 현황">
                 <article class="hud-chip" id="hud-timer">
                     <span>남은 시간</span>
                     <strong id="timer">00:45</strong>
                 </article>
                 <article class="hud-chip" id="hud-score">
-                    <span>총 점수</span>
+                    <span>현재 점수</span>
                     <strong id="score">--</strong>
                 </article>
                 <article class="hud-chip" id="hud-players">
@@ -3075,7 +3100,7 @@ function ensureSensorState(sensorId) {
                 const header = document.createElement('div');
                 header.className = 'log-line';
                 const label = document.createElement('strong');
-                label.textContent = `[${RATING_LABELS[rating] ?? rating.toUpperCase()}] ${sensorId ?? '—'}`;
+                label.textContent = `[${RATING_LABELS[rating] ?? rating.toUpperCase()}] ${sensorId ?? '?'}`;
                 const timestamp = document.createElement('span');
                 timestamp.textContent = `${timeFromStart.toFixed(2)} s`;
                 header.append(label, timestamp);
@@ -3095,7 +3120,7 @@ function ensureSensorState(sensorId) {
                 if (note) {
                     parts.push(note);
                 }
-                meta.textContent = parts.join(' • ');
+                meta.textContent = parts.join(' ? ');
 
                 item.append(header, meta);
                 logList.prepend(item);
@@ -3598,3 +3623,7 @@ function ensureSensorState(sensorId) {
     </script>
 </body>
 </html>
+
+
+
+

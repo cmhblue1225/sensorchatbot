@@ -1,0 +1,177 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "gameTitle": "Kimchi Fest",
+    "gameType": "3D Rhythm Action",
+    "targetOrientation": "+Y Up",
+    "targetFPS": 60
+  },
+  "assets": {
+    "character": {
+      "idle": {
+        "url": "./assets/characters/chef-character-idle.glb",
+        "scale": 1.5,
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "animations": ["idle"],
+        "conventions": {
+          "orientation": "+Y Up",
+          "units": "meters",
+          "animationNames": ["idle", "action_idle"]
+        }
+      },
+      "swing": {
+        "url": "./assets/characters/chef-character-swing.glb",
+        "scale": 1.5,
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "animations": ["swing", "action_swing"],
+        "conventions": {
+          "orientation": "+Y Up",
+          "units": "meters",
+          "animationNames": ["swing", "action_swing"]
+        }
+      }
+    },
+    "tools": {
+      "knife": {
+        "url": "./assets/characters/knife.glb",
+        "scale": 2.0,
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "attachPoint": "hand_R",
+        "conventions": {
+          "orientation": "+Y Up",
+          "pivotPoint": "handle"
+        }
+      },
+      "ladle": {
+        "url": "./assets/characters/ladle.glb",
+        "scale": 2.0,
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "attachPoint": "hand_R",
+        "conventions": {
+          "orientation": "+Y Up",
+          "pivotPoint": "handle"
+        }
+      }
+    },
+    "ingredients": {
+      "cabbage": {
+        "url": "./assets/cabbage.glb",
+        "scale": 1.0,
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "objectName": "Napa_Cabbage",
+        "materials": {
+          "raw": "Cabbage_Raw",
+          "seasoned": "Cabbage_Seasoned"
+        },
+        "conventions": {
+          "orientation": "+Y Up",
+          "materials": "2 slots (raw, seasoned)",
+          "pivot": "bottom center"
+        }
+      },
+      "seasoning": {
+        "url": "./assets/onggi-jar.glb",
+        "scale": 0.5,
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "objectNames": {
+          "body": "Onggi_Body",
+          "lid": "Onggi_Lid"
+        },
+        "conventions": {
+          "orientation": "+Y Up",
+          "pivot": "bottom center"
+        }
+      }
+    },
+    "environment": {
+      "hanok": {
+        "url": "./assets/hanok.glb",
+        "scale": 1.0,
+        "position": [0, 0, -5],
+        "rotation": [0, 0, 0],
+        "conventions": {
+          "orientation": "+Y Up",
+          "units": "meters"
+        }
+      },
+      "ground": {
+        "url": "./assets/ground.glb",
+        "scale": 1.0,
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "objectName": "Ground_Courtyard",
+        "conventions": {
+          "orientation": "+Y Up",
+          "tiling": "4x4 default"
+        }
+      },
+      "props": {
+        "url": "./assets/props.glb",
+        "scale": 1.0,
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "objectNames": {
+          "crate": "Prop_WoodenCrate",
+          "lantern": "Prop_Lantern",
+          "basket": "Prop_SeasoningBasket"
+        },
+        "conventions": {
+          "orientation": "+Y Up",
+          "instancing": "supported"
+        }
+      }
+    }
+  },
+  "gameplay": {
+    "rhythm": {
+      "bpm": 120,
+      "beatsPerMeasure": 4,
+      "offset": 0,
+      "timingWindows": {
+        "perfect": 0.05,
+        "good": 0.15,
+        "miss": 0.3
+      }
+    },
+    "rail": {
+      "pathLength": 50,
+      "chefSpeed": 5,
+      "cameraOffset": [0, 5, 10],
+      "cameraLookAhead": 5
+    },
+    "spawning": {
+      "spawnInterval": 2,
+      "spawnDistance": 30,
+      "despawnDistance": -10
+    },
+    "scoring": {
+      "perfect": 100,
+      "good": 50,
+      "miss": 0,
+      "comboMultiplier": 1.1
+    }
+  },
+  "userAssetConventions": {
+    "fileFormat": "GLB (binary glTF 2.0)",
+    "orientation": "+Y Up (REQUIRED)",
+    "units": "meters",
+    "scale": "1 unit = 1 meter",
+    "naming": {
+      "character": "Any skeleton with Mixamo-compatible bones",
+      "animations": "Clip names: 'idle', 'swing', or 'action_idle', 'action_swing'",
+      "ingredients": "Object names matter for material switching (e.g., 'Napa_Cabbage')",
+      "materials": "For variants, use consistent naming (e.g., '_Raw', '_Seasoned')"
+    },
+    "recommendations": {
+      "polyCount": "Keep under 10K tris per asset for mobile performance",
+      "textures": "Embed in GLB or use <2K resolution",
+      "animations": "Bake animations into GLB, 24 FPS recommended"
+    }
+  }
+}
