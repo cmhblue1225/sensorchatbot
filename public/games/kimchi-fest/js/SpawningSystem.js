@@ -23,8 +23,8 @@ export class SpawningSystem {
 
         // Spawning config
         const gameplay = assetLoader.getGameplayConfig();
-        this.spawnInterval = gameplay.spawning?.spawnInterval ? Math.max(1, gameplay.spawning.spawnInterval) : 1; // beats between spawns
-        this.spawnDistance = gameplay.spawning?.spawnDistance || 6;
+        this.spawnInterval = gameplay.spawning?.spawnInterval ? Math.max(1, gameplay.spawning.spawnInterval) : 4; // beats between spawns
+        this.spawnDistance = gameplay.spawning?.spawnDistance || 10;
         this.despawnDistance = gameplay.spawning?.despawnDistance || -5;
 
         // Active objects

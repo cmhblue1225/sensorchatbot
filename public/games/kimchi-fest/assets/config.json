@@ -141,13 +141,13 @@
     },
     "rail": {
       "pathLength": 50,
-      "chefSpeed": 1.1,
+      "chefSpeed": 2.0,
       "cameraOffset": [0, 5, 10],
       "cameraLookAhead": 5
     },
     "spawning": {
-      "spawnInterval": 1,
-      "spawnDistance": 6,
+      "spawnInterval": 4,
+      "spawnDistance": 10,
       "despawnDistance": -5
     },
     "scoring": {

@@ -182,6 +182,9 @@ export class Game {
         if (nextNote) {
             const result = this.rhythmEngine.judgeAction(currentTime);
             judgment = result.judgment || 'miss';
+        } else {
+            // No pending note, but in range: treat as perfect to allow scoring
+            judgment = 'perfect';
         }
 
         // Apply seasoning to cabbage
