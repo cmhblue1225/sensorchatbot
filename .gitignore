@@ -126,7 +126,8 @@ build/
 # 테스트 결과
 test-results/
 
-#claude 파일
+# Claude Code 설정
+.claude/
 CLAUDE.md
 
 # 졸업작품 보고서 (개인 문서, Git 추적 제외)

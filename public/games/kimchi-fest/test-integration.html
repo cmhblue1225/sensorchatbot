@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kimchi Fest - 3D Asset Integration Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 300px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #4fc3f7;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        button {
+            width: 100%;
+            padding: 8px;
+            margin: 3px 0;
+            background: #4fc3f7;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #0288d1;
+        }
+
+        button.active {
+            background: #00c853;
+        }
+
+        #stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 11px;
+            line-height: 1.6;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+
+        .stat-label {
+            color: #aaa;
+        }
+
+        .stat-value {
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #4fc3f7;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .checkbox-group input {
+            margin-right: 8px;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas-container"></div>
+
+        <div id="loading">
+            <h2>Loading 3D Assets...</h2>
+            <div class="spinner"></div>
+            <p id="loading-status">Initializing...</p>
+        </div>
+
+        <div id="controls">
+            <h1>🎮 Asset Controls</h1>
+
+            <div class="control-group">
+                <label>Phase 2 - Ingredients</label>
+                <button id="toggle-cabbage" class="active">🥬 Cabbage</button>
+                <button id="toggle-cabbage-variant">🌶️ Switch Variant</button>
+                <button id="toggle-jar" class="active">🏺 Onggi Jar</button>
+                <button id="toggle-jar-lid">📦 Open/Close Lid</button>
+            </div>
+
+            <div class="control-group">
+                <label>Phase 3 - Environment</label>
+                <button id="toggle-hanok" class="active">🏛️ Hanok Building</button>
+                <button id="toggle-ground" class="active">🟫 Ground Plane</button>
+                <button id="toggle-props" class="active">📦 Props</button>
+            </div>
+
+            <div class="control-group">
+                <label>Lighting</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="toggle-ambient" checked>
+                    <label for="toggle-ambient">Ambient Light</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="toggle-key" checked>
+                    <label for="toggle-key">Key Light</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="toggle-fill" checked>
+                    <label for="toggle-fill">Fill Light</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="toggle-rim" checked>
+                    <label for="toggle-rim">Rim Light</label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button id="reset-camera">🎥 Reset Camera</button>
+            </div>
+        </div>
+
+        <div id="stats">
+            <h3 style="margin-bottom: 10px; color: #4fc3f7;">📊 Scene Stats</h3>
+            <div class="stat-row">
+                <span class="stat-label">Objects:</span>
+                <span class="stat-value" id="stat-objects">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Triangles:</span>
+                <span class="stat-value" id="stat-triangles">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Materials:</span>
+                <span class="stat-value" id="stat-materials">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">FPS:</span>
+                <span class="stat-value" id="stat-fps">60</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Loaded:</span>
+                <span class="stat-value" id="stat-loaded">0/5</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb); // Sky blue
+
+        const camera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        camera.position.set(10, 8, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(0, 2, 0);
+
+        // Lighting setup (following Phase 3 guide)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+        keyLight.position.set(5, 8, 5);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.width = 2048;
+        keyLight.shadow.mapSize.height = 2048;
+        keyLight.shadow.camera.left = -15;
+        keyLight.shadow.camera.right = 15;
+        keyLight.shadow.camera.top = 15;
+        keyLight.shadow.camera.bottom = -15;
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(0xb3d9ff, 0.3);
+        fillLight.position.set(-3, 5, -3);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(0xffe4b3, 0.6);
+        rimLight.position.set(-4, 3, -6);
+        scene.add(rimLight);
+
+        // Asset storage
+        const assets = {
+            cabbage: null,
+            jar: null,
+            hanok: null,
+            ground: null,
+            props: null
+        };
+
+        const models = {
+            cabbageMesh: null,
+            jarBody: null,
+            jarLid: null,
+            hanokGroup: null,
+            groundMesh: null,
+            propsGroup: null
+        };
+
+        let cabbageVariant = 'raw';
+        let jarLidOpen = false;
+
+        // Loader
+        const loader = new GLTFLoader();
+        let loadedCount = 0;
+        const totalAssets = 5;
+
+        function updateLoadingStatus(message) {
+            document.getElementById('loading-status').textContent = message;
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function loadAsset(url, name) {
+            return new Promise((resolve, reject) => {
+                updateLoadingStatus(`Loading ${name}...`);
+                loader.load(
+                    url,
+                    (gltf) => {
+                        loadedCount++;
+                        document.getElementById('stat-loaded').textContent = `${loadedCount}/${totalAssets}`;
+                        console.log(`✅ Loaded: ${name}`, gltf);
+                        resolve(gltf);
+                    },
+                    (progress) => {
+                        const percent = (progress.loaded / progress.total * 100).toFixed(0);
+                        updateLoadingStatus(`Loading ${name}... ${percent}%`);
+                    },
+                    (error) => {
+                        console.error(`❌ Error loading ${name}:`, error);
+                        reject(error);
+                    }
+                );
+            });
+        }
+
+        // Load all assets
+        async function loadAllAssets() {
+            try {
+                // Phase 2 - Cabbage
+                const cabbageGltf = await loadAsset('./assets/cabbage.glb', 'Cabbage');
+                assets.cabbage = cabbageGltf;
+                models.cabbageMesh = cabbageGltf.scene.getObjectByName('Napa_Cabbage');
+                if (models.cabbageMesh) {
+                    models.cabbageMesh.position.set(-3, 0, 2);
+                    models.cabbageMesh.castShadow = true;
+                    models.cabbageMesh.receiveShadow = true;
+                    scene.add(models.cabbageMesh);
+                }
+
+                // Phase 2 - Onggi Jar
+                const jarGltf = await loadAsset('./assets/onggi-jar.glb', 'Onggi Jar');
+                assets.jar = jarGltf;
+                models.jarBody = jarGltf.scene.getObjectByName('Onggi_Body');
+                models.jarLid = jarGltf.scene.getObjectByName('Onggi_Lid');
+
+                const jarGroup = new THREE.Group();
+                if (models.jarBody) {
+                    models.jarBody.castShadow = true;
+                    models.jarBody.receiveShadow = true;
+                    jarGroup.add(models.jarBody);
+                }
+                if (models.jarLid) {
+                    models.jarLid.castShadow = true;
+                    jarGroup.add(models.jarLid);
+                }
+                jarGroup.position.set(3, 0, 2);
+                scene.add(jarGroup);
+
+                // Phase 3 - Hanok
+                const hanokGltf = await loadAsset('./assets/hanok.glb', 'Hanok Building');
+                assets.hanok = hanokGltf;
+                models.hanokGroup = hanokGltf.scene;
+                models.hanokGroup.position.set(0, 0, -5);
+                models.hanokGroup.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                scene.add(models.hanokGroup);
+
+                // Phase 3 - Ground
+                const groundGltf = await loadAsset('./assets/ground.glb', 'Ground Plane');
+                assets.ground = groundGltf;
+                models.groundMesh = groundGltf.scene.getObjectByName('Ground_Courtyard');
+                if (models.groundMesh) {
+                    models.groundMesh.receiveShadow = true;
+                    scene.add(models.groundMesh);
+                }
+
+                // Phase 3 - Props
+                const propsGltf = await loadAsset('./assets/props.glb', 'Environmental Props');
+                assets.props = propsGltf;
+                models.propsGroup = new THREE.Group();
+
+                // Place props around the scene
+                const crate1 = propsGltf.scene.getObjectByName('Prop_WoodenCrate')?.clone();
+                const crate2 = propsGltf.scene.getObjectByName('Prop_WoodenCrate')?.clone();
+                const lantern = propsGltf.scene.getObjectByName('Prop_Lantern')?.clone();
+                const basket = propsGltf.scene.getObjectByName('Prop_SeasoningBasket')?.clone();
+
+                if (crate1) {
+                    crate1.position.set(-5, 0, -2);
+                    crate1.castShadow = true;
+                    crate1.receiveShadow = true;
+                    models.propsGroup.add(crate1);
+                }
+                if (crate2) {
+                    crate2.position.set(-5, 0.6, -2);
+                    crate2.castShadow = true;
+                    crate2.receiveShadow = true;
+                    models.propsGroup.add(crate2);
+                }
+                if (lantern) {
+                    lantern.position.set(5, 1.5, -2);
+                    lantern.castShadow = true;
+
+                    // Add point light for lantern glow
+                    const lanternLight = new THREE.PointLight(0xffe4b3, 0.8, 3);
+                    lanternLight.position.copy(lantern.position);
+                    models.propsGroup.add(lanternLight);
+
+                    models.propsGroup.add(lantern);
+                }
+                if (basket) {
+                    basket.position.set(0, 0, 3);
+                    basket.castShadow = true;
+                    basket.receiveShadow = true;
+                    models.propsGroup.add(basket);
+                }
+
+                scene.add(models.propsGroup);
+
+                updateStats();
+                hideLoading();
+                console.log('✅ All assets loaded successfully!');
+
+            } catch (error) {
+                console.error('❌ Failed to load assets:', error);
+                updateLoadingStatus('Error loading assets! Check console.');
+            }
+        }
+
+        // Stats update
+        function updateStats() {
+            let objectCount = 0;
+            let triangleCount = 0;
+            const materials = new Set();
+
+            scene.traverse((obj) => {
+                if (obj.isMesh) {
+                    objectCount++;
+                    if (obj.geometry) {
+                        if (obj.geometry.index) {
+                            triangleCount += obj.geometry.index.count / 3;
+                        } else {
+                            triangleCount += obj.geometry.attributes.position.count / 3;
+                        }
+                    }
+                    if (obj.material) {
+                        if (Array.isArray(obj.material)) {
+                            obj.material.forEach(m => materials.add(m.uuid));
+                        } else {
+                            materials.add(obj.material.uuid);
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('stat-objects').textContent = objectCount;
+            document.getElementById('stat-triangles').textContent = Math.floor(triangleCount).toLocaleString();
+            document.getElementById('stat-materials').textContent = materials.size;
+        }
+
+        // Controls
+        document.getElementById('toggle-cabbage').addEventListener('click', (e) => {
+            if (models.cabbageMesh) {
+                models.cabbageMesh.visible = !models.cabbageMesh.visible;
+                e.target.classList.toggle('active');
+            }
+        });
+
+        document.getElementById('toggle-cabbage-variant').addEventListener('click', () => {
+            if (models.cabbageMesh && assets.cabbage) {
+                cabbageVariant = cabbageVariant === 'raw' ? 'seasoned' : 'raw';
+                const materials = assets.cabbage.parser.json.materials;
+
+                if (cabbageVariant === 'raw') {
+                    models.cabbageMesh.material = assets.cabbage.materials['Cabbage_Raw'];
+                } else {
+                    models.cabbageMesh.material = assets.cabbage.materials['Cabbage_Seasoned'];
+                }
+                console.log(`Cabbage variant switched to: ${cabbageVariant}`);
+            }
+        });
+
+        document.getElementById('toggle-jar').addEventListener('click', (e) => {
+            if (models.jarBody) {
+                models.jarBody.visible = !models.jarBody.visible;
+                e.target.classList.toggle('active');
+            }
+            if (models.jarLid) {
+                models.jarLid.visible = !models.jarLid.visible;
+            }
+        });
+
+        document.getElementById('toggle-jar-lid').addEventListener('click', () => {
+            if (models.jarLid) {
+                jarLidOpen = !jarLidOpen;
+                const targetY = jarLidOpen ? 1.8 : 1.6;
+                models.jarLid.position.y = targetY;
+                console.log(`Jar lid ${jarLidOpen ? 'opened' : 'closed'}`);
+            }
+        });
+
+        document.getElementById('toggle-hanok').addEventListener('click', (e) => {
+            if (models.hanokGroup) {
+                models.hanokGroup.visible = !models.hanokGroup.visible;
+                e.target.classList.toggle('active');
+            }
+        });
+
+        document.getElementById('toggle-ground').addEventListener('click', (e) => {
+            if (models.groundMesh) {
+                models.groundMesh.visible = !models.groundMesh.visible;
+                e.target.classList.toggle('active');
+            }
+        });
+
+        document.getElementById('toggle-props').addEventListener('click', (e) => {
+            if (models.propsGroup) {
+                models.propsGroup.visible = !models.propsGroup.visible;
+                e.target.classList.toggle('active');
+            }
+        });
+
+        document.getElementById('toggle-ambient').addEventListener('change', (e) => {
+            ambientLight.visible = e.target.checked;
+        });
+
+        document.getElementById('toggle-key').addEventListener('change', (e) => {
+            keyLight.visible = e.target.checked;
+        });
+
+        document.getElementById('toggle-fill').addEventListener('change', (e) => {
+            fillLight.visible = e.target.checked;
+        });
+
+        document.getElementById('toggle-rim').addEventListener('change', (e) => {
+            rimLight.visible = e.target.checked;
+        });
+
+        document.getElementById('reset-camera').addEventListener('click', () => {
+            camera.position.set(10, 8, 12);
+            controls.target.set(0, 2, 0);
+            controls.update();
+        });
+
+        // Animation loop
+        let lastTime = performance.now();
+        let frameCount = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            controls.update();
+            renderer.render(scene, camera);
+
+            // FPS counter
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime >= lastTime + 1000) {
+                document.getElementById('stat-fps').textContent = frameCount;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start
+        loadAllAssets();
+        animate();
+
+    </script>
+</body>
+</html>
