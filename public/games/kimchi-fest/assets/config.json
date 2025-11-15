@@ -141,7 +141,7 @@
     },
     "rail": {
       "pathLength": 50,
-      "chefSpeed": 5,
+      "chefSpeed": 1.1,
       "cameraOffset": [0, 5, 10],
       "cameraLookAhead": 5
     },

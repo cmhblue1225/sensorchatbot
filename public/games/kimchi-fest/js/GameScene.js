@@ -151,19 +151,15 @@ export class GameScene {
         const gameplay = this.assetLoader.getGameplayConfig();
         const pathLength = gameplay.rail?.pathLength || 50;
 
-        // Create a simple straight path with slight curves
-        // This can be customized to create more interesting paths
+        // Create a straight path along -Z to keep camera/chef centered
         const points = [];
         const segments = 50;
 
         for (let i = 0; i <= segments; i++) {
             const t = i / segments;
-            const z = -t * pathLength; // Move forward along -Z axis
-
-            // Add slight S-curve variation
-            const x = Math.sin(t * Math.PI * 2) * 2;
-            const y = 0; // Keep on ground level
-
+            const z = -t * pathLength; // Move forward along -Z axis (no lateral deviation)
+            const x = 0;
+            const y = 0;
             points.push(new THREE.Vector3(x, y, z));
         }
 

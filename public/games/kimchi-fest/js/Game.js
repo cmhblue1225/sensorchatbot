@@ -58,6 +58,10 @@ export class Game {
 
         // Interaction range
         this.interactionRange = 3;
+
+        // Audio (metronome)
+        this.audioContext = null;
+        this.lastBeatTime = 0;
     }
 
     /**
@@ -270,12 +274,46 @@ export class Game {
      */
     setupBeatIndicators() {
         this.rhythmEngine.onBeat((beat, time) => {
+            this.playBeatClick();
             this.triggerCallback('onBeat', { beat, time });
         });
 
         this.rhythmEngine.onMeasure((measure, time) => {
             this.triggerCallback('onMeasure', { measure, time });
         });
+    }
+
+    /**
+     * Simple metronome click per beat
+     */
+    playBeatClick() {
+        // Initialize on first user interaction (game start already user-driven)
+        if (!this.audioContext) {
+            try {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.warn('[Game] AudioContext init failed:', e);
+                return;
+            }
+        }
+
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume().catch(() => {});
+        }
+
+        const ctx = this.audioContext;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'square';
+        osc.frequency.value = 1200; // short click
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
     }
 
     /**
