@@ -589,7 +589,8 @@
                             console.log('[SDK] Session created:', session.sessionCode);
 
                             // Generate QR code
-                            const qrUrl = `${window.location.origin}/sensor.html?code=${session.sessionCode}`;
+                            // sensor.html expects the query param "session=<code>"
+                            const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
                             qrContainer.innerHTML = `
                                 <div style="text-align: center;">
                                     <div id="qr-code-image"></div>

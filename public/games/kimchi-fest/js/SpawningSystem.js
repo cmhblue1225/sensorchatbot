@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SpawningSystem.js
  *
  * Manages rhythm-synchronized spawning of seasoning and cabbage objects.
@@ -253,12 +253,7 @@ export class SpawningSystem {
                 continue;
             }
 
-            // Gentle bobbing animation
-            const age = this.rhythmEngine.getCurrentTimeSec() - obj.userData.spawnTime;
-            obj.position.y += Math.sin(age * 2) * 0.02 * deltaTime;
-
-            // Gentle rotation
-            obj.rotation.y += deltaTime * 0.5;
+            // Keep objects stationary relative to world; no bob/rotate for strict alignment
         }
     }
 
@@ -412,5 +407,6 @@ export class SpawningSystem {
         console.log('[SpawningSystem] Destroyed');
     }
 }
+
 
 
