@@ -381,26 +381,11 @@ export class GameScene {
      * Move chef forward on rail
      */
     moveChef(deltaTime) {
-        if (!this.chef || !this.railCurve) {
-            console.warn('[GameScene] moveChef: chef or railCurve not found', {
-                hasChef: !!this.chef,
-                hasRailCurve: !!this.railCurve
-            });
-            return;
-        }
+        if (!this.chef || !this.railCurve) return;
 
         const pathLength = this.railCurve.getLength();
         const distance = this.chefSpeed * deltaTime;
         const progressDelta = distance / pathLength;
-
-        console.log('[GameScene] moveChef:', {
-            deltaTime,
-            chefSpeed: this.chefSpeed,
-            distance,
-            progressDelta,
-            oldProgress: this.railProgress,
-            newProgress: this.railProgress + progressDelta
-        });
 
         this.updateChefPosition(this.railProgress + progressDelta);
 
