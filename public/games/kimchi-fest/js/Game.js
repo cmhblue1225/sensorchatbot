@@ -150,17 +150,28 @@ export class Game {
      * Handle swing action (apply seasoning to cabbage)
      */
     handleSwingAction(inputData) {
-        if (!this.state.isPlaying) return;
+        if (!this.state.isPlaying) {
+            console.warn('[Game] Swing action while not playing');
+            return;
+        }
 
         const currentTime = this.rhythmEngine.getCurrentTimeSec();
         const chefPos = this.scene.getChefPosition();
+
+        console.log('[Game] Swing action!', {
+            chefPos,
+            interactionRange: this.interactionRange,
+            currentTime
+        });
 
         // Find nearest cabbage
         const { object: nearestCabbage, distance: cabbageDist } =
             this.spawningSystem.findNearestObject(chefPos, 'cabbage', this.interactionRange);
 
+        console.log('[Game] Nearest cabbage:', { nearestCabbage, cabbageDist });
+
         if (!nearestCabbage) {
-            console.log('[Game] No cabbage in range');
+            console.log('[Game] No cabbage in range - MISS');
             this.handleMiss();
             return;
         }
@@ -169,8 +180,10 @@ export class Game {
         const { object: nearestSeasoning, distance: seasoningDist } =
             this.spawningSystem.findNearestObject(chefPos, 'seasoning', this.interactionRange);
 
+        console.log('[Game] Nearest seasoning:', { nearestSeasoning, seasoningDist });
+
         if (!nearestSeasoning) {
-            console.log('[Game] No seasoning in range');
+            console.log('[Game] No seasoning in range - MISS');
             this.handleMiss();
             return;
         }
@@ -323,9 +336,15 @@ export class Game {
      * Start the game
      */
     start() {
-        if (this.state.isPlaying) return;
+        if (this.state.isPlaying) {
+            console.warn('[Game] Already playing!');
+            return;
+        }
 
         console.log('[Game] Starting game...');
+        console.log('[Game] Scene ready:', this.scene?.isReady);
+        console.log('[Game] Chef speed:', this.scene?.chefSpeed);
+        console.log('[Game] Gameplay config:', this.gameplay);
 
         this.state.isPlaying = true;
         this.state.isPaused = false;
@@ -407,7 +426,10 @@ export class Game {
      * Main game loop
      */
     gameLoop() {
-        if (!this.state.isPlaying) return;
+        if (!this.state.isPlaying) {
+            console.warn('[Game] gameLoop called but not playing!');
+            return;
+        }
 
         this.animationFrameId = requestAnimationFrame(() => this.gameLoop());
 
